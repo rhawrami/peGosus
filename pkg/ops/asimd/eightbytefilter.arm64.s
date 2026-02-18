@@ -325,7 +325,7 @@ TEXT ·cmpBetI64VecI64Lit(SB),NOSPLIT,$0-64
 TEXT ·cmpNBetI64VecI64Lit(SB),NOSPLIT,$0-64
     vCompareBetIF64Lit($0x4ee6340a, $0x4ee7340b, $0x4ee8340c, $0x4ee9340d, $0x4ee134ce, $0x4ee134ef, $0x4ee13510, $0x4ee13531, VORR)
 
-// func cmpBetI64VecI64Lit(src []int64, dst []byte, min int64, max int64)
+// func cmpBetF64VecI64Lit(src []int64, dst []byte, min int64, max int64)
 // w1: $0x6e60e4ca => 'fcmge.2d v10, v6, v0'
 // w2: $0x6e60e4eb => 'fcmge.2d v11, v7, v0'
 // w3: $0x6e60e50c => 'fcmge.2d v12, v8, v0'
