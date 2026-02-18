@@ -89,12 +89,12 @@ TEXT ·mulF64VecF64Lit(SB),NOSPLIT,$0-56
 TEXT ·mulF32VecF32Lit(SB),NOSPLIT,$0-52
     vOpLitFloat($0x6e20dc25, $0x6e20dc46, $0x6e20dc67, $0x6e20dc88, MOVW, $4, $16, S4, S)
 
-// func divFloat64VecByFloat64Lit(src, dst []float64, lit float64)
+// func divF64VecF64Lit(src, dst []float64, lit float64)
 // w1: $0x6e60fc25 => 'fdiv.2d	v5, v1, v0'
 // w2: $0x6e60fc46 => 'fdiv.2d	v6, v2, v0'
 // w3: $0x6e60fc67 => 'fdiv.2d	v7, v3, v0'
 // w4: $0x6e60fc88 => 'fdiv.2d	v8, v4, v0'
-TEXT ·divFloat64VecByFloat64Lit(SB),NOSPLIT,$0-56
+TEXT ·divF64VecF64Lit(SB),NOSPLIT,$0-56
     vOpLitFloat($0x6e60fc25, $0x6e60fc46, $0x6e60fc67, $0x6e60fc88, MOVD, $8, $8, D2, D)
 
 // func divF32VecF32Lit(src, dst []float32, lit float32)
@@ -175,7 +175,7 @@ TEXT ·subF64VecF64Vec(SB),NOSPLIT,$0-72
 // w2: $0x4ea6d44a => 'fsub.4s v10, v2, v6'
 // w3: $0x4ea7d46b => 'fsub.4s v11, v3, v7'
 // w4: $0x4ea8d48c => 'fsub.4s v12, v4, v8'
-TEXT ·subFloat32VecByFloat32Vec(SB),NOSPLIT,$0-72
+TEXT ·subF32VecF32Vec(SB),NOSPLIT,$0-72
     vOpVecFloat($0x4ea5d429, $0x4ea6d44a, $0x4ea7d46b, $0x4ea8d48c, $4, $16, S4, S)
 
 // func mulF64VecF64Vec(src1, src2, dst []float64)
