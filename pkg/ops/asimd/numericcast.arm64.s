@@ -116,7 +116,7 @@ exitFn:                                                    \
 TEXT ·castF32ToF64(SB),NOSPLIT,$0-48
     vCastIFSToIFD($0x0e617823, $0x4e617824, $0x0e617845, $0x4e617846)
 
-// func castF32ToF64(src []float32, dst []float64)
+// func castI32ToI64(src []int32, dst []int64)
 // w1: $0x0f20a423 =>  'sxtl v3.2d, v1.2s'
 // w2: $0x4f20a424 =>  'sxtl2 v4.2d, v1.4s'
 // w3: $0x0f20a445 =>  'sxtl v5.2d, v2.2s'
