@@ -57,7 +57,7 @@ TEXT ·addF64VecF64Lit(SB),NOSPLIT,$0-56
 TEXT ·addF32VecF32Lit(SB),NOSPLIT,$0-52
     vOpLitFloat($0x4e20d425, $0x4e20d446, $0x4e20d467, $0x4e20d488, MOVW, $4, $16, S4, S)
 
-// func addF64VecF64Lit(src, dst []float64, lit float64)
+// func subF64VecF64Lit(src, dst []float64, lit float64)
 // w1: $0x4ee0d425 => 'fsub.2d	v5, v1, v0'
 // w2: $0x4ee0d446 => 'fsub.2d	v6, v2, v0'
 // w3: $0x4ee0d467 => 'fsub.2d	v7, v3, v0'
