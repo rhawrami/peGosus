@@ -26,7 +26,7 @@ func (a *FixedSizeArray) DataOffsets() []byte { return nil }
 // come back to this function
 func (a *FixedSizeArray) IsConsistent() bool {
 	// offset out of bounds
-	if a.O >= (a.L - 1) {
+	if a.O >= a.L {
 		return false
 	}
 	// array has nulls, but nil VBM pointer

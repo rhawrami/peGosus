@@ -18,7 +18,7 @@ type Array interface {
 	// returns nil for fixed size data.
 	DataOffsets() []byte
 	// IsConsistent returns true if there are no detected inconsistencies
-	// in the array; for instance, Offset()+1 >= Len would cause IsConsistent()
+	// in the array; for instance, Offset >= Len would cause IsConsistent()
 	// to return false.
 	IsConsistent() bool
 }
