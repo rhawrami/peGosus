@@ -10,6 +10,8 @@ type Array interface {
 	Len() uint64
 	// Nulls returns the null count of an array.
 	Nulls() uint64
+	// CachedStats returns an array's cached statistics.
+	CachedStats() *CachedStatistics
 	// VBM returns the validity bitmap of an array; nil if no nulls
 	VBM() *ValidityBitmap
 	// Data returns an array's actual data.
