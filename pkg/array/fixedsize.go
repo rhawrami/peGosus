@@ -1,5 +1,8 @@
 package array
 
+// FixedSizeArray represents an array with fixed size data, that meaning
+// data where all elements have the same width. Allowed types here include
+// all numeric types, date types and boolean types as well.
 type FixedSizeArray struct {
 	T ArrayType         // array type
 	O uint64            // offset (0 if no offset)
