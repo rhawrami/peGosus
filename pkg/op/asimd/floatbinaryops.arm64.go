@@ -21,7 +21,7 @@ func mulF64VecF64Lit(src, dst []float64, lit float64)
 func mulF32VecF32Lit(src, dst []float32, lit float32)
 
 //go:noescape
-func divFloat64VecByFloat64Lit(src, dst []float64, lit float64)
+func divF64VecF64Lit(src, dst []float64, lit float64)
 
 //go:noescape
 func divF32VecF32Lit(src, dst []float32, lit float32)
