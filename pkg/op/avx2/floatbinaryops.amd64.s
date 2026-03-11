@@ -6,14 +6,16 @@
     MOVQ srcAddr+0(FP), AX                                 \
     MOVQ dstAddr+24(FP), BX                                \
     MOVQ srcLen+8(FP), CX                                  \
+    MOVQ CX, SI                                            \
     XORQ DI, DI                                            \
-    SUBQ chnkSize, CX, SI                                  \
+    SUBQ chnkSize, SI                                      \
     vBrdCstOp lit+48(FP), Y0                               \
                                                            \
     TESTQ CX, CX                                           \
     JEQ exitFn                                             \
                                                            \
-    CMPQ chnkSize, CX                                      \
+    MOVQ chnkSize, R12                                     \
+    CMPQ CX, R12                                           \
     JLT tradLoop                                           \
                                                            \
 vecLoop:                                                   \
@@ -32,17 +34,17 @@ vecLoop:                                                   \
     ADDQ $128, AX                                          \
     ADDQ $128, BX                                          \
     ADDQ chnkSize, DI                                      \
-    CMPQ SI, DI                                            \ 
+    CMPQ DI, SI                                            \ 
     JLT vecLoop                                            \
                                                            \
 tradLoop:                                                  \
-    tMovOp (R0), X1                                        \
+    tMovOp (AX), X1                                        \
     tOp X0, X1, X5                                         \
-    tMovOp X1, (R1)                                        \
-    ADD dSize, AX                                          \
-    ADD dSize, BX                                          \
-    ADD $1, DI                                             \
-    CMPQ R2, DI                                            \
+    tMovOp X5, (BX)                                        \
+    ADDQ dSize, AX                                         \
+    ADDQ dSize, BX                                         \
+    ADDQ $1, DI                                            \
+    CMPQ DI, CX                                            \
     JLT tradLoop                                           \
                                                            \
 exitFn:                                                    \
