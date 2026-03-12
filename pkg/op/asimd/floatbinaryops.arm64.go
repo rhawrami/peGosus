@@ -1,6 +1,6 @@
 //go:build arm64
 
-package asimd
+package op
 
 //go:noescape
 func addF64VecF64Lit(src, dst []float64, lit float64)

@@ -1,6 +1,6 @@
 //go:build arm64
 
-package asimd
+package op
 
 //go:noescape
 func absI64Vec(src, dst []int64)

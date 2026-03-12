@@ -1,6 +1,6 @@
 //go:build arm64
 
-package asimd
+package op
 
 //go:noescape
 func addI64VecI64Lit(src, dst []int64, lit int64)

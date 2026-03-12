@@ -1,6 +1,6 @@
 //go:build arm64
 
-package asimd
+package op
 
 //go:noescape
 func castI64ToF64(src []int64, dst []float64)

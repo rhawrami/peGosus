@@ -1,6 +1,6 @@
 //go:build arm64
 
-package asimd
+package op
 
 //go:noescape
 func bitmapANDRetPopCount(src1, src2, dst []byte) uint64

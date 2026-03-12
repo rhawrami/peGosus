@@ -1,6 +1,6 @@
 //go:build arm64
 
-package asimd
+package op
 
 //go:noescape
 func clipF64VecWithF64Bounds(src, dst []float64, lower, upper float64)

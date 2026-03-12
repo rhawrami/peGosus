@@ -1,6 +1,6 @@
 //go:build arm64
 
-package asimd
+package op
 
 var dateScalarConstants = []float32{
 	1,      // v0

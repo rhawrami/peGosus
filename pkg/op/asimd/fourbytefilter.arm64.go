@@ -1,6 +1,6 @@
 //go:build arm64
 
-package asimd
+package op
 
 //go:noescape
 func cmpGtI32VecI32Lit(src []int32, dst []byte, lit int32)
