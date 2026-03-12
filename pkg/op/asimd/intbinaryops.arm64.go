@@ -39,10 +39,10 @@ func mulI32VecI32Vec(src1, src2, dst []float32)
 func mulI64VecI64Vec(src1, src2, dst []int64)
 
 //go:noescape
-func divI64VecI64Lit(src []int64, dst []float64, lit int64)
+func divI64VecI64Lit(src []int64, dst []float64, lit float64)
 
 //go:noescape
-func divI32VecI32Lit(src []int64, dst []float32, lit int32)
+func divI32VecI32Lit(src []int32, dst []float32, lit float32)
 
 //go:noescape
 func divI64VecI64Vec(src1, src2 []int64, dst []float64)
