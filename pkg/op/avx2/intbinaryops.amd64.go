@@ -1,4 +1,4 @@
-//go:build arm64
+//go:build amd64
 
 package op
 
@@ -8,8 +8,8 @@ func addI64VecI64Lit(src, dst []int64, lit int64)
 //go:noescape
 func subI64VecI64Lit(src, dst []int64, lit int64)
 
-//go:noescape
-func mulI64VecI64Lit(src, dst []int64, lit int64)
+// //go:noescape
+// func mulI64VecI64Lit(src, dst []int64, lit int64)
 
 //go:noescape
 func divI64VecI64Lit(src []int64, dst []float64, lit float64)
@@ -32,8 +32,8 @@ func addI64VecI64Vec(src1, src2, dst []int64)
 //go:noescape
 func subI64VecI64Vec(src1, src2, dst []int64)
 
-//go:noescape
-func mulI64VecI64Vec(src1, src2, dst []int64)
+// //go:noescape
+// func mulI64VecI64Vec(src1, src2, dst []int64)
 
 //go:noescape
 func divI64VecI64Vec(src1, src2 []int64, dst []float64)

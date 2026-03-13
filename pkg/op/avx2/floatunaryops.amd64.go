@@ -1,6 +1,6 @@
 //go:build amd64
 
-package avx2
+package op
 
 //go:noescape
 func sqrtF64Vec(src, dst []float64)

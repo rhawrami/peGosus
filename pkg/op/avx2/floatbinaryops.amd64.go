@@ -1,6 +1,6 @@
 //go:build amd64
 
-package avx2
+package op
 
 //go:noescape
 func addF64VecF64Lit(src, dst []float64, lit float64)
