@@ -376,8 +376,6 @@ exitFn:
 
 // // func mulI64VecI64Lit(src, dst []int64, lit int64)
 // TEXT ·mulI64VecI64Lit(SB),NOSPLIT,$0-56
-//     vMulIntLit()
 
 // // func mulI64VecI64Vec(src1, src2, dst []int64)
 // TEXT ·mulI64VecI64Vec(SB),NOSPLIT,$0-72
-//     vMulIntVec()
