@@ -29,8 +29,5 @@ func castF32ToI64(src []float32, dst []int64)
 //go:noescape
 func castI64ToF32(src []int64, dst []float32)
 
-func castF64ToI32(src []float64, dst []int32) {
-	for i := 0; i < len(src); i++ {
-		dst[i] = int32(src[i])
-	}
-}
+//go:noescape
+func castF64ToI32(src []float64, dst []int32)

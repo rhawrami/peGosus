@@ -256,7 +256,7 @@ TEXT ·castF64ToI64(SB),NOSPLIT,$0-48
     JLT tradLoop
 
 vecLoop:
-    VMOVDQU (AX), Y1
+    VMOVUPD (AX), Y1
     VEXTRACTI128 $1, Y1, X3 
     VUNPCKHPD X1, X1, X2
     VUNPCKHPD X3, X3, X4
@@ -269,7 +269,7 @@ vecLoop:
     VMOVQ R10, X2
     VPINSRQ $1, R11, X2, X2
     VINSERTI128 $1, X2, Y1, Y1
-    VMOVUPS Y1, (BX)
+    VMOVDQU Y1, (BX)
     ADDQ $32, AX
     ADDQ $32, BX
     ADDQ $4, DI
@@ -333,5 +333,51 @@ tradLoop:
 exitFn:
     RET
 
-// // func castF64ToI32(src []float64, dst []int32)
-// TEXT ·castF64ToI32(SB),NOSPLIT,$0-48
+// func castF64ToI32(src []float64, dst []int32)
+TEXT ·castF64ToI32(SB),NOSPLIT,$0-48
+    MOVQ srcAddr+0(FP), AX
+    MOVQ dstAddr+24(FP), BX
+    MOVQ srcLen+8(FP), CX
+    MOVQ CX, SI
+    XORQ DI, DI
+    SUBQ $4, SI
+
+    TESTQ CX, CX
+    JEQ exitFn
+
+    CMPQ CX, $4
+    JLT tradLoop
+
+vecLoop:
+    VMOVUPD (AX), Y1
+    VEXTRACTI128 $1, Y1, X3 
+    VUNPCKHPD X1, X1, X2
+    VUNPCKHPD X3, X3, X4
+    VCVTTSD2SI X1, R8
+    VCVTTSD2SI X2, R9
+    VCVTTSD2SI X3, R10
+    VCVTTSD2SI X4, R11
+    SHL $32, R9
+    SHL $32, R11
+    ORQ R9, R8
+    ORQ R11, R10
+    VMOVQ R8, X1
+    VPINSRQ $1, R10, X1, X1
+    VMOVDQU X1, (BX)
+    ADDQ $32, AX
+    ADDQ $16, BX
+    ADDQ $4, DI
+    CMPQ DI, SI 
+    JLT vecLoop
+
+tradLoop:
+    VCVTTSD2SI (AX), R8
+    MOVD R8, (BX)
+    ADDQ $8, AX
+    ADDQ $4, BX
+    ADDQ $1, DI
+    CMPQ DI, CX
+    JLT tradLoop
+
+exitFn:
+    RET
