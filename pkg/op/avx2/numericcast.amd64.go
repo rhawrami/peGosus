@@ -1,4 +1,4 @@
-//go:build arm64
+//go:build amd64
 
 package op
 
@@ -18,7 +18,7 @@ func castF32ToI32(src []float32, dst []int32)
 func castF32ToF64(src []float32, dst []float64)
 
 //go:noescape
-func castI32ToI64(src []int32, dst []float64)
+func castI32ToI64(src []int32, dst []int64)
 
 //go:noescape
 func castI32ToF64(src []int32, dst []float64)
@@ -29,7 +29,6 @@ func castF32ToI64(src []float32, dst []int64)
 //go:noescape
 func castI64ToF32(src []int64, dst []float32)
 
-//go:noescape
 func castF64ToI32(src []float64, dst []int32) {
 	for i := 0; i < len(src); i++ {
 		dst[i] = int32(src[i])
