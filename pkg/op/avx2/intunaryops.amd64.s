@@ -9,7 +9,7 @@
     MOVQ CX, SI                                            \
     XORQ DI, DI                                            \
     SUBQ chnkSize, SI                                      \
-    VPXOR Y0, Y0                                           \
+    VPXOR Y0, Y0, Y0                                       \
                                                            \
     TESTQ CX, CX                                           \
     JEQ exitFn                                             \
@@ -38,9 +38,9 @@ vecLoop:                                                   \
                                                            \
 tradLoop:                                                  \
     tMovOp (AX), R10                                       \
-    xorOp R9                                               \
+    xorOp R9, R9                                           \
     tOp R10, R9                                            \
-    tMovOp R10, (BX)                                       \
+    tMovOp R9, (BX)                                        \
     ADDQ dSize, AX                                         \
     ADDQ dSize, BX                                         \
     ADDQ $1, DI                                            \
@@ -95,7 +95,7 @@ vecLoop:
 tradLoop:
     MOVL (AX), R8
     IMULL R8, R8
-    tMovOp R8, (BX)
+    MOVL R8, (BX)
     ADDQ $4, AX
     ADDQ $4, BX
     ADDQ $1, DI
@@ -138,7 +138,7 @@ vecLoop:
 
 tradLoop:
     VCVTSI2SDQ (AX), X1, X1
-    VSQRTSD X1, X2
+    VSQRTSD X1, X1, X2
     VMOVSD X2, (BX)
     ADDQ $8, AX
     ADDQ $8, BX
@@ -190,7 +190,7 @@ vecLoop:
 tradLoop:
     MOVL (AX), R9
     VCVTSI2SSL R9, X1, X1
-    VSQRTSS X0, X1, X2
+    VSQRTSS X1, X1, X2
     VMOVSS X2, (BX)
     ADDQ $4, AX
     ADDQ $4, BX
@@ -209,7 +209,8 @@ TEXT ·recipI64Vec(SB),NOSPLIT,$0-48
     MOVQ CX, SI
     XORQ DI, DI
     SUBQ $4, SI
-    VBROADCASTSD $1, Y0
+    MOVSD $1.00, X0
+    VBROADCASTSD X0, Y0
 
     TESTQ CX, CX
     JEQ exitFn
@@ -254,7 +255,8 @@ TEXT ·recipI32Vec(SB),NOSPLIT,$0-48
     MOVQ CX, SI
     XORQ DI, DI
     SUBQ $32, SI
-    VBROADCASTSS $1, Y0
+    MOVSS $1.00, X0
+    VBROADCASTSS X0, Y0
 
     TESTQ CX, CX
     JEQ exitFn
@@ -342,4 +344,7 @@ tradLoop:
     ADDQ $1, DI
     CMPQ DI, CX
     JLT tradLoop
+
+exitFn:
+    RET
 
