@@ -43,8 +43,8 @@ vecLoop:                                                   \
                                                            \
 tradLoop:                                                  \
     tMovOp (AX), X2                                        \
-    tMinOp X0, X2, X3                                      \
-    tMaxOp X1, X3, X4                                      \
+    tMaxOp X0, X2, X3                                      \
+    tMinOp X1, X3, X4                                      \
     tMovOp X4, (BX)                                        \
     ADDQ dSize, AX                                         \
     ADDQ dSize, BX                                         \
@@ -143,22 +143,22 @@ vecLoop:
     VPCMPGTQ Y3, Y0, Y7
     VPCMPGTQ Y4, Y0, Y8
     VPCMPGTQ Y5, Y0, Y9
-    VPBLENDVB V6, Y0, Y2
-    VPBLENDVB V7, Y0, Y3
-    VPBLENDVB V8, Y0, Y4
-    VPBLENDVB V9, Y0, Y5
+    VPBLENDVB Y6, Y0, Y2, Y2
+    VPBLENDVB Y7, Y0, Y3, Y3
+    VPBLENDVB Y8, Y0, Y4, Y4
+    VPBLENDVB Y9, Y0, Y5, Y5
     VPCMPGTQ Y1, Y2, Y6
     VPCMPGTQ Y1, Y3, Y7
     VPCMPGTQ Y1, Y4, Y8
     VPCMPGTQ Y1, Y5, Y9
-    VPBLENDVB V6, Y1, Y2
-    VPBLENDVB V7, Y1, Y3
-    VPBLENDVB V8, Y1, Y4
-    VPBLENDVB V9, Y1, Y5
-    VMOVDQU Yx, (BX)
-    VMOVDQU Yx, 32(BX)
-    VMOVDQU Yx, 64(BX)
-    VMOVDQU Yx, 96(BX)
+    VPBLENDVB Y6, Y1, Y2, Y2
+    VPBLENDVB Y7, Y1, Y3, Y3
+    VPBLENDVB Y8, Y1, Y4, Y4
+    VPBLENDVB Y9, Y1, Y5, Y5
+    VMOVDQU Y2, (BX)
+    VMOVDQU Y3, 32(BX)
+    VMOVDQU Y4, 64(BX)
+    VMOVDQU Y5, 96(BX)
     ADDQ $128, AX
     ADDQ $128, BX
     ADDQ $16, DI
@@ -168,9 +168,9 @@ vecLoop:
 tradLoop:
     VMOVQ (AX), X2
     VPCMPGTQ X2, X0, X3
-    VPBLENDVB X3, X0, X2
+    VPBLENDVB X3, X0, X2, X2
     VPCMPGTQ X1, X2, X3
-    VPBLENDVB X3, X1, X2
+    VPBLENDVB X3, X1, X2, X2
     VMOVQ X2, (BX)
     ADDQ $8, AX
     ADDQ $8, BX
@@ -207,7 +207,7 @@ vecLoop:
     VUNPCKLPD X5, X4, X7
     VINSERTF128 $1, X7, Y6, Y8
     VMAXPD Y0, Y8, Y2
-    VMAXPD Y1, Y2, Y3
+    VMINPD Y1, Y2, Y3
     VMOVUPD Y3, (BX)
     ADDQ $32, AX
     ADDQ $32, BX
