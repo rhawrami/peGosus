@@ -45,7 +45,7 @@ func cmpBetI64VecI64Lit(src []int64, dst []byte, min int64, max int64)
 func cmpNBetI64VecI64Lit(src []int64, dst []byte, min int64, max int64)
 
 //go:noescape
-func cmpBetF64VecI64Lit(src []int64, dst []byte, min int64, max int64)
+func cmpBetF64VecF64Lit(src []float64, dst []byte, min float64, max float64)
 
 //go:noescape
 func cmpNBetF64VecF64Lit(src []float64, dst []byte, min float64, max float64)

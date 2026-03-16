@@ -25,7 +25,7 @@ vecLoop:                                                   \
     vMovOp (AX), Y1                                        \
     vCmpOp                                                 \
     VMOVMSKPD Y2, R9                                       \
-    vMovOp (AX), Y1                                        \
+    vMovOp 32(AX), Y1                                      \
     vCmpOp                                                 \
     VMOVMSKPD Y2, R10                                      \
     SHLQ $4, R10                                           \
@@ -142,12 +142,12 @@ TEXT ·cmpNeqF64VecF64Lit(SB),NOSPLIT,$0-56
     JLT tradLoop                                           \
                                                            \
 vecLoop:                                                   \
-    vMovOp (AX), Y1                                        \
+    vMovOp (AX), Y2                                        \
     vCmpOp                                                 \
-    VMOVMSKPD Y2, R9                                       \
-    vMovOp 32(AX), Y1                                      \
+    VMOVMSKPD Y3, R9                                       \
+    vMovOp 32(AX), Y2                                      \
     vCmpOp                                                 \
-    VMOVMSKPD Y2, R10                                      \
+    VMOVMSKPD Y3, R10                                      \
     SHLQ $4, R10                                           \
     ORQ R10, R9                                            \
     MOVB R9, (BX)                                          \
