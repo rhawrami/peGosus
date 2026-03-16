@@ -10,9 +10,10 @@
     XORQ DI, DI                                            \
     SUBQ $8, SI                                            \
     vBrdCstOp lit+48(FP), Y0                               \
-    VPBROADCASTB $255, Y5                                  \
+    MOVB $0xFF, R8                                         \
+    VPBROADCASTB R8, Y5                                    \
     XORQ R8, R8                                            \ 
-    MOVL $1, R9                                            \
+    MOVQ $1, R11                                           \
                                                            \
     TESTQ CX, CX                                           \
     JEQ exitFn                                             \
@@ -23,7 +24,7 @@
 vecLoop:                                                   \
     vMovOp (AX), Y1                                        \
     vCmpOp                                                 \
-    VMOVSKPS Y2, R9                                        \
+    VMOVMSKPS Y2, R9                                       \
     MOVB R9, (BX)                                          \
     ADDQ $32, AX                                           \
     ADDQ $1, BX                                            \
@@ -32,12 +33,12 @@ vecLoop:                                                   \
     JLT vecLoop                                            \
                                                            \
 tradLoop:                                                  \
-    VMOVD (AX), Y1                                         \
+    VMOVD (AX), X1                                         \
     vCmpOp                                                 \
-    VMOVD Y2, R10                                          \
-    ANDQ R9, R10                                           \
+    VMOVD X2, R10                                          \
+    ANDQ R11, R10                                          \
     ORQ R10, R8                                            \
-    SHL $1, R8                                             \
+    SHLQ $1, R11                                           \
     ADDQ $4, AX                                            \
     ADDQ $1, DI                                            \
     CMPQ DI, CX                                            \
@@ -62,60 +63,60 @@ exitFn:                                                    \
         VPCMPEQD Y0, Y1, Y3 \
         VPXOR Y5, Y3, Y2
 
-#define GTF32 VCMPPS $1 Y1, Y0, Y2
-#define LTF32 VCMPPS $1 Y0, Y1, Y2
-#define EQF32 VCMPPS $0 Y0, Y1, Y2
-#define GEF32 VCMPPS $2 Y1, Y0, Y2
-#define LEF32 VCMPPS $2 Y0, Y1, Y2
-#define NEQF32 VCMPPS $4 Y0, Y1, Y2
+#define GTF32 VCMPPS $1, Y1, Y0, Y2
+#define LTF32 VCMPPS $1, Y0, Y1, Y2
+#define EQF32 VCMPPS $0, Y0, Y1, Y2
+#define GEF32 VCMPPS $2, Y1, Y0, Y2
+#define LEF32 VCMPPS $2, Y0, Y1, Y2
+#define NEQF32 VCMPPS $4, Y0, Y1, Y2
 
 // func cmpGtI32VecI32Lit(src []int32, dst []byte, lit int32)
 TEXT ·cmpGtI32VecI32Lit(SB),NOSPLIT,$0-52
-    vCmpOneLit(VPBROADCASTD, VMOVD, GTI32)
+    vCmpOneLit(VPBROADCASTD, VMOVDQU, GTI32)
 
 // func cmpLtI32VecI32Lit(src []int32, dst []byte, lit int32)
 TEXT ·cmpLtI32VecI32Lit(SB),NOSPLIT,$0-52
-    vCmpOneLit(VPBROADCASTD, VMOVD, LTI32)
+    vCmpOneLit(VPBROADCASTD, VMOVDQU, LTI32)
 
 // func cmpGeI32VecI32Lit(src []int32, dst []byte, lit int32)
 TEXT ·cmpGeI32VecI32Lit(SB),NOSPLIT,$0-52
-    vCmpOneLit(VPBROADCASTD, VMOVD, GEI32)
+    vCmpOneLit(VPBROADCASTD, VMOVDQU, GEI32)
 
 // func cmpLeI32VecI32Lit(src []int32, dst []byte, lit int32)
 TEXT ·cmpLeI32VecI32Lit(SB),NOSPLIT,$0-52
-    vCmpOneLit(VPBROADCASTD, VMOVD, LEI32)
+    vCmpOneLit(VPBROADCASTD, VMOVDQU, LEI32)
 
 // func cmpEqI32VecI32Lit(src []int32, dst []byte, lit int32)
 TEXT ·cmpEqI32VecI32Lit(SB),NOSPLIT,$0-52
-    vCmpOneLit(VPBROADCASTD, VMOVD, EQI32)
+    vCmpOneLit(VPBROADCASTD, VMOVDQU, EQI32)
 
 // func cmpNeqI32VecI32Lit(src []int32, dst []byte, lit int32)
 TEXT ·cmpNeqI32VecI32Lit(SB),NOSPLIT,$0-52
-    vCmpOneLit(VPBROADCASTD, VMOVD, NEQI32)
+    vCmpOneLit(VPBROADCASTD, VMOVDQU, NEQI32)
 
 // func cmpGtF32VecF32Lit(src []float32, dst []byte, lit float32)
 TEXT ·cmpGtF32VecF32Lit(SB),NOSPLIT,$0-52
-    vCmpOneLit(VBROADCASTSS, VMOVSS, GTF32)
+    vCmpOneLit(VBROADCASTSS, VMOVUPS, GTF32)
 
 // func cmpLtF32VecF32Lit(src []float32, dst []byte, lit float32)
 TEXT ·cmpLtF32VecF32Lit(SB),NOSPLIT,$0-52
-    vCmpOneLit(VBROADCASTSS, VMOVSS, LTF32)
+    vCmpOneLit(VBROADCASTSS, VMOVUPS, LTF32)
 
 // func cmpGeF32VecF32Lit(src []float32, dst []byte, lit float32)
 TEXT ·cmpGeF32VecF32Lit(SB),NOSPLIT,$0-52
-    vCmpOneLit(VBROADCASTSS, VMOVSS, GEF32)
+    vCmpOneLit(VBROADCASTSS, VMOVUPS, GEF32)
 
 // func cmpLeF32VecF32Lit(src []float32, dst []byte, lit float32)
 TEXT ·cmpLeF32VecF32Lit(SB),NOSPLIT,$0-52
-    vCmpOneLit(VBROADCASTSS, VMOVSS, LEF32)
+    vCmpOneLit(VBROADCASTSS, VMOVUPS, LEF32)
 
 // func cmpEqF32VecF32Lit(src []float32, dst []byte, lit float32)
 TEXT ·cmpEqF32VecF32Lit(SB),NOSPLIT,$0-52
-    vCmpOneLit(VBROADCASTSS, VMOVSS, EQF32)
+    vCmpOneLit(VBROADCASTSS, VMOVUPS, EQF32)
     
 // func cmpNeqF32VecF32Lit(src []float32, dst []byte, lit float32)
 TEXT ·cmpNeqF32VecF32Lit(SB),NOSPLIT,$0-52
-    vCmpOneLit(VBROADCASTSS, VMOVSS, NEQF32)
+    vCmpOneLit(VBROADCASTSS, VMOVUPS, NEQF32)
 
 #define vCmpTwoLit(vBrdCstOp, vMovOp, vCmpOp)              \
     MOVQ srcAddr+0(FP), AX                                 \
@@ -127,7 +128,7 @@ TEXT ·cmpNeqF32VecF32Lit(SB),NOSPLIT,$0-52
     vBrdCstOp min+48(FP), Y0                               \
     vBrdCstOp max+52(FP), Y1                               \
     XORQ R8, R8                                            \ 
-    MOVL $1, R9                                            \
+    MOVL $1, R11                                           \
                                                            \
     TESTQ CX, CX                                           \
     JEQ exitFn                                             \
@@ -138,7 +139,7 @@ TEXT ·cmpNeqF32VecF32Lit(SB),NOSPLIT,$0-52
 vecLoop:                                                   \
     vMovOp (AX), Y2                                        \
     vCmpOp                                                 \
-    VMOVSKPS Y3, R9                                        \
+    VMOVMSKPS Y3, R9                                       \
     MOVB R9, (BX)                                          \
     ADDQ $32, AX                                           \
     ADDQ $1, BX                                            \
@@ -147,12 +148,12 @@ vecLoop:                                                   \
     JLT vecLoop                                            \
                                                            \
 tradLoop:                                                  \
-    VMOVD (AX), Y2                                         \
+    VMOVD (AX), X2                                         \
     vCmpOp                                                 \
-    VMOVD Y3, R10                                          \
-    ANDQ R9, R10                                           \
+    VMOVD X3, R10                                          \
+    ANDQ R11, R10                                          \
     ORQ R10, R8                                            \
-    SHL $1, R8                                             \
+    SHLQ $1, R11                                           \
     ADDQ $4, AX                                            \
     ADDQ $1, DI                                            \
     CMPQ DI, CX                                            \
@@ -176,27 +177,27 @@ exitFn:                                                    \
         VPOR Y4, Y5, Y3
 
 #define BETF32 \
-        VCMPPS $2 Y2, Y0, Y4 \
-        VCMPPS $2 Y1, Y2, Y5 \
+        VCMPPS $2, Y2, Y0, Y4 \
+        VCMPPS $2, Y1, Y2, Y5 \
         VPAND Y4, Y5, Y3
 
 #define NBETF32 \
-        VCMPPS $1 Y0, Y2, Y4 \
-        VCMPPS $1 Y2, Y1, Y5 \
+        VCMPPS $1, Y0, Y2, Y4 \
+        VCMPPS $1, Y2, Y1, Y5 \
         VPOR Y4, Y5, Y3
 
 // func cmpBetI32VecI32Lit(src []int32, dst []byte, min int32, max int32)
 TEXT ·cmpBetI32VecI32Lit(SB),NOSPLIT,$0-56
-    vCmpTwoLit(VPBROADCASTD, VMOVD, BETI32)
+    vCmpTwoLit(VPBROADCASTD, VMOVDQU, BETI32)
 
 // func cmpNBetI32VecI32Lit(src []int32, dst []byte, min int32, max int32)
 TEXT ·cmpNBetI32VecI32Lit(SB),NOSPLIT,$0-56
-    vCmpTwoLit(VPBROADCASTD, VMOVD, NBETI32)
+    vCmpTwoLit(VPBROADCASTD, VMOVDQU, NBETI32)
 
 // func cmpBetF32VecF32Lit(src []float32, dst []byte, min float32, max float32)
 TEXT ·cmpBetF32VecF32Lit(SB),NOSPLIT,$0-56
-    vCmpTwoLit(VBROADCASTSS, VMOVSS, BETF32)
+    vCmpTwoLit(VBROADCASTSS, VMOVUPS, BETF32)
 
 // func cmpNBetF32VecF32Lit(src []float32, dst []byte, min float32, max float32)
 TEXT ·cmpNBetF32VecF32Lit(SB),NOSPLIT,$0-56
-    vCmpTwoLit(VBROADCASTSS, VMOVSS, NBETF32)
+    vCmpTwoLit(VBROADCASTSS, VMOVUPS, NBETF32)
