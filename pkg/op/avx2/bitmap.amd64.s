@@ -1,4 +1,4 @@
-//go:build amd4
+//go:build amd64
 
 #include "textflag.h"
 
@@ -40,11 +40,13 @@ vecLoop:                                                   \
     CMPQ DI, SI                                            \ 
     JLT vecLoop                                            \
                                                            \
+    XORQ R9, R9                                            \
+    XORQ R10, R10                                          \
 tradLoop:                                                  \
     MOVB (AX), R9                                          \
     MOVB (BX), R10                                         \
     bOpW R9, R10                                           \
-    POCNTW R10, R9                                         \
+    POPCNTW R10, R9                                        \
     ADDQ R9, R13                                           \
     MOVB R10, (R8)                                         \
     ADDQ $1, AX                                            \
@@ -72,7 +74,7 @@ TEXT ·bitmapPopCount(SB),NOSPLIT,$0-32
     MOVQ srcLen+8(FP), CX
     MOVQ CX, SI
     XORQ DI, DI
-    SUBQ chnkSize, SI
+    SUBQ $24, SI
     XORQ BX, BX
     XORQ R9, R9
     XORQ R10, R10
@@ -82,7 +84,7 @@ TEXT ·bitmapPopCount(SB),NOSPLIT,$0-32
     TESTQ CX, CX
     JEQ exitFn
 
-    CMPQ CX, chnkSize
+    CMPQ CX, $24
     JLT tradLoop
 
 vecLoop:
@@ -111,5 +113,5 @@ tradLoop:
 exitFn:
     ADDQ BX, R12
     ADDQ R12, R13
-    MOVQ R13, cnt+72(FP)
+    MOVQ R13, cnt+24(FP)
     RET
