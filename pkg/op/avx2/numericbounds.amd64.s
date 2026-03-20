@@ -1,0 +1,186 @@
+//go:build amd64
+
+#include "textflag.h"
+
+#define vBoundsOp(tMovOp, vBrdCstOp, vMovOp, vOp, vReduce, dSize, chnkSize) \
+    MOVQ srcAddr+0(FP), AX                                 \
+    MOVQ dstAddr+24(FP), BX                                \
+    MOVQ srcLen+8(FP), CX                                  \
+    MOVQ CX, SI                                            \
+    XORQ DI, DI                                            \
+    SUBQ chnkSize, SI                                      \
+                                                           \
+    TESTQ CX, CX                                           \
+    JEQ exitFn                                             \
+                                                           \
+    tMovOp (AX), R8                                        \
+    vBrdCstOp R8, Y0                                       \
+    vBrdCstOp R8, Y1                                       \
+    vBrdCstOp R8, Y2                                       \
+    vBrdCstOp R8, Y3                                       \
+                                                           \
+    CMPQ CX, chnkSize                                      \
+    JLT tradLoop                                           \
+                                                           \
+vecLoop:                                                   \
+    vMovOp (AX), Y4                                        \
+    vMovOp 32(AX), Y5                                      \
+    vMovOp 64(AX), Y6                                      \
+    vMovOp 96(AX), Y7                                      \
+    vOp Y4, Y0, Y0                                         \
+    vOp Y5, Y1, Y1                                         \
+    vOp Y6, Y2, Y2                                         \
+    vOp Y7, Y3, Y3                                         \
+    ADDQ $128, AX                                          \
+    ADDQ chnkSize, DI                                      \
+    CMPQ DI, SI                                            \ 
+    JLT vecLoop                                            \
+                                                           \
+tradLoop:                                                  \
+    vBrdCstOp (AX), Y4                                     \
+    vOp Y4, Y0, Y0                                         \
+    ADDQ dSize, AX                                         \
+    ADDQ $1, DI                                            \
+    CMPQ DI, CX                                            \
+    JLT tradLoop                                           \
+                                                           \
+    vReduce                                                \                                                           
+exitFn:                                                    \
+    RET
+
+#define reduceOpX32(vOp)        \
+        vOp Y0, Y1, Y0          \
+        vOp Y2, Y3, Y2          \
+        vOp Y0, Y2, Y0          \
+        VEXTRACTI128 $1, Y0, X1 \
+        vOp X1, X0, X0          \
+        VUNPCKHPD X0, X1, X1    \
+        vOp X1, X0, X0          \
+        VMOVQ X0, R8            \
+        SHLQ $32, R8            \
+        VMOVD R8, X1            \
+        vOp X1, X0, X0          \
+        VMOVD X0, (BX)
+
+#define reduceOpF64(vOp)        \
+        vOp Y0, Y1, Y0          \
+        vOp Y2, Y3, Y2          \
+        vOp Y0, Y2, Y0          \
+        VEXTRACTI128 $1, Y0, X1 \
+        vOp X1, X0, X0          \
+        VUNPCKHPD X0, X1, X1    \
+        vOp X1, X0, X0          \
+        VMOVSD X0, (BX)
+
+// func maxI32(src, dst []int32)
+TEXT ·maxI32(SB),NOSPLIT,$0-48
+    vBoundsOp(MOVL, VPBROADCASTD, VMOVDQU, VPMAXSD, reduceOpX32(VPMAXSD), $4, $32)
+
+// func minI32(src, dst []int32)
+TEXT ·minI32(SB),NOSPLIT,$0-48
+    vBoundsOp(MOVL, VPBROADCASTD, VMOVDQU, VPMINSD, reduceOpX32(VPMINSD), $4, $32)
+
+// func maxF64(src, dst []float64)
+TEXT ·maxF64(SB),NOSPLIT,$0-48
+    vBoundsOp(MOVQ, VBROADCASTSD, VMOVUPD, VMAXPD, reduceOpF64(VMAXPD), $8, $16)
+
+// func minF64(src, dst []float64)
+TEXT ·minF64(SB),NOSPLIT,$0-48
+    vBoundsOp(MOVQ, VBROADCASTSD, VMOVUPD, VMINPD, reduceOpF64(VMINPD), $8, $16)
+
+// func maxF32(src, dst []float32)
+TEXT ·maxF32(SB),NOSPLIT,$0-48
+    vBoundsOp(MOVL, VBROADCASTSS, VMOVUPS, VMAXPS, reduceOpX32(VMAXPS), $4, $32)
+
+// func minF32(src, dst []float32)
+TEXT ·minF32(SB),NOSPLIT,$0-48
+    vBoundsOp(MOVL, VBROADCASTSS, VMOVUPS, VMINPS, reduceOpX32(VMINPS), $4, $32)
+
+#define vBoundsI64(vOrd1, vOrd2, vOrd3, vOrd4, vOrd5, vOrd6, vOrd7, vOrd8)
+    MOVQ srcAddr+0(FP), AX
+    MOVQ dstAddr+24(FP), BX
+    MOVQ srcLen+8(FP), CX
+    MOVQ CX, SI
+    XORQ DI, DI
+    SUBQ $16, SI
+
+    TESTQ CX, CX
+    JEQ exitFn
+
+    MOVQ (AX), R8
+    VPBROADCASTQ R8, Y0
+    VPBROADCASTQ R8, Y1
+    VPBROADCASTQ R8, Y2
+    VPBROADCASTQ R8, Y3
+
+    CMPQ CX, $16
+    JLT tradLoop
+
+vecLoop:
+    VMOVDQU (AX), Y4
+    VMOVDQU 32(AX), Y5
+    VMOVDQU 64(AX), Y6
+    VMOVDQU 96(AX), Y7
+    VPCMPGTQ vOrd1, Y8
+    VPCMPGTQ vOrd2, Y9
+    VPCMPGTQ vOrd3, Y10
+    VPCMPGTQ vOrd4, Y11
+    VPBLENDVB Y8, Y4, Y0, Y0
+    VPBLENDVB Y9, Y5, Y1, Y1
+    VPBLENDVB Y10, Y6, Y2, Y2
+    VPBLENDVB Y11, Y7, Y3, Y3
+    ADDQ $128, AX
+    ADDQ $16, DI
+    CMPQ DI, SI 
+    JLT vecLoop
+
+tradLoop:
+    VPBROADCASTQ (AX), Y4
+    VPCMPGTQ vOrd1, Y8
+    VPBLENDVB Y8, Y4, Y0, Y0
+    ADDQ $8, AX
+    ADDQ $1, DI
+    CMPQ DI, CX
+    JLT tradLoop
+
+    VPCMPGTQ vOrd5, Y4
+    VPCMPGTQ vOrd6, Y5
+    VPBLENDVB Y4, Y1, Y0, Y0
+    VPBLENDVB Y5, Y3, Y2, Y2
+    VPCMPGTQ vOrd7, Y4
+    VPBLENDVB Y4, Y2, Y0, Y0
+    VEXTRACTI128 $1, Y0, X1
+    VPCMPGTQ vOrd8, X2
+    VPBLENDVB X2, X1, X0, X0
+    VUNPCKHPD X0, X1, X1
+    VPCMPGTQ vOrd8, X2
+    VPBLENDVB X2, X1, X0, X0
+    VMOVQ X0, (BX)
+exitFn:
+    RET
+
+#define ord1MaxI64 Y0, Y4
+#define ord2MaxI64 Y1, Y5
+#define ord3MaxI64 Y2, Y6
+#define ord4MaxI64 Y3, Y7
+#define ord5MaxI64 Y0, Y1
+#define ord6MaxI64 Y2, Y3
+#define ord7MaxI64 Y0, Y2
+#define ord8MaxI64 X0, X1
+
+#define ord1MinI64 Y4, Y0
+#define ord2MinI64 Y5, Y1
+#define ord3MinI64 Y6, Y2
+#define ord4MinI64 Y7, Y3
+#define ord5MinI64 Y1, Y0
+#define ord6MinI64 Y3, Y2
+#define ord7MinI64 Y2, Y0
+#define ord8MinI64 X1, X0
+
+// func maxI64(src, dst []int64)
+TEXT ·maxI64(SB),NOSPLIT,$0-48
+    vBoundsI64(ord1MaxI64, ord2MaxI64, ord3MaxI64, ord4MaxI64, ord5MaxI64, ord6MaxI64, ord7MaxI64, ord8MaxI64)
+
+// func minI64(src, dst []int64)
+TEXT ·minI64(SB),NOSPLIT,$0-48
+    vBoundsI64(ord1MinI64, ord2MinI64, ord3MinI64, ord4MinI64, ord5MinI64, ord6MinI64, ord7MinI64, ord8MinI64)
