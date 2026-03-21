@@ -13,11 +13,11 @@
     TESTQ CX, CX                                           \
     JEQ exitFn                                             \
                                                            \
-    tMovOp (AX), bReg                                        \
-    vBrdCstOp bReg, Y0                                       \
-    vBrdCstOp bReg, Y1                                       \
-    vBrdCstOp bReg, Y2                                       \
-    vBrdCstOp bReg, Y3                                       \
+    tMovOp (AX), bReg                                      \
+    vBrdCstOp bReg, Y0                                     \
+    vBrdCstOp bReg, Y1                                     \
+    vBrdCstOp bReg, Y2                                     \
+    vBrdCstOp bReg, Y3                                     \
                                                            \
     CMPQ CX, chnkSize                                      \
     JLT tradLoop                                           \
