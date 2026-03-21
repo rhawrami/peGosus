@@ -219,7 +219,8 @@ vecLoop:                                                   \
                                                            \
 tradLoop:                                                  \
     vBrdCstOp (AX), Y4                                     \
-    vOp Y4, Y0, Y0                                         \
+    vMinOp Y4, Y0, Y0                                      \
+    vMaxOp Y4, Y2, Y2                                      \
     ADDQ dSize, AX                                         \
     ADDQ $1, DI                                            \
     CMPQ DI, CX                                            \
@@ -330,7 +331,7 @@ tradLoop:
     VPBLENDVB Y4, Y1, Y0, Y0 
     VPBLENDVB Y5, Y3, Y2, Y2 
     VEXTRACTI128 $1, Y0, X1 
-    VEXTRACTI128 $1, Y3, X2 
+    VEXTRACTI128 $1, Y2, X3 
     VPCMPGTQ X1, X0, X4
     VPCMPGTQ X2, X3, X5
     VPBLENDVB X4, X1, X0, X0 
