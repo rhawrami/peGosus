@@ -53,8 +53,8 @@ exitFn:                                                    \
 // w3: $0x4ea66442 => 'smax.4s v2, v2, v6'
 // w4: $0x4ea76463 => 'smax.4s v3, v3, v7'
 // w5: $0x4ea16404 => 'smax.4s v4, v0, v1'
-// w6: $0x4ea36445 => 'smax.2d v5, v2, v3'
-// w7: $0x4ea56486 => 'smax.2d v6, v4, v5'
+// w6: $0x4ea36445 => 'smax.4s v5, v2, v3'
+// w7: $0x4ea56486 => 'smax.4s v6, v4, v5'
 // w8: $0x4eb0a8c7 => 'smaxv s7, v6.4s'
 TEXT ·maxI32(SB),NOSPLIT,$0-48
     boundsISFSD($0x4ea46400, $0x4ea56421, $0x4ea66442, $0x4ea76463, $0x4ea16404, $0x4ea36445, $0x4ea56486, $0x4eb0a8c7, $4, $16, S4, S)
@@ -65,8 +65,8 @@ TEXT ·maxI32(SB),NOSPLIT,$0-48
 // w3: $0x4ea66c42 => 'smin.4s v2, v2, v6'
 // w4: $0x4ea76c63 => 'smin.4s v3, v3, v7'
 // w5: $0x4ea16c04 => 'smin.4s v4, v0, v1'
-// w6: $0x4ea36c45 => 'smin.2d v5, v2, v3'
-// w7: $0x4ea56c86 => 'smin.2d v6, v4, v5'
+// w6: $0x4ea36c45 => 'smin.4s v5, v2, v3'
+// w7: $0x4ea56c86 => 'smin.4s v6, v4, v5'
 // w8: $0x4eb1a8c7 => 'sminv s7, v6.4s'
 TEXT ·minI32(SB),NOSPLIT,$0-48
     boundsISFSD($0x4ea46c00, $0x4ea56c21, $0x4ea66c42, $0x4ea76c63, $0x4ea16c04, $0x4ea36c45, $0x4ea56c86, $0x4eb1a8c7, $4, $16, S4, S)
@@ -77,8 +77,8 @@ TEXT ·minI32(SB),NOSPLIT,$0-48
 // w3: $0x4e26c442 => 'fmaxnm.4s v2, v2, v6'
 // w4: $0x4e27c463 => 'fmaxnm.4s v3, v3, v7'
 // w5: $0x4e21c404 => 'fmaxnm.4s v4, v0, v1'
-// w6: $0x4e23c445 => 'fmaxnm.2d v5, v2, v3'
-// w7: $0x4e25c486 => 'fmaxnm.2d v6, v4, v5'
+// w6: $0x4e23c445 => 'fmaxnm.4s v5, v2, v3'
+// w7: $0x4e25c486 => 'fmaxnm.4s v6, v4, v5'
 // w8: $0x6e30f8c7 => 'fmaxv s7, v6.4s'
 TEXT ·maxF32(SB),NOSPLIT,$0-48
     boundsISFSD($0x4e24c400, $0x4e25c421, $0x4e26c442, $0x4e27c463, $0x4e21c404, $0x4e23c445, $0x4e25c486, $0x6e30f8c7, $4, $16, S4, S)
@@ -89,8 +89,8 @@ TEXT ·maxF32(SB),NOSPLIT,$0-48
 // w3: $0x4ea6c442 => 'fminnm.4s v2, v2, v6'
 // w4: $0x4ea7c463 => 'fminnm.4s v3, v3, v7'
 // w5: $0x4ea1c404 => 'fminnm.4s v4, v0, v1'
-// w6: $0x4ea3c445 => 'fminnm.2d v5, v2, v3'
-// w7: $0x4ea5c486 => 'fminnm.2d v6, v4, v5'
+// w6: $0x4ea3c445 => 'fminnm.4s v5, v2, v3'
+// w7: $0x4ea5c486 => 'fminnm.4s v6, v4, v5'
 // w8: $0x6eb0f8c7 => 'fminv s7, v6.4s'
 TEXT ·minF32(SB),NOSPLIT,$0-48
     boundsISFSD($0x4ea4c400, $0x4ea5c421, $0x4ea6c442, $0x4ea7c463, $0x4ea1c404, $0x4ea3c445, $0x4ea5c486, $0x6eb0f8c7, $4, $16, S4, S)
@@ -414,3 +414,101 @@ tradLoop:
     VST1 V0.D[0], (R1)
 exitFn:
     RET
+
+#define boundsWithValidityIF32(w1, w2, w3, w4, initVal)    \
+    MOVD srcAddr+0(FP), R0                                 \
+    MOVD validityAddr+48(FP), R1                           \
+    MOVD dstAddr+24(FP), R2                                \
+    MOVD srcLen+8(FP), R3                                  \
+    EOR R4, R4                                             \
+    SUB $8, R3, R5                                         \
+                                                           \
+    CMP $0, R3                                             \
+    BEQ exitFn                                             \
+                                                           \
+    VEOR V0.B16, V0.B16, V0.B16                            \
+    VMOVQ $0x0000000200000001, $0x0000000800000004, V1     \
+    VMOVQ $0x0000002000000010, $0x0000008000000040, V2     \                    
+    VMOVQ initVal, initVal, V3                             \
+    VDUP V3.S[0], V4.S4                                    \
+                                                           \
+    EOR R7, R7                                             \
+    EOR R9, R9                                             \
+                                                           \                                                               
+    CMP $8, R3                                             \
+    BLT tradLoopInit                                       \
+                                                           \
+vecLoop:                                                   \
+    VLD1.P 32(R0), [V5.S4, V6.S4]                          \
+    VLD1R.P 1(R1), [V7.B16]                                \
+    VAND V1.B16, V7.B16, V8.B16                            \
+    VAND V2.B16, V7.B16, V9.B16                            \
+    VCNT V8.B16, V10.B16                                   \
+    VCNT V9.B16, V11.B16                                   \
+    VSUB V10.S4, V0.S4, V8.S4                              \
+    VSUB V11.S4, V0.S4, V9.S4                              \
+    WORD w1                                                \
+    WORD w2                                                \
+    VBIT V8.B16, V10.B16, V3.B16                           \
+    VBIT V9.B16, V11.B16, V4.B16                           \ 
+                                                           \
+    ADD $8, R4, R4                                         \
+    CMP R5, R4                                             \ 
+    BLT vecLoop                                            \
+                                                           \
+tradLoopInit:                                              \                                                        
+    MOVB (R1), R7                                          \
+tradLoop:                                                  \
+    VLD1R.P 4(R0), [V5.S4]                                 \
+    AND $1, R7, R8                                         \
+    SUBW R8, R9, R8                                        \
+    VDUP R8, V8.S4                                         \      
+    WORD w1                                                \
+    VBIT V8.B16, V10.B16, V3.B16                           \
+    LSR $1, R7                                             \
+    ADD $1, R4                                             \
+    CMP R3, R4                                             \
+    BLT tradLoop                                           \
+                                                           \
+    WORD w3                                                \
+    WORD w4                                                \
+    VST1 V6.S[0], (R2)                                     \
+exitFn:                                                    \
+    RET      
+
+#define I32MaxAsI64 $0x7fffffff7fffffff
+#define I32MinAsI64 $0x8000000080000000
+#define F32MaxAsF64 $0x7f8000007f800000
+#define F32MinAsF64 $0xff800000ff800000
+
+// w1: $0x4ea364aa => 'smax.4s v10, v5, v3'
+// w2: $0x4ea464cb => 'smax.4s v11, v6, v4'
+// w3: $0x4ea46465 => 'smax.4s v5, v3, v4'
+// w4: $0x4eb0a8a6 => 'smaxv s6, v5.4s'
+// func maxI32WithValidity(src, dst []int32, validity []byte)
+TEXT ·maxI32WithValidity(SB),NOSPLIT,$0-72
+    boundsWithValidityIF32($0x4ea364aa, $0x4ea464cb, $0x4ea46465, $0x4eb0a8a6, I32MinAsI64)    
+
+// w1: $0x4ea36caa => 'smin.4s v10, v5, v3'
+// w2: $0x4ea46ccb => 'smin.4s v11, v6, v4'
+// w3: $0x4ea46c65 => 'smin.4s v5, v3, v4'
+// w4: $0x4eb1a8a6 => 'sminv s6, v5.4s'
+// func minI32WithValidity(src, dst []int32, validity []byte)
+TEXT ·minI32WithValidity(SB),NOSPLIT,$0-72
+    boundsWithValidityIF32($0x4ea36caa, $0x4ea46ccb, $0x4ea46c65, $0x4eb1a8a6, I32MaxAsI64)   
+
+// w1: $0x4e23c4aa => 'fmaxnm.4s v10, v5, v3'
+// w2: $0x4e24c4cb => 'fmaxnm.4s v11, v6, v4'
+// w3: $0x4e24c465 => 'fmaxnm.4s v5, v3, v4'
+// w4: $0x6e30f8a6 => 'fmaxv s6, v5.4s'
+// func maxF32WithValidity(src, dst []float32, validity []byte)
+TEXT ·maxF32WithValidity(SB),NOSPLIT,$0-72
+    boundsWithValidityIF32($0x4e23c4aa, $0x4e24c4cb, $0x4e24c465, $0x6e30f8a6, F32MinAsF64)   
+
+// w1: $0x4ea3c4aa => 'fminnm.4s v10, v5, v3'
+// w2: $0x4ea4c4cb => 'fminnm.4s v11, v6, v4'
+// w3: $0x4ea4c465 => 'fminnm.4s v5, v3, v4'
+// w4: $0x6eb0f8a6 => 'fminv s6, v5.4s'
+// func minF32WithValidity(src, dst []float32, validity []byte)
+TEXT ·minF32WithValidity(SB),NOSPLIT,$0-72
+    boundsWithValidityIF32($0x4ea3c4aa, $0x4ea4c4cb, $0x4ea4c465, $0x6eb0f8a6, F32MaxAsF64)   
