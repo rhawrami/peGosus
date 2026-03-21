@@ -184,3 +184,164 @@ TEXT ·maxI64(SB),NOSPLIT,$0-48
 // func minI64(src, dst []int64)
 TEXT ·minI64(SB),NOSPLIT,$0-48
     vBoundsI64(ord1MinI64, ord2MinI64, ord3MinI64, ord4MinI64, ord5MinI64, ord6MinI64, ord7MinI64, ord8MinI64)
+
+#define vDoubleBoundsOp(bReg, tMovOp, vBrdCstOp, vMovOp, vMinOp, vMaxOp, vReduce, dSize, chnkSize) \
+    MOVQ srcAddr+0(FP), AX                                 \
+    MOVQ dstAddr+24(FP), BX                                \
+    MOVQ srcLen+8(FP), CX                                  \
+    MOVQ CX, SI                                            \
+    XORQ DI, DI                                            \
+    SUBQ chnkSize, SI                                      \
+                                                           \
+    TESTQ CX, CX                                           \
+    JEQ exitFn                                             \
+                                                           \
+    tMovOp (AX), bReg                                      \
+    vBrdCstOp bReg, Y0                                     \
+    vBrdCstOp bReg, Y1                                     \
+    vBrdCstOp bReg, Y2                                     \
+    vBrdCstOp bReg, Y3                                     \
+                                                           \
+    CMPQ CX, chnkSize                                      \
+    JLT tradLoop                                           \
+                                                           \
+vecLoop:                                                   \
+    vMovOp (AX), Y4                                        \
+    vMovOp 32(AX), Y5                                      \
+    vMinOp Y4, Y0, Y0                                      \
+    vMinOp Y5, Y1, Y1                                      \
+    vMaxOp Y4, Y2, Y2                                      \
+    vMaxOp Y5, Y3, Y3                                      \
+    ADDQ $64, AX                                           \
+    ADDQ chnkSize, DI                                      \
+    CMPQ DI, SI                                            \ 
+    JLT vecLoop                                            \
+                                                           \
+tradLoop:                                                  \
+    vBrdCstOp (AX), Y4                                     \
+    vOp Y4, Y0, Y0                                         \
+    ADDQ dSize, AX                                         \
+    ADDQ $1, DI                                            \
+    CMPQ DI, CX                                            \
+    JLT tradLoop                                           \
+                                                           \
+    vReduce                                                \                                                           
+exitFn:                                                    \
+    RET
+
+#define mmReduceOpX32(vMinOp, vMaxOp) \
+        vMinOp Y0, Y1, Y0             \
+        vMaxOp Y2, Y3, Y2             \
+        VEXTRACTI128 $1, Y0, X1       \
+        VEXTRACTI128 $1, Y2, X3       \
+        vMinOp X1, X0, X0             \
+        vMaxOp X3, X2, X2             \
+        VUNPCKHPD X1, X0, X1          \
+        VUNPCKHPD X3, X2, X3          \
+        vMinOp X1, X0, X0             \
+        vMaxOp X3, X2, X2             \
+        VMOVQ X0, R8                  \
+        VMOVQ X2, R9                  \
+        SHRQ $32, R8                  \
+        SHRQ $32, R9                  \
+        VMOVD R8, X1                  \
+        VMOVD R9, X3                  \
+        vMinOp X1, X0, X0             \
+        vMaxOp X3, X2, X2             \
+        VMOVD X0, (BX)                \
+        VMOVD X2, 4(BX)
+
+#define mmReduceOpF64(vMinOp, vMaxOp) \
+        vMinOp Y0, Y1, Y0             \
+        vMaxOp Y2, Y3, Y2             \
+        VEXTRACTF128 $1, Y0, X1       \
+        VEXTRACTF128 $1, Y2, X3       \
+        vMinOp X1, X0, X0             \
+        vMaxOp X3, X2, X2             \
+        VUNPCKHPD X1, X0, X1          \
+        VUNPCKHPD X3, X2, X3          \
+        vMinOp X1, X0, X0             \
+        vMaxOp X3, X2, X2             \
+        VMOVSD X0, (BX)               \
+        VMOVSD X2, 8(BX) 
+
+// func minmaxI32(src, dst []int32)
+TEXT ·minmaxI32(SB),NOSPLIT,$0-48
+    vDoubleBoundsOp(R8, MOVL, VPBROADCASTD, VMOVDQU, VPMINSD, VPMAXSD, mmReduceOpX32(VPMINSD, VPMAXSD), $4, $16)
+
+// func minmaxF64(src, dst []float64)
+TEXT ·minmaxF64(SB),NOSPLIT,$0-48
+    vDoubleBoundsOp(X0, VMOVSD, VBROADCASTSD, VMOVUPD, VMINPD, VMAXPD, mmReduceOpF64(VMINPD, VMAXPD), $8, $8)
+
+// func minmaxF32(src, dst []float32)
+TEXT ·minmaxF32(SB),NOSPLIT,$0-48
+    vDoubleBoundsOp(X0, VMOVSS, VBROADCASTSS, VMOVUPS, VMINPS, VMAXPS, mmReduceOpX32(VMINPS, VMAXPS), $4, $16)
+
+// func minmaxI64(src, dst []int64)
+TEXT ·minmaxI64(SB),NOSPLIT,$0-48
+    MOVQ srcAddr+0(FP), AX 
+    MOVQ dstAddr+24(FP), BX 
+    MOVQ srcLen+8(FP), CX 
+    MOVQ CX, SI 
+    XORQ DI, DI 
+    SUBQ $8, SI
+
+    TESTQ CX, CX 
+    JEQ exitFn 
+
+    MOVQ (AX), R8 
+    VPBROADCASTQ R8, Y0 
+    VPBROADCASTQ R8, Y1  
+    VPBROADCASTQ R8, Y2                                     
+    VPBROADCASTQ R8, Y3 
+
+    CMPQ CX, $8
+    JLT tradLoop 
+
+vecLoop: 
+    VMOVDQU (AX), Y4 
+    VMOVDQU 32(AX), Y5 
+    VPCMPGTQ Y4, Y0, Y8 
+    VPCMPGTQ Y5, Y1, Y9 
+    VPCMPGTQ Y2, Y4, Y10 
+    VPCMPGTQ Y3, Y5, Y11
+    VPBLENDVB Y8, Y4, Y0, Y0 
+    VPBLENDVB Y9, Y5, Y1, Y1 
+    VPBLENDVB Y10, Y4, Y2, Y2 
+    VPBLENDVB Y11, Y5, Y3, Y3 
+    ADDQ $64, AX 
+    ADDQ $8, DI 
+    CMPQ DI, SI 
+    JLT vecLoop 
+
+tradLoop: 
+    VPBROADCASTQ (AX), Y4 
+    VPCMPGTQ Y4, Y0, Y8 
+    VPCMPGTQ Y2, Y4, Y10 
+    VPBLENDVB Y8, Y4, Y0, Y0 
+    VPBLENDVB Y10, Y4, Y2, Y2 
+    ADDQ $8, AX 
+    ADDQ $1, DI 
+    CMPQ DI, CX 
+    JLT tradLoop 
+
+    VPCMPGTQ Y1, Y0, Y4
+    VPCMPGTQ Y2, Y3, Y5
+    VPBLENDVB Y4, Y1, Y0, Y0 
+    VPBLENDVB Y5, Y3, Y2, Y2 
+    VEXTRACTI128 $1, Y0, X1 
+    VEXTRACTI128 $1, Y3, X2 
+    VPCMPGTQ X1, X0, X4
+    VPCMPGTQ X2, X3, X5
+    VPBLENDVB X4, X1, X0, X0 
+    VPBLENDVB X5, X3, X2, X2 
+    VUNPCKHPD X1, X0, X1 
+    VUNPCKHPD X3, X2, X3 
+    VPCMPGTQ X1, X0, X4
+    VPCMPGTQ X2, X3, X5 
+    VPBLENDVB X4, X1, X0, X0 
+    VPBLENDVB X5, X3, X2, X2 
+    VMOVQ X0, (BX) 
+    VMOVQ X2, 8(BX) 
+exitFn: 
+    RET 

@@ -25,3 +25,15 @@ func maxF32(src, dst []float32)
 
 //go:noescape
 func minF32(src, dst []float32)
+
+//go:noescape
+func minmaxI64(src, dst []int64)
+
+//go:noescape
+func minmaxI32(src, dst []int32)
+
+//go:noescape
+func minmaxF64(src, dst []float64)
+
+//go:noescape
+func minmaxF32(src, dst []float32)
