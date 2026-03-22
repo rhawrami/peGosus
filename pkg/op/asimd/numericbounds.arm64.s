@@ -512,3 +512,175 @@ TEXT ·maxF32WithValidity(SB),NOSPLIT,$0-72
 // func minF32WithValidity(src, dst []float32, validity []byte)
 TEXT ·minF32WithValidity(SB),NOSPLIT,$0-72
     boundsWithValidityIF32($0x4ea3c4aa, $0x4ea4c4cb, $0x4ea4c465, $0x6eb0f8a6, F32MaxAsF64)   
+
+#define boundsWithValidityIF64(wBoundsOpVecLoop, wBoundsOpTradLoop, wReduceOp, initVal) \
+    MOVD srcAddr+0(FP), R0                                 \
+    MOVD validityAddr+48(FP), R1                           \
+    MOVD dstAddr+24(FP), R2                                \
+    MOVD srcLen+8(FP), R3                                  \
+    EOR R4, R4                                             \
+    SUB $8, R3, R5                                         \
+                                                           \
+    CMP $0, R3                                             \
+    BEQ exitFn                                             \
+                                                           \
+    VEOR V0.B16, V0.B16, V0.B16                            \
+    VMOVQ $0x0000000000000001, $0x0000000000000002, V1     \
+    VMOVQ $0x0000000000000004, $0x0000000000000008, V2     \
+    VMOVQ $0x0000000000000010, $0x0000000000000020, V3     \
+    VMOVQ $0x0000000000000040, $0x0000000000000080, V4     \                    
+    VMOVQ initVal, initVal, V5                             \
+    VDUP V5.D[0], V6.D2                                    \
+    VDUP V5.D[0], V7.D2                                    \
+    VDUP V5.D[0], V8.D2                                    \
+                                                           \
+    EOR R7, R7                                             \
+    EOR R9, R9                                             \
+                                                           \                                                               
+    CMP $8, R3                                             \
+    BLT tradLoopInit                                       \
+                                                           \
+vecLoop:                                                   \
+    VLD1.P 64(R0), [V9.D2, V10.D2, V11.D2, V12.D2]         \
+    VLD1R.P 1(R1), [V13.B16]                               \
+    VAND V1.B16, V13.B16, V14.B16                          \
+    VAND V2.B16, V13.B16, V15.B16                          \
+    VAND V3.B16, V13.B16, V16.B16                          \
+    VAND V4.B16, V13.B16, V17.B16                          \
+    VCNT V14.B16, V18.B16                                  \
+    VCNT V15.B16, V19.B16                                  \
+    VCNT V16.B16, V20.B16                                  \
+    VCNT V17.B16, V21.B16                                  \
+    VSUB V18.D2, V0.D2, V14.D2                             \
+    VSUB V19.D2, V0.D2, V15.D2                             \
+    VSUB V20.D2, V0.D2, V16.D2                             \
+    VSUB V21.D2, V0.D2, V17.D2                             \
+    wBoundsOpVecLoop                                       \
+    VBIT V14.B16, V9.B16, V5.B16                           \
+    VBIT V15.B16, V10.B16, V6.B16                          \
+    VBIT V16.B16, V11.B16, V7.B16                          \
+    VBIT V17.B16, V12.B16, V8.B16                          \ 
+                                                           \
+    ADD $8, R4, R4                                         \
+    CMP R5, R4                                             \ 
+    BLT vecLoop                                            \
+                                                           \
+tradLoopInit:                                              \                                                        
+    MOVB (R1), R7                                          \
+tradLoop:                                                  \
+    VLD1R.P 8(R0), [V9.D2]                                 \
+    AND $1, R7, R8                                         \
+    SUB R8, R9, R8                                         \
+    VDUP R8, V14.D2                                        \      
+    wBoundsOpTradLoop                                      \
+    VBIT V14.B16, V9.B16, V5.B16                           \
+    LSR $1, R7                                             \
+    ADD $1, R4                                             \
+    CMP R3, R4                                             \
+    BLT tradLoop                                           \
+                                                           \
+    wReduceOp                                              \
+    VST1 V3.D[0], (R2)                                     \
+exitFn:                                                    \
+    RET      
+
+#define I64MaxAsI64 $0x7fffffffffffffff
+#define I64MinAsI64 $0x8000000000000000
+#define F64MaxAsF64 $0x7ff0000000000000
+#define F64MinAsF64 $0xfff0000000000000
+
+#define I64MaxWValidityVecLoopOps \
+        WORD $0x4ee934b2          \ // 'cmlt.2d v18, v9, v5'
+        WORD $0x4eea34d3          \ // 'cmlt.2d v19, v10, v6'
+        WORD $0x4eeb34f4          \ // 'cmlt.2d v20, v11, v7'
+        WORD $0x4eec3515          \ // 'cmlt.2d v21, v12, v8'
+        WORD $0x6eb21ca9          \ // 'bit.16b v9, v5, v18'
+        WORD $0x6eb31cca          \ // 'bit.16b v10, v6, v19'
+        WORD $0x6eb41ceb          \ // 'bit.16b v11, v7, v20'
+        WORD $0x6eb51d0c            // 'bit.16b v12, v8, v21'
+
+#define I64MaxWValidityTradLoopOps \
+        WORD $0x4ee934b2           \ // 'cmlt.2d v18, v9, v5'
+        WORD $0x6eb21ca9             // 'bit.16b v9, v5, v18'
+
+#define I64MaxWValidityReduceOps \
+        WORD $0x4ee534c0         \ // 'cmlt.2d v0, v5, v6'
+        WORD $0x4ee73501         \ // 'cmlt.2d v1, v7, v8'
+        WORD $0x6ea01cc5         \ // 'bit.16b v5, v6, v0'
+        WORD $0x6ea11d07         \ // 'bit.16b v7, v8, v1'
+        WORD $0x4ee534e0         \ // 'cmlt.2d v0, v5, v7'
+        WORD $0x6ea01ce5         \ // 'bit.16b v5, v7, v0'
+        VDUP V5.D[1], V3.D2      \
+        WORD $0x4ee334a0         \ // 'cmlt.2d v0, v3, v5'
+        WORD $0x6ea01ca3           // 'bit.16b v3, v5, v0'
+
+#define I64MinWValidityVecLoopOps \
+        WORD $0x4ee53532          \ // 'cmlt.2d v18, v5, v9'
+        WORD $0x4ee63553          \ // 'cmlt.2d v19, v6, v10'
+        WORD $0x4ee73574          \ // 'cmlt.2d v20, v7, v11'
+        WORD $0x4ee83595          \ // 'cmlt.2d v21, v8, v12'
+        WORD $0x6eb21ca9          \ // 'bit.16b v9, v5, v18'
+        WORD $0x6eb31cca          \ // 'bit.16b v10, v6, v19'
+        WORD $0x6eb41ceb          \ // 'bit.16b v11, v7, v20'
+        WORD $0x6eb51d0c            // 'bit.16b v12, v8, v21'
+
+#define I64MinWValidityTradLoopOps \
+        WORD $0x4ee53532           \ // 'cmlt.2d v18, v5, v9'
+        WORD $0x6eb21ca9             // 'bit.16b v9, v5, v18'
+
+#define I64MinWValidityReduceOps \
+        WORD $0x4ee634a0         \ // 'cmlt.2d v0, v6, v5'
+        WORD $0x4ee834e1         \ // 'cmlt.2d v1, v8, v7'
+        WORD $0x6ea01cc5         \ // 'bit.16b v5, v6, v0'
+        WORD $0x6ea11d07         \ // 'bit.16b v7, v8, v1'
+        WORD $0x4ee734a0         \ // 'cmlt.2d v0, v7, v5'
+        WORD $0x6ea01ce5         \ // 'bit.16b v5, v7, v0'
+        VDUP V5.D[1], V3.D2      \
+        WORD $0x4ee53460         \ // 'cmlt.2d v0, v5, v3'
+        WORD $0x6ea01ca3           // 'bit.16b v3, v5, v0'
+
+#define F64MaxWValidityVecLoopOps \
+        WORD $0x4e65c529          \ // 'fmaxnm.2d v9, v9, v5'
+        WORD $0x4e66c54a          \ // 'fmaxnm.2d v10, v10, v6'
+        WORD $0x4e67c56b          \ // 'fmaxnm.2d v11, v11, v7'
+        WORD $0x4e68c58c            // 'fmaxnm.2d v12, v12, v8'
+
+#define F64MaxWValidityTradLoopOps \
+        WORD $0x4e65c529             // 'fmaxnm.2d v9, v9, v5'
+
+#define F64MaxWValidityReduceOps \
+        WORD $0x4e66c4a0         \ // 'fmaxnm.2d v0, v5, v6'
+        WORD $0x4e68c4e1         \ // 'fmaxnm.2d v1, v7, v8'
+        WORD $0x4e61c402         \ // 'fmaxnm.2d v2, v0, v1'
+        WORD $0x6e62f443           // 'fmaxp v3.2d, v2.2d, v2.2d'
+
+#define F64MinWValidityVecLoopOps \
+        WORD $0x4ee5c529          \ // 'fminnm.2d v9, v9, v5'
+        WORD $0x4ee6c54a          \ // 'fminnm.2d v10, v10, v6'
+        WORD $0x4ee7c56b          \ // 'fminnm.2d v11, v11, v7'
+        WORD $0x4ee8c58c            // 'fminnm.2d v12, v12, v8'
+
+#define F64MinWValidityTradLoopOps \
+        WORD $0x4ee5c529             // 'fminnm.2d v9, v9, v5'
+
+#define F64MinWValidityReduceOps \
+        WORD $0x4ee6c4a0         \ // 'fminnm.2d v0, v5, v6'
+        WORD $0x4ee8c4e1         \ // 'fminnm.2d v1, v7, v8'
+        WORD $0x4ee1c402         \ // 'fminnm.2d v2, v0, v1'
+        WORD $0x6ee2f443           // 'fminp v3.2d, v2.2d, v2.2d'
+
+// func maxI64WithValidity(src, dst []int64, validity []byte)
+TEXT ·maxI64WithValidity(SB),NOSPLIT,$0-72
+    boundsWithValidityIF64(I64MaxWValidityVecLoopOps, I64MaxWValidityTradLoopOps, I64MaxWValidityReduceOps, I64MinAsI64)
+
+// func minI64WithValidity(src, dst []int64, validity []byte)
+TEXT ·minI64WithValidity(SB),NOSPLIT,$0-72
+    boundsWithValidityIF64(I64MinWValidityVecLoopOps, I64MinWValidityTradLoopOps, I64MinWValidityReduceOps, I64MaxAsI64)
+
+// func maxF64WithValidity(src, dst []float64, validity []byte)
+TEXT ·maxF64WithValidity(SB),NOSPLIT,$0-72
+    boundsWithValidityIF64(F64MaxWValidityVecLoopOps, F64MaxWValidityTradLoopOps, F64MaxWValidityReduceOps, F64MinAsF64)
+
+// func minF64WithValidity(src, dst []float64, validity []byte)
+TEXT ·minF64WithValidity(SB),NOSPLIT,$0-72
+    boundsWithValidityIF64(F64MinWValidityVecLoopOps, F64MinWValidityTradLoopOps, F64MinWValidityReduceOps, F64MaxAsF64)
