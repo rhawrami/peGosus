@@ -376,14 +376,14 @@ exitFn:
     VMOVQ R8, X0                                           \
     MOVQ $0x0000000800000004, R8                           \
     VPINSRQ $1, R8, X0, X0                                 \
-    VMOVQ $0x0000002000000010, R8                          \
+    MOVQ $0x0000002000000010, R8                           \
     VMOVQ R8, X1                                           \
-    VMOVQ $0x0000008000000040, R8                          \
+    MOVQ $0x0000008000000040, R8                           \
     VPINSRQ $1, R8, X1, X1                                 \
     VINSERTI128 $1, X1, Y0, Y0                             \
     MOVL initVal, R8                                       \
     VPBROADCASTD R8, Y1                                    \
-    VPAND Y6, Y6, Y6                                       \
+    VPXOR Y6, Y6, Y6                                       \
                                                            \
     CMPQ CX, $8                                            \
     JLT tradLoopInit                                       \
@@ -426,7 +426,7 @@ exitFn:                                                    \
 #define reduceOpX32WithValidity(vOp) \
         VEXTRACTI128 $1, Y1, X2      \
         vOp X2, X1, X1               \
-        VUNPCKHPD X2, X1, X2         \
+        VUNPCKHPD X1, X1, X2         \
         vOp X2, X1, X1               \
         VMOVQ X1, R8                 \
         SHRQ $32, R8                 \
