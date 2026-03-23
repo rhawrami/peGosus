@@ -14,7 +14,7 @@
 #define F32MaxV $0x7f800000
 #define F32MinV $0xff800000
 
-#define vBoundsOp(bReg, tMovOp, vBrdCstOp, vMovOp, vOp, vReduce, dSize, chnkSize, initVal) \
+#define vBoundsOp(bReg, tMovOp, initBrdCstOp, vBrdCstOp, vMovOp, vOp, vReduce, dSize, chnkSize, initVal) \
     MOVQ srcAddr+0(FP), AX                                 \
     MOVQ dstAddr+24(FP), BX                                \
     MOVQ srcLen+8(FP), CX                                  \
@@ -26,10 +26,10 @@
     JEQ exitFn                                             \
                                                            \
     tMovOp initVal, bReg                                   \
-    vBrdCstOp bReg, Y0                                     \
-    vBrdCstOp bReg, Y1                                     \
-    vBrdCstOp bReg, Y2                                     \
-    vBrdCstOp bReg, Y3                                     \
+    initBrdCstOp bReg, Y0                                  \
+    initBrdCstOp bReg, Y1                                  \
+    initBrdCstOp bReg, Y2                                  \
+    initBrdCstOp bReg, Y3                                  \
                                                            \
     CMPQ CX, chnkSize                                      \
     JLT tradLoop                                           \
@@ -86,27 +86,27 @@ exitFn:                                                    \
 
 // func maxI32(src, dst []int32)
 TEXT ·maxI32(SB),NOSPLIT,$0-48
-    vBoundsOp(R8, MOVL, VPBROADCASTD, VMOVDQU, VPMAXSD, reduceOpX32(VPMAXSD), $4, $32, I32MinV)
+    vBoundsOp(R8, MOVL, VPBROADCASTD, VPBROADCASTD, VMOVDQU, VPMAXSD, reduceOpX32(VPMAXSD), $4, $32, I32MinV)
 
 // func minI32(src, dst []int32)
 TEXT ·minI32(SB),NOSPLIT,$0-48
-    vBoundsOp(R8, MOVL, VPBROADCASTD, VMOVDQU, VPMINSD, reduceOpX32(VPMINSD), $4, $32, I32MaxV)
+    vBoundsOp(R8, MOVL, VPBROADCASTD, VPBROADCASTD, VMOVDQU, VPMINSD, reduceOpX32(VPMINSD), $4, $32, I32MaxV)
 
 // func maxF64(src, dst []float64)
 TEXT ·maxF64(SB),NOSPLIT,$0-48
-    vBoundsOp(X0, VMOVSD, VBROADCASTSD, VMOVUPD, VMAXPD, reduceOpF64(VMAXPD), $8, $16, F32MinV)
+    vBoundsOp(R8, MOVQ, VPBROADCASTQ, VBROADCASTSD, VMOVUPD, VMAXPD, reduceOpF64(VMAXPD), $8, $16, F64MinV)
 
 // func minF64(src, dst []float64)
 TEXT ·minF64(SB),NOSPLIT,$0-48
-    vBoundsOp(X0, VMOVSD, VBROADCASTSD, VMOVUPD, VMINPD, reduceOpF64(VMINPD), $8, $16, F32MaxV)
+    vBoundsOp(R8, MOVQ, VPBROADCASTQ, VBROADCASTSD, VMOVUPD, VMINPD, reduceOpF64(VMINPD), $8, $16, F64MaxV)
 
 // func maxF32(src, dst []float32)
 TEXT ·maxF32(SB),NOSPLIT,$0-48
-    vBoundsOp(X0, VMOVSS, VBROADCASTSS, VMOVUPS, VMAXPS, reduceOpX32(VMAXPS), $4, $32, F64MinV)
+    vBoundsOp(R8, MOVL, VPBROADCASTD, VBROADCASTSS, VMOVUPS, VMAXPS, reduceOpX32(VMAXPS), $4, $32, F32MinV)
 
 // func minF32(src, dst []float32)
 TEXT ·minF32(SB),NOSPLIT,$0-48
-    vBoundsOp(X0, VMOVSS, VBROADCASTSS, VMOVUPS, VMINPS, reduceOpX32(VMINPS), $4, $32, F64MaxV)
+    vBoundsOp(R8, MOVL, VPBROADCASTD, VBROADCASTSS, VMOVUPS, VMINPS, reduceOpX32(VMINPS), $4, $32, F32MaxV)
 
 #define vBoundsI64(vOrd1, vOrd2, vOrd3, vOrd4, vOrd5, vOrd6, vOrd7, vOrd8) \ 
     MOVQ srcAddr+0(FP), AX                                 \ 
@@ -197,7 +197,7 @@ TEXT ·maxI64(SB),NOSPLIT,$0-48
 TEXT ·minI64(SB),NOSPLIT,$0-48
     vBoundsI64(ord1MinI64, ord2MinI64, ord3MinI64, ord4MinI64, ord5MinI64, ord6MinI64, ord7MinI64, ord8MinI64)
 
-#define vDoubleBoundsOp(bReg, tMovOp, vBrdCstOp, vMovOp, vMinOp, vMaxOp, vReduce, dSize, chnkSize, initVal1, initVal2) \
+#define vDoubleBoundsOp(bReg, tMovOp, initBrdCstOp, vBrdCstOp, vMovOp, vMinOp, vMaxOp, vReduce, dSize, chnkSize, initVal1, initVal2) \
     MOVQ srcAddr+0(FP), AX                                 \
     MOVQ dstAddr+24(FP), BX                                \
     MOVQ srcLen+8(FP), CX                                  \
@@ -209,11 +209,11 @@ TEXT ·minI64(SB),NOSPLIT,$0-48
     JEQ exitFn                                             \
                                                            \
     tMovOp initVal1, bReg                                  \
-    vBrdCstOp bReg, Y0                                     \
-    vBrdCstOp bReg, Y1                                     \
+    initBrdCstOp bReg, Y0                                  \
+    initBrdCstOp bReg, Y1                                  \
     tMovOp initVal2, bReg                                  \
-    vBrdCstOp bReg, Y2                                     \
-    vBrdCstOp bReg, Y3                                     \
+    initBrdCstOp bReg, Y2                                  \
+    initBrdCstOp bReg, Y3                                  \
                                                            \
     CMPQ CX, chnkSize                                      \
     JLT tradLoop                                           \
@@ -223,7 +223,7 @@ vecLoop:                                                   \
     vMovOp 32(AX), Y5                                      \
     vMinOp Y0, Y4, Y0                                      \
     vMinOp Y1, Y5, Y1                                      \
-    vMaxOp Y2, Y5, Y2                                      \
+    vMaxOp Y2, Y4, Y2                                      \
     vMaxOp Y3, Y5, Y3                                      \
     ADDQ $64, AX                                           \
     ADDQ chnkSize, DI                                      \
@@ -281,15 +281,15 @@ exitFn:                                                    \
 
 // func minmaxI32(src, dst []int32)
 TEXT ·minmaxI32(SB),NOSPLIT,$0-48
-    vDoubleBoundsOp(R8, MOVL, VPBROADCASTD, VMOVDQU, VPMINSD, VPMAXSD, mmReduceOpX32(VPMINSD, VPMAXSD), $4, $16, I32MaxV, I32MinV)
+    vDoubleBoundsOp(R8, MOVL, VPBROADCASTD, VPBROADCASTD, VMOVDQU, VPMINSD, VPMAXSD, mmReduceOpX32(VPMINSD, VPMAXSD), $4, $16, I32MaxV, I32MinV)
 
 // func minmaxF64(src, dst []float64)
 TEXT ·minmaxF64(SB),NOSPLIT,$0-48
-    vDoubleBoundsOp(X0, VMOVSD, VBROADCASTSD, VMOVUPD, VMINPD, VMAXPD, mmReduceOpF64(VMINPD, VMAXPD), $8, $8, F32MaxV, F32MinV)
+    vDoubleBoundsOp(R8, MOVQ, VPBROADCASTQ, VBROADCASTSD, VMOVUPD, VMINPD, VMAXPD, mmReduceOpF64(VMINPD, VMAXPD), $8, $8, F64MaxV, F64MinV)
 
 // func minmaxF32(src, dst []float32)
 TEXT ·minmaxF32(SB),NOSPLIT,$0-48
-    vDoubleBoundsOp(X0, VMOVSS, VBROADCASTSS, VMOVUPS, VMINPS, VMAXPS, mmReduceOpX32(VMINPS, VMAXPS), $4, $16, F64MaxV, F64MinV)
+    vDoubleBoundsOp(R8, MOVL, VPBROADCASTD, VBROADCASTSS, VMOVUPS, VMINPS, VMAXPS, mmReduceOpX32(VMINPS, VMAXPS), $4, $16, F32MaxV, F32MinV)
 
 // func minmaxI64(src, dst []int64)
 TEXT ·minmaxI64(SB),NOSPLIT,$0-48
