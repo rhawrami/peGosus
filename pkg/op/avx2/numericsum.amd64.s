@@ -20,7 +20,7 @@
     VPXOR Y12, Y12, Y12                                    \
                                                            \
     CMPQ CX, chnkSize                                      \
-    JLT tradLoop                                           \
+    JLT tradLoopInit                                       \
                                                            \
 vecLoop:                                                   \
     vVecOp                                                 \
@@ -29,6 +29,7 @@ vecLoop:                                                   \
     CMPQ DI, SI                                            \ 
     JLT vecLoop                                            \
                                                            \
+tradLoopInit:                                              \
     VPXOR Y4, Y4, Y4                                       \
 tradLoop:                                                  \
     vTradOp                                                \
@@ -52,13 +53,13 @@ exitFn:                                                    \
         VPADDQ X4, X0, X0
 
 #define I64SumReduceOps         \
-        VPADDQ Y0, Y1, Y4       \
-        VPADDQ Y2, Y3, Y5       \
-        VPADDQ Y4, Y5, Y0       \
+        VPADDQ Y0, Y1, Y0       \
+        VPADDQ Y2, Y3, Y2       \
+        VPADDQ Y0, Y2, Y0       \
         VEXTRACTI128 $1, Y0, X1 \
-        VPADDQ X0, X1, X2       \
-        VPUNPCKHQDQ X1, X2, X1  \
-        VPADDQ X1, X2, X0       \
+        VPADDQ X0, X1, X0       \
+        VPUNPCKHQDQ X1, X0, X1  \
+        VPADDQ X1, X0, X0       \
         VMOVQ X0, (BX)
 
 #define I32SumVecLoopOps       \
@@ -73,7 +74,7 @@ exitFn:                                                    \
         VPMOVSXDQ 96(AX), Y10  \
         VPMOVSXDQ 112(AX), Y11 \
         VPADDQ Y8, Y9, Y8      \
-        VPADDQ Y12, Y11, Y10   \
+        VPADDQ Y10, Y11, Y10   \
         VPADDQ Y4, Y0, Y0      \ 
         VPADDQ Y6, Y1, Y1      \
         VPADDQ Y8, Y2, Y2      \
@@ -89,10 +90,10 @@ exitFn:                                                    \
         VMOVUPD 32(AX), Y5         \    
         VMOVUPD 64(AX), Y6         \
         VMOVUPD 96(AX), Y7         \
-        VCMPPD $0, Y4, Y4, Y8      \
-        VCMPPD $0, Y5, Y5, Y9      \
-        VCMPPD $0, Y6, Y6, Y10     \
-        VCMPPD $0, Y7, Y7, Y11     \
+        VCMPPD $4, Y4, Y4, Y8      \
+        VCMPPD $4, Y5, Y5, Y9      \
+        VCMPPD $4, Y6, Y6, Y10     \
+        VCMPPD $4, Y7, Y7, Y11     \
         VPBLENDVB Y8, Y12, Y4, Y4  \
         VPBLENDVB Y9, Y12, Y5, Y5  \
         VPBLENDVB Y10, Y12, Y6, Y6 \
@@ -104,7 +105,7 @@ exitFn:                                                    \
 
 #define F64SumTradLoopOps          \
         VMOVSD (AX), X4            \
-        VCMPPD $0, X4, X4, X8      \
+        VCMPPD $4, X4, X4, X8      \
         VPBLENDVB X8, X12, X4, X4  \
         VADDSD X4, X0, X0
 
@@ -123,10 +124,10 @@ exitFn:                                                    \
         VCVTPS2PD 16(AX), Y5       \
         VCVTPS2PD 32(AX), Y6       \
         VCVTPS2PD 48(AX), Y7       \
-        VCMPPD $0, Y4, Y4, Y8      \
-        VCMPPD $0, Y5, Y5, Y9      \
-        VCMPPD $0, Y6, Y6, Y10     \
-        VCMPPD $0, Y7, Y7, Y11     \
+        VCMPPD $4, Y4, Y4, Y8      \
+        VCMPPD $4, Y5, Y5, Y9      \
+        VCMPPD $4, Y6, Y6, Y10     \
+        VCMPPD $4, Y7, Y7, Y11     \
         VPBLENDVB Y8, Y12, Y4, Y4  \
         VPBLENDVB Y9, Y12, Y5, Y5  \
         VPBLENDVB Y10, Y12, Y6, Y6 \
@@ -139,10 +140,10 @@ exitFn:                                                    \
         VCVTPS2PD 80(AX), Y5       \
         VCVTPS2PD 96(AX), Y6       \
         VCVTPS2PD 112(AX), Y7      \
-        VCMPPD $0, Y4, Y4, Y8      \
-        VCMPPD $0, Y5, Y5, Y9      \
-        VCMPPD $0, Y6, Y6, Y10     \
-        VCMPPD $0, Y7, Y7, Y11     \
+        VCMPPD $4, Y4, Y4, Y8      \
+        VCMPPD $4, Y5, Y5, Y9      \
+        VCMPPD $4, Y6, Y6, Y10     \
+        VCMPPD $4, Y7, Y7, Y11     \
         VPBLENDVB Y8, Y12, Y4, Y4  \
         VPBLENDVB Y9, Y12, Y5, Y5  \
         VPBLENDVB Y10, Y12, Y6, Y6 \
@@ -154,7 +155,7 @@ exitFn:                                                    \
 
 #define F32SumTradLoopOps          \
         VCVTSS2SD (AX), X4, X4     \
-        VCMPPD $0, X4, X4, X8      \
+        VCMPPD $4, X4, X4, X8      \
         VPBLENDVB X8, X12, X4, X4  \
         VADDSD X4, X0, X0    
 
