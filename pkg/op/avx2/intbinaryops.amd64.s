@@ -50,24 +50,24 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func addI64VecI64Lit(src, dst []int64, lit int64)
-TEXT ·addI64VecI64Lit(SB),NOSPLIT,$0-56
+// func addI64Lit(src, dst []int64, lit int64)
+TEXT ·addI64Lit(SB),NOSPLIT,$0-56
     vOpLitInt(VPBROADCASTQ, VMOVDQU, VPADDQ, MOVQ, ADDQ, $8, $16)
 
-// func addI32VecI32Lit(src, dst []int32, lit int32)
-TEXT ·addI32VecI32Lit(SB),NOSPLIT,$0-52
+// func addI32Lit(src, dst []int32, lit int32)
+TEXT ·addI32Lit(SB),NOSPLIT,$0-52
     vOpLitInt(VPBROADCASTD, VMOVDQU, VPADDD, MOVL, ADDL, $4, $32)
 
-// func subI64VecI64Lit(src, dst []int64, lit int64)
-TEXT ·subI64VecI64Lit(SB),NOSPLIT,$0-56
+// func subI64Lit(src, dst []int64, lit int64)
+TEXT ·subI64Lit(SB),NOSPLIT,$0-56
     vOpLitInt(VPBROADCASTQ, VMOVDQU, VPSUBQ, MOVQ, SUBQ, $8, $16)
 
-// func subI32VecI32Lit(src, dst []int32, lit int32)
-TEXT ·subI32VecI32Lit(SB),NOSPLIT,$0-52
+// func subI32Lit(src, dst []int32, lit int32)
+TEXT ·subI32Lit(SB),NOSPLIT,$0-52
     vOpLitInt(VPBROADCASTD, VMOVDQU, VPSUBD, MOVL, SUBL, $4, $32)
 
-// func mulI32VecI32Lit(src, dst []int32, lit int32)
-TEXT ·mulI32VecI32Lit(SB),NOSPLIT,$0-52
+// func mulI32Lit(src, dst []int32, lit int32)
+TEXT ·mulI32Lit(SB),NOSPLIT,$0-52
     vOpLitInt(VPBROADCASTD, VMOVDQU, VPMULLD, MOVL, IMULL, $4, $32)
 
 #define vOpVecInt(vMovOp, vOp, tMovOp, tOp, dSize, chnkSize) \
@@ -144,8 +144,8 @@ TEXT ·subI32Vec(SB),NOSPLIT,$0-72
 TEXT ·mulI32Vec(SB),NOSPLIT,$0-72
     vOpVecInt(VMOVDQU, VPMULLD, MOVL, IMULL, $4, $32)
 
-// func divI32VecI32Lit(src []int32, dst []float32, lit float32)
-TEXT ·divI32VecI32Lit(SB),NOSPLIT,$0-56
+// func divI32Lit(src []int32, dst []float32, lit float32)
+TEXT ·divI32Lit(SB),NOSPLIT,$0-56
     MOVQ srcAddr+0(FP), AX
     MOVQ dstAddr+24(FP), BX
     MOVQ srcLen+8(FP), CX
@@ -262,8 +262,8 @@ tradLoop:
 exitFn:
     RET
 
-// func divI64VecI64Lit(src []int64, dst []float64, lit float64)
-TEXT ·divI64VecI64Lit(SB),NOSPLIT,$0-56
+// func divI64Lit(src []int64, dst []float64, lit float64)
+TEXT ·divI64Lit(SB),NOSPLIT,$0-56
     MOVQ srcAddr+0(FP), AX
     MOVQ dstAddr+24(FP), BX
     MOVQ srcLen+8(FP), CX
@@ -374,8 +374,8 @@ tradLoop:
 exitFn:
     RET
 
-// // func mulI64VecI64Lit(src, dst []int64, lit int64)
-// TEXT ·mulI64VecI64Lit(SB),NOSPLIT,$0-56
+// // func mulI64Lit(src, dst []int64, lit int64)
+// TEXT ·mulI64Lit(SB),NOSPLIT,$0-56
 
 // // func mulI64Vec(src1, src2, dst []int64)
 // TEXT ·mulI64Vec(SB),NOSPLIT,$0-72
