@@ -50,7 +50,7 @@ exitFn:                                                    \
 
 #define I64SumTradLoopOps \
         VMOVQ (AX), X4    \
-        VPADDQ X4, X0, X0
+        VPADDQ Y4, Y0, Y0
 
 #define I64SumReduceOps         \
         VPADDQ Y0, Y1, Y0       \
@@ -83,7 +83,7 @@ exitFn:                                                    \
 #define I32SumTradLoopOps \
         VMOVD (AX), X4    \
         VPMOVSXDQ X4, X4  \
-        VPADDQ X4, X0, X0 
+        VPADDQ Y4, Y0, Y0 
 
 #define F64SumVecLoopOps           \
         VMOVUPD (AX), Y4           \   
@@ -107,7 +107,7 @@ exitFn:                                                    \
         VMOVSD (AX), X4            \
         VCMPPD $4, X4, X4, X8      \
         VPBLENDVB X8, X12, X4, X4  \
-        VADDSD X4, X0, X0
+        VADDPD Y4, Y0, Y0
 
 #define F64SumReduceOps         \
         VADDPD Y0, Y1, Y4       \
@@ -157,7 +157,7 @@ exitFn:                                                    \
         VCVTSS2SD (AX), X4, X4     \
         VCMPPD $4, X4, X4, X8      \
         VPBLENDVB X8, X12, X4, X4  \
-        VADDSD X4, X0, X0    
+        VADDPD Y4, Y0, Y0    
 
 // func sumI64(src, dst []int64)
 TEXT ·sumI64(SB),NOSPLIT,$0-48
