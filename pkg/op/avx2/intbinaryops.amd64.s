@@ -124,24 +124,24 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func addI64VecI64Vec(src1, src2, dst []float64)
-TEXT ·addI64VecI64Vec(SB),NOSPLIT,$0-72
+// func addI64Vec(src1, src2, dst []float64)
+TEXT ·addI64Vec(SB),NOSPLIT,$0-72
     vOpVecInt(VMOVDQU, VPADDQ, MOVQ, ADDQ, $8, $16)
 
-// func addI32VecI32Vec(src1, src2, dst []float32)
-TEXT ·addI32VecI32Vec(SB),NOSPLIT,$0-72
+// func addI32Vec(src1, src2, dst []float32)
+TEXT ·addI32Vec(SB),NOSPLIT,$0-72
     vOpVecInt(VMOVDQU, VPADDD, MOVL, ADDL, $4, $32)
 
-// func subI64VecI64Vec(src1, src2, dst []float64)
-TEXT ·subI64VecI64Vec(SB),NOSPLIT,$0-72
+// func subI64Vec(src1, src2, dst []float64)
+TEXT ·subI64Vec(SB),NOSPLIT,$0-72
     vOpVecInt(VMOVDQU, VPSUBQ, MOVQ, SUBQ, $8, $16)
 
-// func subI32VecI32Vec(src1, src2, dst []float32)
-TEXT ·subI32VecI32Vec(SB),NOSPLIT,$0-72
+// func subI32Vec(src1, src2, dst []float32)
+TEXT ·subI32Vec(SB),NOSPLIT,$0-72
     vOpVecInt(VMOVDQU, VPSUBD, MOVL, SUBL, $4, $32)
 
-// func mulI32VecI32Vec(src1, src2, dst []float32)
-TEXT ·mulI32VecI32Vec(SB),NOSPLIT,$0-72
+// func mulI32Vec(src1, src2, dst []float32)
+TEXT ·mulI32Vec(SB),NOSPLIT,$0-72
     vOpVecInt(VMOVDQU, VPMULLD, MOVL, IMULL, $4, $32)
 
 // func divI32VecI32Lit(src []int32, dst []float32, lit float32)
@@ -197,8 +197,8 @@ tradLoop:
 exitFn:
     RET
 
-// func divI32VecI32Vec(src1, src2 []int32, dst []float32)
-TEXT ·divI32VecI32Vec(SB),NOSPLIT,$0-72
+// func divI32Vec(src1, src2 []int32, dst []float32)
+TEXT ·divI32Vec(SB),NOSPLIT,$0-72
     MOVQ src1Addr+0(FP), AX
     MOVQ src2Addr+24(FP), R8
     MOVQ dstAddr+48(FP), BX
@@ -307,8 +307,8 @@ tradLoop:
 exitFn:
     RET
 
-// func divI64VecI64Vec(src1, src2 []int64, dst []float64)
-TEXT ·divI64VecI64Vec(SB),NOSPLIT,$0-72
+// func divI64Vec(src1, src2 []int64, dst []float64)
+TEXT ·divI64Vec(SB),NOSPLIT,$0-72
     MOVQ src1Addr+0(FP), AX
     MOVQ src2Addr+24(FP), R8
     MOVQ dstAddr+48(FP), BX
@@ -377,5 +377,5 @@ exitFn:
 // // func mulI64VecI64Lit(src, dst []int64, lit int64)
 // TEXT ·mulI64VecI64Lit(SB),NOSPLIT,$0-56
 
-// // func mulI64VecI64Vec(src1, src2, dst []int64)
-// TEXT ·mulI64VecI64Vec(SB),NOSPLIT,$0-72
+// // func mulI64Vec(src1, src2, dst []int64)
+// TEXT ·mulI64Vec(SB),NOSPLIT,$0-72

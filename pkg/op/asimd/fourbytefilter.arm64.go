@@ -3,49 +3,49 @@
 package op
 
 //go:noescape
-func cmpGtI32VecI32Lit(src []int32, dst []byte, lit int32)
+func cmpGtI32(src []int32, dst []byte, lit int32)
 
 //go:noescape
-func cmpLtI32VecI32Lit(src []int32, dst []byte, lit int32)
+func cmpLtI32(src []int32, dst []byte, lit int32)
 
 //go:noescape
-func cmpGeI32VecI32Lit(src []int32, dst []byte, lit int32)
+func cmpGeI32(src []int32, dst []byte, lit int32)
 
 //go:noescape
-func cmpLeI32VecI32Lit(src []int32, dst []byte, lit int32)
+func cmpLeI32(src []int32, dst []byte, lit int32)
 
 //go:noescape
-func cmpEqI32VecI32Lit(src []int32, dst []byte, lit int32)
+func cmpEqI32(src []int32, dst []byte, lit int32)
 
 //go:noescape
-func cmpGtF32VecF32Lit(src []float32, dst []byte, lit float32)
+func cmpGtF32(src []float32, dst []byte, lit float32)
 
 //go:noescape
-func cmpLtF32VecF32Lit(src []float32, dst []byte, lit float32)
+func cmpLtF32(src []float32, dst []byte, lit float32)
 
 //go:noescape
-func cmpGeF32VecF32Lit(src []float32, dst []byte, lit float32)
+func cmpGeF32(src []float32, dst []byte, lit float32)
 
 //go:noescape
-func cmpLeF32VecF32Lit(src []float32, dst []byte, lit float32)
+func cmpLeF32(src []float32, dst []byte, lit float32)
 
 //go:noescape
-func cmpEqF32VecF32Lit(src []float32, dst []byte, lit float32)
+func cmpEqF32(src []float32, dst []byte, lit float32)
 
 //go:noescape
-func cmpNeqI32VecI32Lit(src []int32, dst []byte, lit int32)
+func cmpNeqI32(src []int32, dst []byte, lit int32)
 
 //go:noescape
-func cmpNeqF32VecF32Lit(src []float32, dst []byte, lit float32)
+func cmpNeqF32(src []float32, dst []byte, lit float32)
 
 //go:noescape
-func cmpBetI32VecI32Lit(src []int32, dst []byte, min int32, max int32)
+func cmpBetI32(src []int32, dst []byte, min int32, max int32)
 
 //go:noescape
-func cmpNBetI32VecI32Lit(src []int32, dst []byte, min int32, max int32)
+func cmpNBetI32(src []int32, dst []byte, min int32, max int32)
 
 //go:noescape
-func cmpBetF32VecF32Lit(src []float32, dst []byte, min float32, max float32)
+func cmpBetF32(src []float32, dst []byte, min float32, max float32)
 
 //go:noescape
-func cmpNBetF32VecF32Lit(src []float32, dst []byte, min float32, max float32)
+func cmpNBetF32(src []float32, dst []byte, min float32, max float32)

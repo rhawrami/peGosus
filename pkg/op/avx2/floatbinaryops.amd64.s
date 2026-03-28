@@ -49,36 +49,36 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func addF64VecF64Lit(src, dst []float64, lit float64)
-TEXT ·addF64VecF64Lit(SB),NOSPLIT,$0-56
+// func addF64Lit(src, dst []float64, lit float64)
+TEXT ·addF64Lit(SB),NOSPLIT,$0-56
     vOpLitFloat(VBROADCASTSD, VMOVUPD, VADDPD, VMOVSD, VADDSD, $8, $16)
 
-// func addF32VecF32Lit(src, dst []float32, lit float32)
-TEXT ·addF32VecF32Lit(SB),NOSPLIT,$0-52
+// func addF32Lit(src, dst []float32, lit float32)
+TEXT ·addF32Lit(SB),NOSPLIT,$0-52
     vOpLitFloat(VBROADCASTSS, VMOVUPS, VADDPS, VMOVSS, VADDSS, $4, $32)
 
-// func subF64VecF64Lit(src, dst []float64, lit float64)
-TEXT ·subF64VecF64Lit(SB),NOSPLIT,$0-56
+// func subF64Lit(src, dst []float64, lit float64)
+TEXT ·subF64Lit(SB),NOSPLIT,$0-56
     vOpLitFloat(VBROADCASTSD, VMOVUPD, VSUBPD, VMOVSD, VSUBSD, $8, $16)
 
-// func subF32VecF32Lit(src, dst []float32, lit float32)
-TEXT ·subF32VecF32Lit(SB),NOSPLIT,$0-52
+// func subF32Lit(src, dst []float32, lit float32)
+TEXT ·subF32Lit(SB),NOSPLIT,$0-52
     vOpLitFloat(VBROADCASTSS, VMOVUPS, VSUBPS, VMOVSS, VSUBSS, $4, $32)
 
-// func mulF64VecF64Lit(src, dst []float64, lit float64)
-TEXT ·mulF64VecF64Lit(SB),NOSPLIT,$0-56
+// func mulF64Lit(src, dst []float64, lit float64)
+TEXT ·mulF64Lit(SB),NOSPLIT,$0-56
     vOpLitFloat(VBROADCASTSD, VMOVUPD, VMULPD, VMOVSD, VMULSD, $8, $16)
 
-// func mulF32VecF32Lit(src, dst []float32, lit float32)
-TEXT ·mulF32VecF32Lit(SB),NOSPLIT,$0-52
+// func mulF32Lit(src, dst []float32, lit float32)
+TEXT ·mulF32Lit(SB),NOSPLIT,$0-52
     vOpLitFloat(VBROADCASTSS, VMOVUPS, VMULPS, VMOVSS, VMULSS, $4, $32)
 
-// func divF64VecF64Lit(src, dst []float64, lit float64)
-TEXT ·divF64VecF64Lit(SB),NOSPLIT,$0-56
+// func divF64Lit(src, dst []float64, lit float64)
+TEXT ·divF64Lit(SB),NOSPLIT,$0-56
     vOpLitFloat(VBROADCASTSD, VMOVUPD, VDIVPD, VMOVSD, VDIVSD, $8, $16)
 
-// func divF32VecF32Lit(src, dst []float32, lit float32)
-TEXT ·divF32VecF32Lit(SB),NOSPLIT,$0-52
+// func divF32Lit(src, dst []float32, lit float32)
+TEXT ·divF32Lit(SB),NOSPLIT,$0-52
     vOpLitFloat(VBROADCASTSS, VMOVUPS, VDIVPS, VMOVSS, VDIVSS, $4, $32)
 
 #define vOpVecFloat(vMovOp, vOp, tMovOp, tOp, dSize, chnkSize) \
@@ -135,34 +135,34 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func addF64VecF64Vec(src1, src2, dst []float64)
-TEXT ·addF64VecF64Vec(SB),NOSPLIT,$0-72
+// func addF64Vec(src1, src2, dst []float64)
+TEXT ·addF64Vec(SB),NOSPLIT,$0-72
     vOpVecFloat(VMOVUPD, VADDPD, VMOVSD, VADDSD, $8, $16)
 
-// func addF32VecF32Vec(src1, src2, dst []float32)
-TEXT ·addF32VecF32Vec(SB),NOSPLIT,$0-72
+// func addF32Vec(src1, src2, dst []float32)
+TEXT ·addF32Vec(SB),NOSPLIT,$0-72
     vOpVecFloat(VMOVUPS, VADDPS, VMOVSS, VADDSS, $4, $32)
 
-// func subF64VecF64Vec(src1, src2, dst []float64)
-TEXT ·subF64VecF64Vec(SB),NOSPLIT,$0-72
+// func subF64Vec(src1, src2, dst []float64)
+TEXT ·subF64Vec(SB),NOSPLIT,$0-72
     vOpVecFloat(VMOVUPD, VSUBPD, VMOVSD, VSUBSD, $8, $16)
 
-// func subF32VecF32Vec(src1, src2, dst []float32)
-TEXT ·subF32VecF32Vec(SB),NOSPLIT,$0-72
+// func subF32Vec(src1, src2, dst []float32)
+TEXT ·subF32Vec(SB),NOSPLIT,$0-72
     vOpVecFloat(VMOVUPS, VSUBPS, VMOVSS, VSUBSS, $4, $32)
 
-// func mulF64VecF64Vec(src1, src2, dst []float64)
-TEXT ·mulF64VecF64Vec(SB),NOSPLIT,$0-72
+// func mulF64Vec(src1, src2, dst []float64)
+TEXT ·mulF64Vec(SB),NOSPLIT,$0-72
     vOpVecFloat(VMOVUPD, VMULPD, VMOVSD, VMULSD, $8, $16)
 
-// func mulF32VecF32Vec(src1, src2, dst []float32)
-TEXT ·mulF32VecF32Vec(SB),NOSPLIT,$0-72
+// func mulF32Vec(src1, src2, dst []float32)
+TEXT ·mulF32Vec(SB),NOSPLIT,$0-72
     vOpVecFloat(VMOVUPS, VMULPS, VMOVSS, VMULSS, $4, $32)
 
-// func divF64VecF64Vec(src1, src2, dst []float64)
-TEXT ·divF64VecF64Vec(SB),NOSPLIT,$0-72
+// func divF64Vec(src1, src2, dst []float64)
+TEXT ·divF64Vec(SB),NOSPLIT,$0-72
     vOpVecFloat(VMOVUPD, VDIVPD, VMOVSD, VDIVSD, $8, $16)
 
-// func divF32VecF32Vec(src1, src2, dst []float32)
-TEXT ·divF32VecF32Vec(SB),NOSPLIT,$0-72
+// func divF32Vec(src1, src2, dst []float32)
+TEXT ·divF32Vec(SB),NOSPLIT,$0-72
     vOpVecFloat(VMOVUPS, VDIVPS, VMOVSS, VDIVSS, $4, $32)

@@ -39,68 +39,68 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func sqrtF64Vec(src, dst []float64)
+// func sqrtF64(src, dst []float64)
 // w1: $0x6ee1f825 => 'fsqrt.2d v5, v1'
 // w2: $0x6ee1f846 => 'fsqrt.2d v6, v2'
 // w3: $0x6ee1f867 => 'fsqrt.2d v7, v3'
 // w4: $0x6ee1f888 => 'fsqrt.2d v8, v4'
-TEXT ·sqrtF64Vec(SB),NOSPLIT,$0-48
+TEXT ·sqrtF64(SB),NOSPLIT,$0-48
     vOpUnaryFloat($0x6ee1f825, $0x6ee1f846, $0x6ee1f867, $0x6ee1f888, $8, $8, D2, D)
 
-// func sqrtF32Vec(src, dst []float32)
+// func sqrtF32(src, dst []float32)
 // w1: $0x6ea1f825 => 'fsqrt.4s v5, v1'
 // w2: $0x6ea1f846 => 'fsqrt.4s v6, v2'
 // w3: $0x6ea1f867 => 'fsqrt.4s v7, v3'
 // w4: $0x6ea1f888 => 'fsqrt.4s v8, v4'
-TEXT ·sqrtF32Vec(SB),NOSPLIT,$0-48
+TEXT ·sqrtF32(SB),NOSPLIT,$0-48
     vOpUnaryFloat($0x6ea1f825, $0x6ea1f846, $0x6ea1f867, $0x6ea1f888, $4, $16, S4, S)
 
-// func sqF64Vec(src, dst []float64)
+// func sqF64(src, dst []float64)
 // w1: $0x6e61dc25 => 'fmul.2d v5, v1, v1'
 // w2: $0x6e62dc46 => 'fmul.2d v6, v2, v2'
 // w3: $0x6e63dc67 => 'fmul.2d v7, v3, v3'
 // w4: $0x6e64dc88 => 'fmul.2d v8, v4, v4'
-TEXT ·sqF64Vec(SB),NOSPLIT,$0-48
+TEXT ·sqF64(SB),NOSPLIT,$0-48
     vOpUnaryFloat($0x6e61dc25, $0x6e62dc46, $0x6e63dc67, $0x6e64dc88, $8, $8, D2, D)
 
-// func sqF32Vec(src, dst []float32)
+// func sqF32(src, dst []float32)
 // w1: $0x6e21dc25 => 'fmul.4s v5, v1, v1'
 // w2: $0x6e22dc46 => 'fmul.4s v6, v2, v2'
 // w3: $0x6e23dc67 => 'fmul.4s v7, v3, v3'
 // w4: $0x6e24dc88 => 'fmul.4s v8, v4, v4'
-TEXT ·sqF32Vec(SB),NOSPLIT,$0-48
+TEXT ·sqF32(SB),NOSPLIT,$0-48
     vOpUnaryFloat($0x6e21dc25, $0x6e22dc46, $0x6e23dc67, $0x6e24dc88, $4, $16, S4, S)
 
-// func absF64Vec(src, dst []float64)
+// func absF64(src, dst []float64)
 // w1: $0x4ee0f825 => 'fabs.2d v5, v1'
 // w2: $0x4ee0f846 => 'fabs.2d v6, v2'
 // w3: $0x4ee0f867 => 'fabs.2d v7, v3'
 // w4: $0x4ee0f888 => 'fabs.2d v8, v4'
-TEXT ·absF64Vec(SB),NOSPLIT,$0-48
+TEXT ·absF64(SB),NOSPLIT,$0-48
     vOpUnaryFloat($0x4ee0f825, $0x4ee0f846, $0x4ee0f867, $0x4ee0f888, $8, $8, D2, D)
 
-// func absF32Vec(src, dst []float32)
+// func absF32(src, dst []float32)
 // w1: $0x4ea0f825 => 'fabs.4s v5, v1'
 // w2: $0x4ea0f846 => 'fabs.4s v6, v2'
 // w3: $0x4ea0f867 => 'fabs.4s v7, v3'
 // w4: $0x4ea0f888 => 'fabs.4s v8, v4'
-TEXT ·absF32Vec(SB),NOSPLIT,$0-48
+TEXT ·absF32(SB),NOSPLIT,$0-48
     vOpUnaryFloat($0x4ea0f825, $0x4ea0f846, $0x4ea0f867, $0x4ea0f888, $4, $16, S4, S)
 
-// func negF64Vec(src, dst []float64)
+// func negF64(src, dst []float64)
 // w1: $0x6ee0f825 => 'fneg.2d v5, v1'
 // w2: $0x6ee0f846 => 'fneg.2d v6, v2'
 // w3: $0x6ee0f867 => 'fneg.2d v7, v3'
 // w4: $0x6ee0f888 => 'fneg.2d v8, v4'
-TEXT ·negF64Vec(SB),NOSPLIT,$0-48
+TEXT ·negF64(SB),NOSPLIT,$0-48
     vOpUnaryFloat($0x6ee0f825, $0x6ee0f846, $0x6ee0f867, $0x6ee0f888, $8, $8, D2, D)
 
-// func negF32Vec(src, dst []float32)
+// func negF32(src, dst []float32)
 // w1: $0x6ea0f825 => 'fneg.4s v5, v1'
 // w2: $0x6ea0f846 => 'fneg.4s v6, v2'
 // w3: $0x6ea0f867 => 'fneg.4s v7, v3'
 // w4: $0x6ea0f888 => 'fneg.4s v8, v4'
-TEXT ·negF32Vec(SB),NOSPLIT,$0-48
+TEXT ·negF32(SB),NOSPLIT,$0-48
     vOpUnaryFloat($0x6ea0f825, $0x6ea0f846, $0x6ea0f867, $0x6ea0f888, $4, $16, S4, S)
 
 #define vRecipFloat(w1, w2, w3, w4, mOp, dSize, chnkSize, spec, spec1) \
@@ -142,18 +142,18 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func recipF64Vec(src, dst []float64)
+// func recipF64(src, dst []float64)
 // w1: $0x6e61fc05 => 'fdiv.2d	v5, v0, v1'
 // w2: $0x6e62fc06 => 'fdiv.2d	v6, v0, v2'
 // w3: $0x6e63fc07 => 'fdiv.2d	v7, v0, v3'
 // w4: $0x6e64fc08 => 'fdiv.2d	v8, v0, v4'
-TEXT ·recipF64Vec(SB),NOSPLIT,$0-48
+TEXT ·recipF64(SB),NOSPLIT,$0-48
     vRecipFloat($0x6e61fc05, $0x6e62fc06, $0x6e63fc07, $0x6e64fc08, FMOVD, $8, $8, D2, D)
 
-// func recipF32Vec(src, dst []float32)
+// func recipF32(src, dst []float32)
 // w1: $0x6e21fc05 => 'fdiv.4s	v5, v0, v1'
 // w2: $0x6e22fc06 => 'fdiv.4s	v6, v0, v2'
 // w3: $0x6e23fc07 => 'fdiv.4s	v7, v0, v3'
 // w4: $0x6e24fc08 => 'fdiv.4s	v8, v0, v4'
-TEXT ·recipF32Vec(SB),NOSPLIT,$0-48
+TEXT ·recipF32(SB),NOSPLIT,$0-48
     vRecipFloat($0x6e21fc05, $0x6e22fc06, $0x6e23fc07, $0x6e24fc08, FMOVS, $4, $16, S4, S)

@@ -191,44 +191,44 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func addI64VecI64Vec(src1, src2, dst []int64)
+// func addI64Vec(src1, src2, dst []int64)
 // w1: $0x4ee58429 => 'add.2d v9, v1, v5'
 // w2: $0x4ee6844a => 'add.2d v10, v2, v6'
 // w3: $0x4ee7846b => 'add.2d v11, v3, v7'
 // w4: $0x4ee8848c => 'add.2d v12, v4, v8'
-TEXT ·addI64VecI64Vec(SB),NOSPLIT,$0-72
+TEXT ·addI64Vec(SB),NOSPLIT,$0-72
     vBinaryOpIntVec($0x4ee58429, $0x4ee6844a, $0x4ee7846b, $0x4ee8848c, MOVD, $8, $8, D2, D)
 
-// func addI32VecI32Vec(src1, src2, dst []int32)
+// func addI32Vec(src1, src2, dst []int32)
 // w1: $0x4ea58429 => 'add.4s v9, v1, v5'
 // w2: $0x4ea6844a => 'add.4s v10, v2, v6'
 // w3: $0x4ea7846b => 'add.4s v11, v3, v7'
 // w4: $0x4ea8848c => 'add.4s v12, v4, v8'
-TEXT ·addI32VecI32Vec(SB),NOSPLIT,$0-72
+TEXT ·addI32Vec(SB),NOSPLIT,$0-72
     vBinaryOpIntVec($0x4ea58429, $0x4ea6844a, $0x4ea7846b, $0x4ea8848c, MOVW, $4, $16, S4, S)
 
-// func subI64VecI64Vec(src1, src2, dst []int64)
+// func subI64Vec(src1, src2, dst []int64)
 // w1: $0x6ee58429 => 'sub.2d v9, v1, v5'
 // w2: $0x6ee6844a => 'sub.2d v10, v2, v6'
 // w3: $0x6ee7846b => 'sub.2d v11, v3, v7'
 // w4: $0x6ee8848c => 'sub.2d v12, v4, v8'
-TEXT ·subI64VecI64Vec(SB),NOSPLIT,$0-72
+TEXT ·subI64Vec(SB),NOSPLIT,$0-72
     vBinaryOpIntVec($0x6ee58429, $0x6ee6844a, $0x6ee7846b, $0x6ee8848c, MOVD, $8, $8, D2, D)
 
-// func subI32VecI32Vec(src1, src2, dst []int32)
+// func subI32Vec(src1, src2, dst []int32)
 // w1: $0x6ea58429 => 'sub.4s v9, v1, v5'
 // w2: $0x6ea6844a => 'sub.4s v10, v2, v6'
 // w3: $0x6ea7846b => 'sub.4s v11, v3, v7'
 // w4: $0x6ea8848c => 'sub.4s v12, v4, v8'
-TEXT ·subI32VecI32Vec(SB),NOSPLIT,$0-72
+TEXT ·subI32Vec(SB),NOSPLIT,$0-72
     vBinaryOpIntVec($0x6ea58429, $0x6ea6844a, $0x6ea7846b, $0x6ea8848c, MOVW, $4, $16, S4, S)
 
-// func mulI32VecI32Vec(src1, src2, dst []int32)
+// func mulI32Vec(src1, src2, dst []int32)
 // w1: $0x4ea59c29 => 'mul.4s v9, v1, v5'
 // w2: $0x4ea69c4a => 'mul.4s v10, v2, v6'
 // w3: $0x4ea79c6b => 'mul.4s v11, v3, v7'
 // w4: $0x4ea89c8c => 'mul.4s v12, v4, v8'
-TEXT ·mulI32VecI32Vec(SB),NOSPLIT,$0-72
+TEXT ·mulI32Vec(SB),NOSPLIT,$0-72
     vBinaryOpIntVec($0x4ea59c29, $0x4ea69c4a, $0x4ea79c6b, $0x4ea89c8c, MOVW, $4, $16, S4, S)
 
 #define vMulIntVec(w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14, w15, w16, mOp, dSize, chnkSize, spec, spec1)   \
@@ -287,7 +287,7 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func mulI64VecI64Vec(src1, src2, dst []int64)
+// func mulI64Vec(src1, src2, dst []int64)
 // w1: $0x4e61d829 => 'scvtf.2d v9, v1'
 // w2: $0x4e61d8aa => 'scvtf.2d v10, v5'
 // w3: $0x6e6add2b => 'fmul.2d v11, v9, v10'
@@ -304,7 +304,7 @@ exitFn:                                                    \
 // w14: $0x4e61d914 => 'scvtf.2d v20, v8'
 // w15: $0x6e74de75 => 'fmul.2d v21, v19, v20'
 // w16: $0x4e61cab9 => 'fcvtas.2d v25, v21'
-TEXT ·mulI64VecI64Vec(SB),NOSPLIT,$0-72
+TEXT ·mulI64Vec(SB),NOSPLIT,$0-72
     vMulIntVec($0x4e61d829, $0x4e61d8aa, $0x6e6add2b, $0x4e61c976, $0x4e61d84d, $0x4e61d8ce, $0x6e6eddaf, $0x4e61c9f7, $0x4e61d870, $0x4e61d8f1, $0x6e71de12, $0x4e61ca58, $0x4e61d893, $0x4e61d914, $0x6e74de75, $0x4e61cab9, MOVD, $8, $8, D2, D)
 
 #define vDivIntLit(w1, w2, w3, w4, w5, w6, w7, w8, mOp, dSize, chnkSize, spec, spec1)   \
@@ -428,7 +428,7 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func divI64VecI64Vec(src1, src2 []int64, dst []float64)
+// func divI64Vec(src1, src2 []int64, dst []float64)
 // w1: $0x4e61d829 => 'scvtf.2d v9, v1'
 // w2: $0x4e61d8aa => 'scvtf.2d v10, v5'
 // w3: $0x6e6afd31 => 'fdiv.2d v17, v9, v10'
@@ -441,10 +441,10 @@ exitFn:                                                    \
 // w10: $0x4e61d88f => 'scvtf.2d v15, v4'
 // w11: $0x4e61d910 => 'scvtf.2d v16, v8'
 // w12: $0x6e70fdf4 => 'fdiv.2d v20, v15, v16'
-TEXT ·divI64VecI64Vec(SB),NOSPLIT,$0-72
+TEXT ·divI64Vec(SB),NOSPLIT,$0-72
     vDivIntVec($0x4e61d829, $0x4e61d8aa, $0x6e6afd31, $0x4e61d84b, $0x4e61d8cc, $0x6e6cfd72, $0x4e61d86d, $0x4e61d8ee, $0x6e6efdb3, $0x4e61d88f, $0x4e61d910, $0x6e70fdf4, MOVD, $8, $8, D2, D)
 
-// func divI32VecI32Vec(src1, src2 []int32, dst []float32)
+// func divI32Vec(src1, src2 []int32, dst []float32)
 // w1: $0x4e21d829 => 'scvtf.4s v9, v1'
 // w2: $0x4e21d8aa => 'scvtf.4s v10, v5'
 // w3: $0x6e2afd31 => 'fdiv.4s v17, v9, v10'
@@ -457,5 +457,5 @@ TEXT ·divI64VecI64Vec(SB),NOSPLIT,$0-72
 // w10: $0x4e21d88f => 'scvtf.4s v15, v4'
 // w11: $0x4e21d910 => 'scvtf.4s v16, v8'
 // w12: $0x6e30fdf4 => 'fdiv.4s v20, v15, v16'
-TEXT ·divI32VecI32Vec(SB),NOSPLIT,$0-72
+TEXT ·divI32Vec(SB),NOSPLIT,$0-72
     vDivIntVec($0x4e21d829, $0x4e21d8aa, $0x6e2afd31, $0x4e21d84b, $0x4e21d8cc, $0x6e2cfd72, $0x4e21d86d, $0x4e21d8ee, $0x6e2efdb3, $0x4e21d88f, $0x4e21d910, $0x6e30fdf4, MOVW, $4, $16, S4, S)

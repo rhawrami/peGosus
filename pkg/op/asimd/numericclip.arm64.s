@@ -48,7 +48,7 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func clipF64VecWithF64Bounds(src, dst []float64, lower, upper float64)
+// func clipF64WithF64Bounds(src, dst []float64, lower, upper float64)
 // w1: $0x4e60f446 => 'fmax.2d v6, v2, v0'
 // w2: $0x4ee1f4ca => 'fmin.2d v10, v6, v1'
 // w3: $0x4e60f467 => 'fmax.2d v7, v3, v0'
@@ -57,10 +57,10 @@ exitFn:                                                    \
 // w6: $0x4ee1f50c => 'fmin.2d v12, v8, v1'
 // w7: $0x4e60f4a9 => 'fmax.2d v9, v5, v0'
 // w8: $0x4ee1f52d => 'fmin.2d v13, v9, v1'
-TEXT ·clipF64VecWithF64Bounds(SB),NOSPLIT,$0-64
+TEXT ·clipF64WithF64Bounds(SB),NOSPLIT,$0-64
     vClipIFWithIFBounds($0x4e60f446, $0x4ee1f4ca, $0x4e60f467, $0x4ee1f4eb, $0x4e60f488, $0x4ee1f50c, $0x4e60f4a9, $0x4ee1f52d, MOVD, $8, $8, D2, D, 56)
 
-// func clipF32VecWithF32Bounds(src, dst []float32, lower, upper float32)
+// func clipF32WithF32Bounds(src, dst []float32, lower, upper float32)
 // w1: $0x4e20f446 => 'fmax.4s v6, v2, v0'
 // w2: $0x4ea1f4ca => 'fmin.4s v10, v6, v1'
 // w3: $0x4e20f467 => 'fmax.4s v7, v3, v0'
@@ -69,10 +69,10 @@ TEXT ·clipF64VecWithF64Bounds(SB),NOSPLIT,$0-64
 // w6: $0x4ea1f50c => 'fmin.4s v12, v8, v1'
 // w7: $0x4e20f4a9 => 'fmax.4s v9, v5, v0'
 // w8: $0x4ea1f52d => 'fmin.4s v13, v9, v1'
-TEXT ·clipF32VecWithF32Bounds(SB),NOSPLIT,$0-56
+TEXT ·clipF32WithF32Bounds(SB),NOSPLIT,$0-56
     vClipIFWithIFBounds($0x4e20f446, $0x4ea1f4ca, $0x4e20f467, $0x4ea1f4eb, $0x4e20f488, $0x4ea1f50c, $0x4e20f4a9, $0x4ea1f52d, MOVW, $4, $16, S4, S, 52)
 
-// func clipI32VecWithI32Bounds(src, dst []int32, lower, upper int32)
+// func clipI32WithI32Bounds(src, dst []int32, lower, upper int32)
 // w1: $0x4ea06446 => 'smax.4s v6, v2, v0'
 // w2: $0x4ea16cca => 'smin.4s v10, v6, v1'
 // w3: $0x4ea06467 => 'smax.4s v7, v3, v0'
@@ -81,7 +81,7 @@ TEXT ·clipF32VecWithF32Bounds(SB),NOSPLIT,$0-56
 // w6: $0x4ea16d0c => 'smin.4s v12, v8, v1'
 // w7: $0x4ea064a9 => 'smax.4s v9, v5, v0'
 // w8: $0x4ea16d2d => 'smin.4s v13, v9, v1'
-TEXT ·clipI32VecWithI32Bounds(SB),NOSPLIT,$0-56
+TEXT ·clipI32WithI32Bounds(SB),NOSPLIT,$0-56
     vClipIFWithIFBounds($0x4ea06446, $0x4ea16cca, $0x4ea06467, $0x4ea16ceb, $0x4ea06488, $0x4ea16d0c, $0x4ea064a9, $0x4ea16d2d, MOVW, $4, $16, S4, S, 52)
 
 #define vClipI64(w0_1, w0_2, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14, w15, w16) \
@@ -142,7 +142,7 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func clipI64VecWithI64Bounds(src, dst []int64, lower, upper int64)
+// func clipI64WithI64Bounds(src, dst []int64, lower, upper int64)
 // w0_1: $0x4e61d800 => 'scvtf.2d v0, v0'
 // w0_2: $0x4e61d821 => 'scvtf.2d v1, v1'
 // w1: $0x4e61d846 => 'scvtf.2d v6, v2'
@@ -161,7 +161,7 @@ exitFn:                                                    \
 // w14: $0x4e61c9f3 => 'fcvtas.2d v19, v15'
 // w15: $0x4e61ca14 => 'fcvtas.2d v20, v16'
 // w16: $0x4e61ca35 => 'fcvtas.2d v21, v17'
-TEXT ·clipI64VecWithI64Bounds(SB),NOSPLIT,$0-64
+TEXT ·clipI64WithI64Bounds(SB),NOSPLIT,$0-64
     vClipI64($0x4e61d800, $0x4e61d821, $0x4e61d846, $0x4e61d867, $0x4e61d888, $0x4e61d8a9, $0x4e60f4ca, $0x4e60f4eb, $0x4e60f50c, $0x4e60f52d, $0x4ee1f54e, $0x4ee1f56f, $0x4ee1f590, $0x4ee1f5b1, $0x4e61c9d2, $0x4e61c9f3, $0x4e61ca14, $0x4e61ca35)
 
 #define vClipIWithFBounds(w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, mOp, dSize, chnkSize, spec, spec1, maxOffset) \
@@ -215,7 +215,7 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func clipI64VecWithF64Bounds(src []int64, dst []float64, lower, upper float64)
+// func clipI64WithF64Bounds(src []int64, dst []float64, lower, upper float64)
 // w1: $0x4e61d846 => 'scvtf.2d v6, v2'
 // w2: $0x4e61d867 => 'scvtf.2d v7, v3'
 // w3: $0x4e61d888 => 'scvtf.2d v8, v4'
@@ -228,10 +228,10 @@ exitFn:                                                    \
 // w10: $0x4ee1f56f => 'fmin.2d v15, v11, v1'
 // w11: $0x4ee1f590 => 'fmin.2d v16, v12, v1'
 // w12: $0x4ee1f5b1 => 'fmin.2d v17, v13, v1'
-TEXT ·clipI64VecWithF64Bounds(SB),NOSPLIT,$0-64
+TEXT ·clipI64WithF64Bounds(SB),NOSPLIT,$0-64
     vClipIWithFBounds($0x4e61d846, $0x4e61d867, $0x4e61d888, $0x4e61d8a9, $0x4e60f4ca, $0x4e60f4eb, $0x4e60f50c, $0x4e60f52d, $0x4ee1f54e, $0x4ee1f56f, $0x4ee1f590, $0x4ee1f5b1, MOVD, $8, $8, D2, D, 56)
 
-// func clipI32VecWithF32Bounds(src []int32, dst []float32, lower, upper float32)
+// func clipI32WithF32Bounds(src []int32, dst []float32, lower, upper float32)
 // w1: $0x4e21d846 => 'scvtf.4s v6, v2'
 // w2: $0x4e21d867 => 'scvtf.4s v7, v3'
 // w3: $0x4e21d888 => 'scvtf.4s v8, v4'
@@ -244,5 +244,5 @@ TEXT ·clipI64VecWithF64Bounds(SB),NOSPLIT,$0-64
 // w10: $0x4ea1f56f => 'fmin.4s v15, v11, v1'
 // w11: $0x4ea1f590 => 'fmin.4s v16, v12, v1'
 // w12: $0x4ea1f5b1 => 'fmin.4s v17, v13, v1'
-TEXT ·clipI32VecWithF32Bounds(SB),NOSPLIT,$0-56
+TEXT ·clipI32WithF32Bounds(SB),NOSPLIT,$0-56
     vClipIWithFBounds($0x4e21d846, $0x4e21d867, $0x4e21d888, $0x4e21d8a9, $0x4e20f4ca, $0x4e20f4eb, $0x4e20f50c, $0x4e20f52d, $0x4ea1f54e, $0x4ea1f56f, $0x4ea1f590, $0x4ea1f5b1, MOVW, $4, $16, S4, S, 52)

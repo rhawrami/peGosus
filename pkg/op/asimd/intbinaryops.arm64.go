@@ -3,49 +3,49 @@
 package op
 
 //go:noescape
-func addI64VecI64Lit(src, dst []int64, lit int64)
+func addI64Lit(src, dst []int64, lit int64)
 
 //go:noescape
-func subI64VecI64Lit(src, dst []int64, lit int64)
+func subI64Lit(src, dst []int64, lit int64)
 
 //go:noescape
-func mulI64VecI64Lit(src, dst []int64, lit int64)
+func mulI64Lit(src, dst []int64, lit int64)
 
 //go:noescape
-func divI64VecI64Lit(src []int64, dst []float64, lit float64)
+func divI64Lit(src []int64, dst []float64, lit float64)
 
 //go:noescape
-func addI32VecI32Lit(src, dst []int32, lit int32)
+func addI32Lit(src, dst []int32, lit int32)
 
 //go:noescape
-func subI32VecI32Lit(src, dst []int32, lit int32)
+func subI32Lit(src, dst []int32, lit int32)
 
 //go:noescape
-func mulI32VecI32Lit(src, dst []int32, lit int32)
+func mulI32Lit(src, dst []int32, lit int32)
 
 //go:noescape
-func divI32VecI32Lit(src []int32, dst []float32, lit float32)
+func divI32Lit(src []int32, dst []float32, lit float32)
 
 //go:noescape
-func addI64VecI64Vec(src1, src2, dst []int64)
+func addI64Vec(src1, src2, dst []int64)
 
 //go:noescape
-func subI64VecI64Vec(src1, src2, dst []int64)
+func subI64Vec(src1, src2, dst []int64)
 
 //go:noescape
-func mulI64VecI64Vec(src1, src2, dst []int64)
+func mulI64Vec(src1, src2, dst []int64)
 
 //go:noescape
-func divI64VecI64Vec(src1, src2 []int64, dst []float64)
+func divI64Vec(src1, src2 []int64, dst []float64)
 
 //go:noescape
-func addI32VecI32Vec(src1, src2, dst []int32)
+func addI32Vec(src1, src2, dst []int32)
 
 //go:noescape
-func subI32VecI32Vec(src1, src2, dst []int32)
+func subI32Vec(src1, src2, dst []int32)
 
 //go:noescape
-func mulI32VecI32Vec(src1, src2, dst []int32)
+func mulI32Vec(src1, src2, dst []int32)
 
 //go:noescape
-func divI32VecI32Vec(src1, src2 []int32, dst []float32)
+func divI32Vec(src1, src2 []int32, dst []float32)

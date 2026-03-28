@@ -75,8 +75,8 @@
     WORD $0x4e20d757           // 'fadd.4s v23, v26, v0'
     
 
-// func extractYearFromDateVec(src, dst []int32, scalarConstants []float32)
-TEXT ·extractYearFromDateVec(SB),NOSPLIT,$0-72
+// func extractYear(src, dst []int32, scalarConstants []float32)
+TEXT ·extractYear(SB),NOSPLIT,$0-72
     MOVD srcAddr+0(FP), R0
     MOVD dstAddr+24(FP), R1
     MOVD srcLen+8(FP), R2
@@ -145,8 +145,8 @@ tradLoop:
 exitFn:
     RET     
 
-// func extractMonthFromDateVec(src, dst []int32, scalarConstants []float32)
-TEXT ·extractMonthFromDateVec(SB),NOSPLIT,$0-72
+// func extractMonth(src, dst []int32, scalarConstants []float32)
+TEXT ·extractMonth(SB),NOSPLIT,$0-72
     MOVD srcAddr+0(FP), R0
     MOVD dstAddr+24(FP), R1
     MOVD srcLen+8(FP), R2
@@ -209,8 +209,8 @@ tradLoop:
 exitFn:
     RET      
 
-// func extractDayFromDateVec(src, dst []int32, scalarConstants []float32)
-TEXT ·extractDayFromDateVec(SB),NOSPLIT,$0-72
+// func extractDay(src, dst []int32, scalarConstants []float32)
+TEXT ·extractDay(SB),NOSPLIT,$0-72
     MOVD srcAddr+0(FP), R0
     MOVD dstAddr+24(FP), R1
     MOVD srcLen+8(FP), R2
@@ -265,8 +265,8 @@ tradLoop:
 exitFn:
     RET     
 
-// func truncateYearFromDateVec(src, dst []int32, scalarConstants []float32)
-TEXT ·truncateYearFromDateVec(SB),NOSPLIT,$0-72
+// func truncateYear(src, dst []int32, scalarConstants []float32)
+TEXT ·truncateYear(SB),NOSPLIT,$0-72
     MOVD srcAddr+0(FP), R0
     MOVD dstAddr+24(FP), R1
     MOVD srcLen+8(FP), R2
@@ -377,8 +377,8 @@ tradLoop:
 exitFn:
     RET     
 
-// func truncateMonthFromDateVec(src, dst []int32, scalarConstants []float32)
-TEXT ·truncateMonthFromDateVec(SB),NOSPLIT,$0-72
+// func truncateMonth(src, dst []int32, scalarConstants []float32)
+TEXT ·truncateMonth(SB),NOSPLIT,$0-72
     MOVD srcAddr+0(FP), R0
     MOVD dstAddr+24(FP), R1
     MOVD srcLen+8(FP), R2
@@ -511,8 +511,8 @@ exitFn:
     WORD $0x4e271c70         \ // 'and.16b v16, v3, v7'
     WORD $0x4eb085f1           // 'add.4s v17, v15, v16'
 
-// func extractDayOfWeekFromDateVec(src, dst []int32)
-TEXT ·extractDayOfWeekFromDateVec(SB),NOSPLIT,$0-48
+// func extractDayOfWeek(src, dst []int32)
+TEXT ·extractDayOfWeek(SB),NOSPLIT,$0-48
     MOVD srcAddr+0(FP), R0
     MOVD dstAddr+24(FP), R1
     MOVD srcLen+8(FP), R2

@@ -55,16 +55,16 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func clipF64VecWithF64Bounds(src, dst []float64, lower, upper float64)
-TEXT ·clipF64VecWithF64Bounds(SB),NOSPLIT,$0-64
+// func clipF64WithF64Bounds(src, dst []float64, lower, upper float64)
+TEXT ·clipF64WithF64Bounds(SB),NOSPLIT,$0-64
     vClipFloat(56, VBROADCASTSD, VMOVUPD, VMINPD, VMAXPD, MOVSD, VMINSD, VMAXSD, $8, $16)
 
-// func clipF32VecWithF32Bounds(src, dst []float32, lower, upper float32)
-TEXT ·clipF32VecWithF32Bounds(SB),NOSPLIT,$0-56
+// func clipF32WithF32Bounds(src, dst []float32, lower, upper float32)
+TEXT ·clipF32WithF32Bounds(SB),NOSPLIT,$0-56
     vClipFloat(52, VBROADCASTSS, VMOVUPS, VMINPS, VMAXPS, MOVSS, VMINSS, VMAXSS, $4, $32)
     
-// func clipI32VecWithI32Bounds(src, dst []int32, lower, upper int32)
-TEXT ·clipI32VecWithI32Bounds(SB),NOSPLIT,$0-56
+// func clipI32WithI32Bounds(src, dst []int32, lower, upper int32)
+TEXT ·clipI32WithI32Bounds(SB),NOSPLIT,$0-56
     MOVQ srcAddr+0(FP), AX
     MOVQ dstAddr+24(FP), BX
     MOVQ srcLen+8(FP), CX
@@ -117,8 +117,8 @@ tradLoop:
 exitFn:
     RET
     
-// func clipI64VecWithI64Bounds(src, dst []int64, lower, upper int64)
-TEXT ·clipI64VecWithI64Bounds(SB),NOSPLIT,$0-64
+// func clipI64WithI64Bounds(src, dst []int64, lower, upper int64)
+TEXT ·clipI64WithI64Bounds(SB),NOSPLIT,$0-64
     MOVQ srcAddr+0(FP), AX
     MOVQ dstAddr+24(FP), BX
     MOVQ srcLen+8(FP), CX
@@ -181,8 +181,8 @@ tradLoop:
 exitFn:
     RET
 
-// func clipI64VecWithF64Bounds(src []int64, dst []float64, lower, upper float64)
-TEXT ·clipI64VecWithF64Bounds(SB),NOSPLIT,$0-64
+// func clipI64WithF64Bounds(src []int64, dst []float64, lower, upper float64)
+TEXT ·clipI64WithF64Bounds(SB),NOSPLIT,$0-64
     MOVQ srcAddr+0(FP), AX
     MOVQ dstAddr+24(FP), BX
     MOVQ srcLen+8(FP), CX
@@ -229,8 +229,8 @@ tradLoop:
 exitFn:
     RET
     
-// func clipI32VecWithF32Bounds(src []int32, dst []float32, lower, upper float32)
-TEXT ·clipI32VecWithF32Bounds(SB),NOSPLIT,$0-56
+// func clipI32WithF32Bounds(src []int32, dst []float32, lower, upper float32)
+TEXT ·clipI32WithF32Bounds(SB),NOSPLIT,$0-56
     MOVQ srcAddr+0(FP), AX
     MOVQ dstAddr+24(FP), BX
     MOVQ srcLen+8(FP), CX

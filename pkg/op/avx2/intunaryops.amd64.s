@@ -50,16 +50,16 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func negI64Vec(src, dst []int64)
-TEXT ·negI64Vec(SB),NOSPLIT,$0-48
+// func negI64(src, dst []int64)
+TEXT ·negI64(SB),NOSPLIT,$0-48
     vNegInt(XORQ, VMOVDQU, VPSUBQ, MOVQ, SUBQ, $8, $16)
     
-// func negI32Vec(src, dst []int32)
-TEXT ·negI32Vec(SB),NOSPLIT,$0-48
+// func negI32(src, dst []int32)
+TEXT ·negI32(SB),NOSPLIT,$0-48
     vNegInt(XORL, VMOVDQU, VPSUBD, MOVL, SUBL, $4, $32)
 
-// func sqI32Vec(src, dst []int32)
-TEXT ·sqI32Vec(SB),NOSPLIT,$0-48
+// func sqI32(src, dst []int32)
+TEXT ·sqI32(SB),NOSPLIT,$0-48
     MOVQ srcAddr+0(FP), AX
     MOVQ dstAddr+24(FP), BX
     MOVQ srcLen+8(FP), CX
@@ -105,8 +105,8 @@ tradLoop:
 exitFn:
     RET
 
-// func sqrtI64Vec(src []int64, dst []float64)
-TEXT ·sqrtI64Vec(SB),NOSPLIT,$0-48
+// func sqrtI64(src []int64, dst []float64)
+TEXT ·sqrtI64(SB),NOSPLIT,$0-48
     MOVQ srcAddr+0(FP), AX
     MOVQ dstAddr+24(FP), BX
     MOVQ srcLen+8(FP), CX
@@ -149,8 +149,8 @@ tradLoop:
 exitFn:
     RET
 
-// func sqrtI32Vec(src []int32, dst []float32)
-TEXT ·sqrtI32Vec(SB),NOSPLIT,$0-48
+// func sqrtI32(src []int32, dst []float32)
+TEXT ·sqrtI32(SB),NOSPLIT,$0-48
     MOVQ srcAddr+0(FP), AX
     MOVQ dstAddr+24(FP), BX
     MOVQ srcLen+8(FP), CX
@@ -201,8 +201,8 @@ tradLoop:
 exitFn:
     RET
 
-// func recipI64Vec(src []int64, dst []float64)
-TEXT ·recipI64Vec(SB),NOSPLIT,$0-48
+// func recipI64(src []int64, dst []float64)
+TEXT ·recipI64(SB),NOSPLIT,$0-48
     MOVQ srcAddr+0(FP), AX
     MOVQ dstAddr+24(FP), BX
     MOVQ srcLen+8(FP), CX
@@ -247,8 +247,8 @@ tradLoop:
 exitFn:
     RET
 
-// func recipI32Vec(src []int32, dst []float32)
-TEXT ·recipI32Vec(SB),NOSPLIT,$0-48
+// func recipI32(src []int32, dst []float32)
+TEXT ·recipI32(SB),NOSPLIT,$0-48
     MOVQ srcAddr+0(FP), AX
     MOVQ dstAddr+24(FP), BX
     MOVQ srcLen+8(FP), CX
@@ -301,8 +301,8 @@ tradLoop:
 exitFn:
     RET
     
-// func absI32Vec(src, dst []int32)
-TEXT ·absI32Vec(SB),NOSPLIT,$0-48
+// func absI32(src, dst []int32)
+TEXT ·absI32(SB),NOSPLIT,$0-48
     MOVQ srcAddr+0(FP), AX
     MOVQ dstAddr+24(FP), BX
     MOVQ srcLen+8(FP), CX

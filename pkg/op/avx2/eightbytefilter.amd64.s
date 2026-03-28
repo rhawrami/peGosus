@@ -75,52 +75,52 @@ exitFn:                                                    \
 #define LEF64 VCMPPD $2, Y0, Y1, Y2
 #define NEQF64 VCMPPD $4, Y0, Y1, Y2
 
-// func cmpGtI64VecI64Lit(src []int64, dst []byte, lit int64)
-TEXT ·cmpGtI64VecI64Lit(SB),NOSPLIT,$0-56
+// func cmpGtI64Lit(src []int64, dst []byte, lit int64)
+TEXT ·cmpGtI64Lit(SB),NOSPLIT,$0-56
     vCmpOneLit(VPBROADCASTQ, VMOVDQU, GTI64)
 
-// func cmpLtI64VecI64Lit(src []int64, dst []byte, lit int64)
-TEXT ·cmpLtI64VecI64Lit(SB),NOSPLIT,$0-56
+// func cmpLtI64Lit(src []int64, dst []byte, lit int64)
+TEXT ·cmpLtI64Lit(SB),NOSPLIT,$0-56
     vCmpOneLit(VPBROADCASTQ, VMOVDQU, LTI64)
 
-// func cmpGeI64VecI64Lit(src []int64, dst []byte, lit int64)
-TEXT ·cmpGeI64VecI64Lit(SB),NOSPLIT,$0-56
+// func cmpGeI64Lit(src []int64, dst []byte, lit int64)
+TEXT ·cmpGeI64Lit(SB),NOSPLIT,$0-56
     vCmpOneLit(VPBROADCASTQ, VMOVDQU, GEI64)
 
-// func cmpLeI64VecI64Lit(src []int64, dst []byte, lit int64)
-TEXT ·cmpLeI64VecI64Lit(SB),NOSPLIT,$0-56
+// func cmpLeI64Lit(src []int64, dst []byte, lit int64)
+TEXT ·cmpLeI64Lit(SB),NOSPLIT,$0-56
     vCmpOneLit(VPBROADCASTQ, VMOVDQU, LEI64)
 
-// func cmpEqI64VecI64Lit(src []int64, dst []byte, lit int64)
-TEXT ·cmpEqI64VecI64Lit(SB),NOSPLIT,$0-56
+// func cmpEqI64Lit(src []int64, dst []byte, lit int64)
+TEXT ·cmpEqI64Lit(SB),NOSPLIT,$0-56
     vCmpOneLit(VPBROADCASTQ, VMOVDQU, EQI64)
 
-// func cmpNeqI64VecI64Lit(src []int64, dst []byte, lit int64)
-TEXT ·cmpNeqI64VecI64Lit(SB),NOSPLIT,$0-56
+// func cmpNeqI64Lit(src []int64, dst []byte, lit int64)
+TEXT ·cmpNeqI64Lit(SB),NOSPLIT,$0-56
     vCmpOneLit(VPBROADCASTQ, VMOVDQU, NEQI64)
 
-// func cmpGtF64VecF64Lit(src []float64, dst []byte, lit float64)
-TEXT ·cmpGtF64VecF64Lit(SB),NOSPLIT,$0-56
+// func cmpGtF64Lit(src []float64, dst []byte, lit float64)
+TEXT ·cmpGtF64Lit(SB),NOSPLIT,$0-56
     vCmpOneLit(VBROADCASTSD, VMOVUPD, GTF64)
 
-// func cmpLtF64VecF64Lit(src []float64, dst []byte, lit float64)
-TEXT ·cmpLtF64VecF64Lit(SB),NOSPLIT,$0-56
+// func cmpLtF64Lit(src []float64, dst []byte, lit float64)
+TEXT ·cmpLtF64Lit(SB),NOSPLIT,$0-56
     vCmpOneLit(VBROADCASTSD, VMOVUPD, LTF64)
 
-// func cmpGeF64VecF64Lit(src []float64, dst []byte, lit float64)
-TEXT ·cmpGeF64VecF64Lit(SB),NOSPLIT,$0-56
+// func cmpGeF64Lit(src []float64, dst []byte, lit float64)
+TEXT ·cmpGeF64Lit(SB),NOSPLIT,$0-56
     vCmpOneLit(VBROADCASTSD, VMOVUPD, GEF64)
 
-// func cmpLeF64VecF64Lit(src []float64, dst []byte, lit float64)
-TEXT ·cmpLeF64VecF64Lit(SB),NOSPLIT,$0-56
+// func cmpLeF64Lit(src []float64, dst []byte, lit float64)
+TEXT ·cmpLeF64Lit(SB),NOSPLIT,$0-56
     vCmpOneLit(VBROADCASTSD, VMOVUPD, LEF64)
 
-// func cmpEqF64VecF64Lit(src []float64, dst []byte, lit float64)
-TEXT ·cmpEqF64VecF64Lit(SB),NOSPLIT,$0-56
+// func cmpEqF64Lit(src []float64, dst []byte, lit float64)
+TEXT ·cmpEqF64Lit(SB),NOSPLIT,$0-56
     vCmpOneLit(VBROADCASTSD, VMOVUPD, EQF64)
     
-// func cmpNeqF64VecF64Lit(src []float64, dst []byte, lit float64)
-TEXT ·cmpNeqF64VecF64Lit(SB),NOSPLIT,$0-56
+// func cmpNeqF64Lit(src []float64, dst []byte, lit float64)
+TEXT ·cmpNeqF64Lit(SB),NOSPLIT,$0-56
     vCmpOneLit(VBROADCASTSD, VMOVUPD, NEQF64)
 
 #define vCmpTwoLit(vBrdCstOp, vMovOp, vCmpOp)              \
@@ -196,18 +196,18 @@ exitFn:                                                    \
         VCMPPD $1, Y2, Y1, Y5 \
         VPOR Y4, Y5, Y3
 
-// func cmpBetI64VecI64Lit(src []int64, dst []byte, min int64, max int64)
-TEXT ·cmpBetI64VecI64Lit(SB),NOSPLIT,$0-64
+// func cmpBetI64Lit(src []int64, dst []byte, min int64, max int64)
+TEXT ·cmpBetI64Lit(SB),NOSPLIT,$0-64
     vCmpTwoLit(VPBROADCASTQ, VMOVDQU, BETI64)
 
-// func cmpNBetI64VecI64Lit(src []int64, dst []byte, min int64, max int64)
-TEXT ·cmpNBetI64VecI64Lit(SB),NOSPLIT,$0-64
+// func cmpNBetI64Lit(src []int64, dst []byte, min int64, max int64)
+TEXT ·cmpNBetI64Lit(SB),NOSPLIT,$0-64
     vCmpTwoLit(VPBROADCASTQ, VMOVDQU, NBETI64)
 
-// func cmpBetF64VecF64Lit(src []float64, dst []byte, min float64, max float64)
-TEXT ·cmpBetF64VecF64Lit(SB),NOSPLIT,$0-64
+// func cmpBetF64Lit(src []float64, dst []byte, min float64, max float64)
+TEXT ·cmpBetF64Lit(SB),NOSPLIT,$0-64
     vCmpTwoLit(VBROADCASTSD, VMOVUPD, BETF64)
 
-// func cmpNBetF64VecF64Lit(src []float64, dst []byte, min float64, max float64)
-TEXT ·cmpNBetF64VecF64Lit(SB),NOSPLIT,$0-64
+// func cmpNBetF64Lit(src []float64, dst []byte, min float64, max float64)
+TEXT ·cmpNBetF64Lit(SB),NOSPLIT,$0-64
     vCmpTwoLit(VBROADCASTSD, VMOVUPD, NBETF64)

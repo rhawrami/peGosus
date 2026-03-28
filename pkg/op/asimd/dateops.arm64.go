@@ -22,19 +22,19 @@ var dateScalarConstants = []float32{
 }
 
 //go:noescape
-func extractYearFromDateVec(src, dst []int32, scalarConstants []float32)
+func extractYear(src, dst []int32, scalarConstants []float32)
 
 //go:noescape
-func extractMonthFromDateVec(src, dst []int32, scalarConstants []float32)
+func extractMonth(src, dst []int32, scalarConstants []float32)
 
 //go:noescape
-func extractDayFromDateVec(src, dst []int32, scalarConstants []float32)
+func extractDay(src, dst []int32, scalarConstants []float32)
 
 //go:noescape
-func truncateYearFromDateVec(src, dst []int32, scalarConstants []float32)
+func truncateYear(src, dst []int32, scalarConstants []float32)
 
 //go:noescape
-func truncateMonthFromDateVec(src, dst []int32, scalarConstants []float32)
+func truncateMonth(src, dst []int32, scalarConstants []float32)
 
 //go:noescape
-func extractDayOfWeekFromDateVec(src, dst []int32)
+func extractDayOfWeek(src, dst []int32)
