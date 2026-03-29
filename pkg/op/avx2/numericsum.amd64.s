@@ -38,7 +38,7 @@ tradLoop:                                                  \
     CMPQ DI, CX                                            \
     JLT tradLoop                                           \
                                                            \
-    vReduce                                                \                                                           
+    vReduce                                                \ 
 exitFn:                                                    \
     RET
 
@@ -174,3 +174,140 @@ TEXT ·sumF64(SB),NOSPLIT,$0-48
 // func sumF32(src []float32, dst []float64)
 TEXT ·sumF32(SB),NOSPLIT,$0-48
     vSumOp(F32SumVecLoopOps, F32SumTradLoopOps, F64SumReduceOps, $4, $32)
+
+#define vSumOpWithValidityIF64(vMovOp, tMovOp, vVecOp, vTradOp, vReduce, dSize, dBatchSize)   \
+    MOVQ srcAddr+0(FP), AX                                 \
+    MOVQ dstAddr+24(FP), BX                                \
+    MOVQ validityAddr+48(FP), R10                          \
+    MOVQ srcLen+8(FP), CX                                  \
+    MOVQ CX, SI                                            \
+    XORQ DI, DI                                            \
+    SUBQ $8, SI                                            \
+                                                           \
+    TESTQ CX, CX                                           \
+    JEQ exitFn                                             \
+                                                           \
+    MOVQ $0x0000000000000001, R8                           \
+    VMOVQ R8, X0                                           \
+    MOVQ $0x0000000000000002, R8                           \
+    VPINSRQ $1, R8, X0, X0                                 \
+    MOVQ $0x0000000000000004, R8                           \
+    VMOVQ R8, X1                                           \
+    MOVQ $0x0000000000000008, R8                           \
+    VPINSRQ $1, R8, X1, X1                                 \
+    VINSERTI128 $1, X1, Y0, Y0                             \
+    MOVQ $0x0000000000000010, R8                           \
+    VMOVQ R8, X1                                           \
+    MOVQ $0x0000000000000020, R8                           \
+    VPINSRQ $1, R8, X1, X1                                 \
+    MOVQ $0x0000000000000040, R8                           \
+    VMOVQ R8, X2                                           \
+    MOVQ $0x0000000000000080, R8                           \
+    VPINSRQ $1, R8, X2, X2                                 \
+    VINSERTI128 $1, X2, Y1, Y1                             \
+                                                           \
+    VPXOR Y2, Y2, Y2                                       \
+    VPXOR Y3, Y3, Y3                                       \
+    VPXOR Y10, Y10, Y10                                    \
+                                                           \
+    CMPQ CX, $8                                            \
+    JLT tradLoopInit                                       \
+                                                           \
+vecLoop:                                                   \
+    vMovOp (AX), Y4                                        \
+    vMovOp 32(AX), Y5                                      \
+    VPBROADCASTB (R10), Y6                                 \
+    VMOVDQA Y6, Y7                                         \
+    VPAND Y6, Y0, Y6                                       \
+    VPAND Y7, Y1, Y7                                       \
+    VPCMPGTQ Y10, Y6, Y6                                   \
+    VPCMPGTQ Y10, Y7, Y7                                   \
+    VPBLENDVB Y6, Y4, Y10, Y4                              \
+    VPBLENDVB Y7, Y5, Y10, Y5                              \
+    vVecOp                                                 \
+    ADDQ dBatchSize, AX                                    \
+    ADDQ $1, R10                                           \
+    ADDQ $8, DI                                            \
+    CMPQ DI, SI                                            \ 
+    JLT vecLoop                                            \
+                                                           \
+tradLoopInit:                                              \
+    MOVB (R10), R9                                         \
+    VPXOR Y4, Y4, Y4                                       \
+tradLoop:                                                  \
+    tMovOp                                                 \
+    MOVQ $1, R11                                           \
+    ANDQ R9, R11                                           \
+    XORQ R12, R12                                          \
+    SUBQ R11, R12                                          \
+    VPBROADCASTB R12, Y6                                   \
+    VPBLENDVB Y6, Y4, Y10, Y4                              \
+    vTradOp                                                \
+    SHRQ $1, R9                                            \
+    ADDQ dBatchSize, AX                                    \
+    ADDQ $1, DI                                            \
+    CMPQ DI, CX                                            \
+    JLT tradLoop                                           \
+                                                           \
+    vReduce                                                \ 
+exitFn:                                                    \
+    RET
+
+#define I64SumWithValidityVecLoopOps \
+        VPADDQ Y4, Y2, Y2            \
+        VPADDQ Y5, Y3, Y3
+
+#define I64SumWithValidityTradLoopOps \
+        VPADDQ Y4, Y2, Y2
+
+#define I64SumWithValidityReduceOps \
+        VPADDQ Y2, Y3, Y0           \
+        VEXTRACTI128 $1, Y0, X1     \
+        VPADDQ X0, X1, X0           \
+        VPUNPCKHQDQ X1, X0, X1      \
+        VPADDQ X1, X0, X0           \
+        VMOVQ X0, (BX)
+
+#define F64SumWithValidityVecLoopOps \
+        VCMPPD $4, Y4, Y4, Y8        \
+        VCMPPD $4, Y5, Y5, Y9        \
+        VPBLENDVB Y8, Y10, Y4, Y4    \
+        VPBLENDVB Y9, Y10, Y5, Y5    \
+        VADDPD Y4, Y2, Y2            \
+        VADDPD Y5, Y3, Y2
+
+#define F64SumWithValidityTradLoopOps \
+        VCMPPD $4, Y4, Y4, Y8         \
+        VPBLENDVB Y8, Y10, Y4, Y4     \
+        VADDPD Y4, Y2, Y2
+
+#define F64SumWithValidityReduceOps \
+        VADDPD Y2, Y3, Y0           \
+        VEXTRACTF128 $1, Y0, X1     \
+        VADDPD X0, X1, X2           \
+        VUNPCKHPD X1, X2, X1        \
+        VADDPD X1, X2, X0           \
+        VMOVSD X0, (BX)
+
+#define I64TradMovOp VMOVQ (AX), Y4
+#define I32TradMovOp    \
+        VMOVD (AX), X4  \
+        VPMOVSXDQ X4, X4
+#define F64TradMovOp VMOVSD (AX), Y4
+#define F32TradMovOp VCVTSS2SD (AX), X4, X4
+
+// func sumI64WithValidity(src, dst []int64, validity []byte)
+TEXT ·sumI64WithValidity,NOSPLIT,$0-72
+    vSumOpWithValidity(VMOVDQU, I64TradMovOp, I64WithValiditySumVecLoopOps, I64WithValiditySumTradLoopOps, I64WithValiditySumReduceOps, $8, $64)
+
+// func sumI32WithValidity(src []int32, dst []int64, validity []byte)
+TEXT ·sumI32WithValidity,NOSPLIT,$0-72    
+    vSumOpWithValidity(VPMOVSXDQ, I32TradMovOp, I64WithValiditySumVecLoopOps, I64WithValiditySumTradLoopOps, I64WithValiditySumReduceOps, $4, $32)
+
+// func sumF64WithValidity(src, dst []float64, validity []byte)
+TEXT ·sumF64WithValidity,NOSPLIT,$0-72
+    vSumOpWithValidity(VMOVUPD, F64TradMovOp, F64WithValiditySumVecLoopOps, F64WithValiditySumTradLoopOps, F64WithValiditySumReduceOps, $8, $64)
+
+// func sumF32WithValidity(src []float32, dst []float64, validity []byte)
+TEXT ·sumF32WithValidity,NOSPLIT,$0-72
+    vSumOpWithValidity(VCVTPS2PD, F32TradMovOp, F64WithValiditySumVecLoopOps, F64WithValiditySumTradLoopOps, F64WithValiditySumReduceOps, $4, $32)
