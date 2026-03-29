@@ -175,7 +175,7 @@ TEXT ·sumF64(SB),NOSPLIT,$0-48
 TEXT ·sumF32(SB),NOSPLIT,$0-48
     vSumOp(F32SumVecLoopOps, F32SumTradLoopOps, F64SumReduceOps, $4, $32)
 
-#define vSumOpWithValidityIF64(vMovOp, tMovOp, vVecOp, vTradOp, vReduce, dSize, dBatchSize)   \
+#define vSumOpWithValidity(vMovOp, tMovOp, vVecOp, vTradOp, vReduce, dSize, dBatchSize)   \
     MOVQ srcAddr+0(FP), AX                                 \
     MOVQ dstAddr+24(FP), BX                                \
     MOVQ validityAddr+48(FP), R10                          \
@@ -214,8 +214,7 @@ TEXT ·sumF32(SB),NOSPLIT,$0-48
     JLT tradLoopInit                                       \
                                                            \
 vecLoop:                                                   \
-    vMovOp (AX), Y4                                        \
-    vMovOp 32(AX), Y5                                      \
+    vMovOp                                                 \
     VPBROADCASTB (R10), Y6                                 \
     VMOVDQA Y6, Y7                                         \
     VPAND Y6, Y0, Y6                                       \
@@ -232,6 +231,7 @@ vecLoop:                                                   \
     JLT vecLoop                                            \
                                                            \
 tradLoopInit:                                              \
+    XORQ R9, R9                                            \
     MOVB (R10), R9                                         \
     VPXOR Y4, Y4, Y4                                       \
 tradLoop:                                                  \
@@ -244,7 +244,7 @@ tradLoop:                                                  \
     VPBLENDVB Y6, Y4, Y10, Y4                              \
     vTradOp                                                \
     SHRQ $1, R9                                            \
-    ADDQ dBatchSize, AX                                    \
+    ADDQ dSize, AX                                         \
     ADDQ $1, DI                                            \
     CMPQ DI, CX                                            \
     JLT tradLoop                                           \
@@ -274,7 +274,7 @@ exitFn:                                                    \
         VPBLENDVB Y8, Y10, Y4, Y4    \
         VPBLENDVB Y9, Y10, Y5, Y5    \
         VADDPD Y4, Y2, Y2            \
-        VADDPD Y5, Y3, Y2
+        VADDPD Y5, Y3, Y3
 
 #define F64SumWithValidityTradLoopOps \
         VCMPPD $4, Y4, Y4, Y8         \
@@ -289,25 +289,41 @@ exitFn:                                                    \
         VADDPD X1, X2, X0           \
         VMOVSD X0, (BX)
 
-#define I64TradMovOp VMOVQ (AX), Y4
+#define I64VecMovOp        \
+        VMOVDQU (AX), Y4   \
+        VMOVDQU 32(AX), Y5
+#define I64TradMovOp VMOVQ (AX), X4
+
+#define I32VecMovOp          \
+        VPMOVSXDQ (AX), Y4   \
+        VPMOVSXDQ 16(AX), Y5
 #define I32TradMovOp    \
         VMOVD (AX), X4  \
         VPMOVSXDQ X4, X4
-#define F64TradMovOp VMOVSD (AX), Y4
+
+#define F64VecMovOp        \
+        VMOVUPD (AX), Y4   \
+        VMOVUPD 32(AX), Y5
+#define F64TradMovOp VMOVSD (AX), X4
+
+#define F32VecMovOp          \
+        VCVTPS2PD (AX), Y4   \
+        VCVTPS2PD 16(AX), Y5
 #define F32TradMovOp VCVTSS2SD (AX), X4, X4
 
+
 // func sumI64WithValidity(src, dst []int64, validity []byte)
-TEXT ·sumI64WithValidity,NOSPLIT,$0-72
-    vSumOpWithValidity(VMOVDQU, I64TradMovOp, I64WithValiditySumVecLoopOps, I64WithValiditySumTradLoopOps, I64WithValiditySumReduceOps, $8, $64)
+TEXT ·sumI64WithValidity(SB),NOSPLIT,$0-72
+    vSumOpWithValidity(I64VecMovOp, I64TradMovOp, I64SumWithValidityVecLoopOps, I64SumWithValidityTradLoopOps, I64SumWithValidityReduceOps, $8, $64)
 
 // func sumI32WithValidity(src []int32, dst []int64, validity []byte)
-TEXT ·sumI32WithValidity,NOSPLIT,$0-72    
-    vSumOpWithValidity(VPMOVSXDQ, I32TradMovOp, I64WithValiditySumVecLoopOps, I64WithValiditySumTradLoopOps, I64WithValiditySumReduceOps, $4, $32)
+TEXT ·sumI32WithValidity(SB),NOSPLIT,$0-72    
+    vSumOpWithValidity(I32VecMovOp, I32TradMovOp, I64SumWithValidityVecLoopOps, I64SumWithValidityTradLoopOps, I64SumWithValidityReduceOps, $4, $32)
 
 // func sumF64WithValidity(src, dst []float64, validity []byte)
-TEXT ·sumF64WithValidity,NOSPLIT,$0-72
-    vSumOpWithValidity(VMOVUPD, F64TradMovOp, F64WithValiditySumVecLoopOps, F64WithValiditySumTradLoopOps, F64WithValiditySumReduceOps, $8, $64)
+TEXT ·sumF64WithValidity(SB),NOSPLIT,$0-72
+    vSumOpWithValidity(F64VecMovOp, F64TradMovOp, F64SumWithValidityVecLoopOps, F64SumWithValidityTradLoopOps, F64SumWithValidityReduceOps, $8, $64)
 
 // func sumF32WithValidity(src []float32, dst []float64, validity []byte)
-TEXT ·sumF32WithValidity,NOSPLIT,$0-72
-    vSumOpWithValidity(VCVTPS2PD, F32TradMovOp, F64WithValiditySumVecLoopOps, F64WithValiditySumTradLoopOps, F64WithValiditySumReduceOps, $4, $32)
+TEXT ·sumF32WithValidity(SB),NOSPLIT,$0-72
+    vSumOpWithValidity(F32VecMovOp, F32TradMovOp, F64SumWithValidityVecLoopOps, F64SumWithValidityTradLoopOps, F64SumWithValidityReduceOps, $4, $32)
