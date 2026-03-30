@@ -12,7 +12,7 @@ func BitWiseAndWithPopCount(src1, src2, dst []byte) uint64
 // OR of their bytes in `dst`, and returns the final population count of `dst`.
 //
 //go:noescape
-func BitWiseORWithPopCount(src1, src2, dst []byte) uint64
+func BitWiseOrWithPopCount(src1, src2, dst []byte) uint64
 
 // PopCount returns the population count of `src`.
 //
