@@ -28,16 +28,3 @@ func (a *FixedSizeArray) VBM() *ValidityBitmap { return a.V }
 func (a *FixedSizeArray) Data() []byte { return a.D }
 
 func (a *FixedSizeArray) DataOffsets() []byte { return nil }
-
-// come back to this function
-func (a *FixedSizeArray) IsConsistent() bool {
-	// offset out of bounds
-	if a.O >= a.L {
-		return false
-	}
-	// array has nulls, but nil VBM pointer
-	if a.N > 0 && a.V == nil {
-		return false
-	}
-	return true
-}

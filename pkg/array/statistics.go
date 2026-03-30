@@ -37,12 +37,6 @@ const (
 // types that an array can be, CachedStatistics track data for all type arrays;
 // this will mean that an Int64T array will track IsASCII in its statistics, even
 // though it's meaningless.
-//
-// While CachedStatistics could instead be defined as an interface, with implementation
-// structures like Int64TStatistics and StringTStatistics, this would require "getter" and
-// "setter" functions for every possible statistic, such that the benefit of an interface isn't
-// that meaningful at that point. Given the relatively small size of the
-// struct, a single implementation that all types can use will be fine for now.
 type CachedStatistics struct {
 	MaxI64   int64   // bit 0 (defined on integer arrays)
 	MaxF64   float64 // bit 0 (defined on floating-point arrays)
