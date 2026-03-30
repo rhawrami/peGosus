@@ -61,84 +61,84 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func cmpGtI64(src []int64, dst []byte, lit int64)
+// func GtI64(src []int64, dst []byte, lit int64)
 // w1: $0x4ee034a9 => 'cmgt.2d v9, v5, v0'
 // w2: $0x4ee034ca => 'cmgt.2d v10, v6, v0'
 // w3: $0x4ee034eb => 'cmgt.2d v11, v7, v0'
 // w4: $0x4ee0350c => 'cmgt.2d v12, v8, v0'
-TEXT ·cmpGtI64(SB),NOSPLIT,$0-56
+TEXT ·GtI64(SB),NOSPLIT,$0-56
     vCompareIF64Lit($0x4ee034a9, $0x4ee034ca, $0x4ee034eb, $0x4ee0350c)
 
-// func cmpLtI64(src []int64, dst []byte, lit int64)
+// func LtI64(src []int64, dst []byte, lit int64)
 // w1: $0x4ee53409 => 'cmlt.2d v9, v5, v0'
 // w2: $0x4ee6340a => 'cmlt.2d v10, v6, v0'
 // w3: $0x4ee7340b => 'cmlt.2d v11, v7, v0'
 // w4: $0x4ee8340c => 'cmlt.2d v12, v8, v0'
-TEXT ·cmpLtI64(SB),NOSPLIT,$0-56
+TEXT ·LtI64(SB),NOSPLIT,$0-56
     vCompareIF64Lit($0x4ee53409, $0x4ee6340a, $0x4ee7340b, $0x4ee8340c)
 
-// func cmpGeI64(src []int64, dst []byte, lit int64)
+// func GeI64(src []int64, dst []byte, lit int64)
 // w1: $0x4ee03ca9 => 'cmge.2d v9, v5, v0'
 // w2: $0x4ee03cca => 'cmge.2d v10, v6, v0'
 // w3: $0x4ee03ceb => 'cmge.2d v11, v7, v0'
 // w4: $0x4ee03d0c => 'cmge.2d v12, v8, v0'
-TEXT ·cmpGeI64(SB),NOSPLIT,$0-56
+TEXT ·GeI64(SB),NOSPLIT,$0-56
     vCompareIF64Lit($0x4ee03ca9, $0x4ee03cca, $0x4ee03ceb, $0x4ee03d0c)
 
-// func cmpLeI64(src []int64, dst []byte, lit int64)
+// func LeI64(src []int64, dst []byte, lit int64)
 // w1: $0x4ee53c09 => 'cmle.2d v9, v5, v0'
 // w2: $0x4ee63c0a => 'cmle.2d v10, v6, v0'
 // w3: $0x4ee73c0b => 'cmle.2d v11, v7, v0'
 // w4: $0x4ee83c0c => 'cmle.2d v12, v8, v0'
-TEXT ·cmpLeI64(SB),NOSPLIT,$0-56
+TEXT ·LeI64(SB),NOSPLIT,$0-56
     vCompareIF64Lit($0x4ee53c09, $0x4ee63c0a, $0x4ee73c0b, $0x4ee83c0c)
 
-// func cmpEqI64(src []int64, dst []byte, lit int64)
+// func EqI64(src []int64, dst []byte, lit int64)
 // w1: $0x6ee08ca9 => 'cmeq.2d v9, v5, v0'
 // w2: $0x6ee08cca => 'cmeq.2d v10, v6, v0'
 // w3: $0x6ee08ceb => 'cmeq.2d v11, v7, v0'
 // w4: $0x6ee08d0c => 'cmeq.2d v12, v8, v0'
-TEXT ·cmpEqI64(SB),NOSPLIT,$0-56
+TEXT ·EqI64(SB),NOSPLIT,$0-56
     vCompareIF64Lit($0x6ee08ca9, $0x6ee08cca, $0x6ee08ceb, $0x6ee08d0c)
 
-// func cmpGtF64(src []float64, dst []byte, lit float64)
+// func GtF64(src []float64, dst []byte, lit float64)
 // w1: $0x6ee0e4a9 => 'fcmgt.2d v9, v5, v0'
 // w2: $0x6ee0e4ca => 'fcmgt.2d v10, v6, v0'
 // w3: $0x6ee0e4eb => 'fcmgt.2d v11, v7, v0'
 // w4: $0x6ee0e50c => 'fcmgt.2d v12, v8, v0'
-TEXT ·cmpGtF64(SB),NOSPLIT,$0-56
+TEXT ·GtF64(SB),NOSPLIT,$0-56
     vCompareIF64Lit($0x6ee0e4a9, $0x6ee0e4ca, $0x6ee0e4eb, $0x6ee0e50c)
 
-// func cmpLtF64(src []float64, dst []byte, lit float64)
+// func LtF64(src []float64, dst []byte, lit float64)
 // w1: $0x6ee5e409 => 'fcmlt.2d v9, v5, v0'
 // w2: $0x6ee6e40a => 'fcmlt.2d v10, v6, v0'
 // w3: $0x6ee7e40b => 'fcmlt.2d v11, v7, v0'
 // w4: $0x6ee8e40c => 'fcmlt.2d v12, v8, v0'
-TEXT ·cmpLtF64(SB),NOSPLIT,$0-56
+TEXT ·LtF64(SB),NOSPLIT,$0-56
     vCompareIF64Lit($0x6ee5e409, $0x6ee6e40a, $0x6ee7e40b, $0x6ee8e40c)
 
-// func cmpGeF64(src []float64, dst []byte, lit float64)
+// func GeF64(src []float64, dst []byte, lit float64)
 // w1: $0x6e60e4a9 => 'fcmge.2d v9, v5, v0'
 // w2: $0x6e60e4ca => 'fcmge.2d v10, v6, v0'
 // w3: $0x6e60e4eb => 'fcmge.2d v11, v7, v0'
 // w4: $0x6e60e50c => 'fcmge.2d v12, v8, v0'
-TEXT ·cmpGeF64(SB),NOSPLIT,$0-56
+TEXT ·GeF64(SB),NOSPLIT,$0-56
     vCompareIF64Lit($0x6e60e4a9, $0x6e60e4ca, $0x6e60e4eb, $0x6e60e50c)
 
-// func cmpLeF64(src []float64, dst []byte, lit float64)
+// func LeF64(src []float64, dst []byte, lit float64)
 // w1: $0x6e65e409 => 'fcmle.2d v9, v5, v0'
 // w2: $0x6e66e40a => 'fcmle.2d v10, v6, v0'
 // w3: $0x6e67e40b => 'fcmle.2d v11, v7, v0'
 // w4: $0x6e68e40c => 'fcmle.2d v12, v8, v0'
-TEXT ·cmpLeF64(SB),NOSPLIT,$0-56
+TEXT ·LeF64(SB),NOSPLIT,$0-56
     vCompareIF64Lit($0x6e65e409, $0x6e66e40a, $0x6e67e40b, $0x6e68e40c)
 
-// func cmpEqF64(src []float64, dst []byte, lit float64)
+// func EqF64(src []float64, dst []byte, lit float64)
 // w1: $0x4e60e4a9 => 'fcmeq.2d v9, v5, v0'
 // w2: $0x4e60e4ca => 'fcmeq.2d v10, v6, v0'
 // w3: $0x4e60e4eb => 'fcmeq.2d v11, v7, v0'
 // w4: $0x4e60e50c => 'fcmeq.2d v12, v8, v0'
-TEXT ·cmpEqF64(SB),NOSPLIT,$0-56
+TEXT ·EqF64(SB),NOSPLIT,$0-56
     vCompareIF64Lit($0x4e60e4a9, $0x4e60e4ca, $0x4e60e4eb, $0x4e60e50c)
 
 #define vNotEqIF64Lit(w1, w2, w3, w4, w5, w6, w7, w8)      \
@@ -205,7 +205,7 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func cmpNeqI64(src []int64, dst []byte, lit int64)
+// func NeqI64(src []int64, dst []byte, lit int64)
 // w1: $0x6ee08ca9 => 'cmle.2d v9, v5, v0'
 // w2: $0x6ee08cca => 'cmle.2d v10, v6, v0'
 // w3: $0x6ee08ceb => 'cmle.2d v11, v7, v0'
@@ -214,10 +214,10 @@ exitFn:                                                    \
 // w6: $0x6e20594e => 'not.16b v14, v10'
 // w7: $0x6e20596f => 'not.16b v15, v11'
 // w8: $0x6e205990 => 'not.16b v16, v12'
-TEXT ·cmpNeqI64(SB),NOSPLIT,$0-56
+TEXT ·NeqI64(SB),NOSPLIT,$0-56
     vNotEqIF64Lit($0x6ee08ca9, $0x6ee08cca, $0x6ee08ceb, $0x6ee08d0c, $0x6e20592d, $0x6e20594e, $0x6e20596f, $0x6e205990)
 
-// func cmpNeqF64(src []float64, dst []byte, lit float64)
+// func NeqF64(src []float64, dst []byte, lit float64)
 // w1: $0x4e60e4a9 => 'fcmeq.2d v9, v5, v0'
 // w2: $0x4e60e4ca => 'fcmeq.2d v10, v6, v0'
 // w3: $0x4e60e4eb => 'fcmeq.2d v11, v7, v0'
@@ -226,7 +226,7 @@ TEXT ·cmpNeqI64(SB),NOSPLIT,$0-56
 // w6: $0x6e20594e => 'not.16b v14, v10'
 // w7: $0x6e20596f => 'not.16b v15, v11'
 // w8: $0x6e205990 => 'not.16b v16, v12'
-TEXT ·cmpNeqF64(SB),NOSPLIT,$0-56
+TEXT ·NeqF64(SB),NOSPLIT,$0-56
     vNotEqIF64Lit($0x4e60e4a9, $0x4e60e4ca, $0x4e60e4eb, $0x4e60e50c,  $0x6e20592d, $0x6e20594e, $0x6e20596f, $0x6e205990)
 
 #define vCompareBetIF64Lit(w1, w2, w3, w4, w5, w6, w7, w8, vBOp) \
@@ -301,7 +301,7 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func cmpBetI64(src []int64, dst []byte, min int64, max int64)
+// func BetI64(src []int64, dst []byte, min int64, max int64)
 // w1: $0x4ee03cca => 'cmge.2d v10, v6, v0'
 // w2: $0x4ee03ceb => 'cmge.2d v11, v7, v0'
 // w3: $0x4ee03d0c => 'cmge.2d v12, v8, v0'
@@ -310,10 +310,10 @@ exitFn:                                                    \
 // w6: $0x4ee73c2f => 'cmle.2d v15, v7, v1'
 // w7: $0x4ee83c30 => 'cmle.2d v16, v8, v1'
 // w8: $0x4ee93c31 => 'cmle.2d v17, v9, v1'
-TEXT ·cmpBetI64(SB),NOSPLIT,$0-64
+TEXT ·BetI64(SB),NOSPLIT,$0-64
     vCompareBetIF64Lit($0x4ee03cca, $0x4ee03ceb, $0x4ee03d0c, $0x4ee03d2d, $0x4ee63c2e, $0x4ee73c2f, $0x4ee83c30, $0x4ee93c31, VAND)
 
-// func cmpNBetI64(src []int64, dst []byte, min int64, max int64)
+// func NBetI64(src []int64, dst []byte, min int64, max int64)
 // w1: $0x4ee6340a => 'cmlt.2d v10, v6, v0'
 // w2: $0x4ee7340b => 'cmlt.2d v11, v7, v0'
 // w3: $0x4ee8340c => 'cmlt.2d v12, v8, v0'
@@ -322,10 +322,10 @@ TEXT ·cmpBetI64(SB),NOSPLIT,$0-64
 // w6: $0x4ee134ef => 'cmgt.2d v15, v7, v1'
 // w7: $0x4ee13510 => 'cmgt.2d v16, v8, v1'
 // w8: $0x4ee13531 => 'cmgt.2d v17, v9, v1'
-TEXT ·cmpNBetI64(SB),NOSPLIT,$0-64
+TEXT ·NBetI64(SB),NOSPLIT,$0-64
     vCompareBetIF64Lit($0x4ee6340a, $0x4ee7340b, $0x4ee8340c, $0x4ee9340d, $0x4ee134ce, $0x4ee134ef, $0x4ee13510, $0x4ee13531, VORR)
 
-// func cmpBetF64(src []int64, dst []byte, min int64, max int64)
+// func BetF64(src []int64, dst []byte, min int64, max int64)
 // w1: $0x6e60e4ca => 'fcmge.2d v10, v6, v0'
 // w2: $0x6e60e4eb => 'fcmge.2d v11, v7, v0'
 // w3: $0x6e60e50c => 'fcmge.2d v12, v8, v0'
@@ -334,10 +334,10 @@ TEXT ·cmpNBetI64(SB),NOSPLIT,$0-64
 // w6: $0x6e67e42f => 'fcmle.2d v15, v7, v1'
 // w7: $0x6e68e430 => 'fcmle.2d v16, v8, v1'
 // w8: $0x6e69e431 => 'fcmle.2d v17, v9, v1'
-TEXT ·cmpBetF64(SB),NOSPLIT,$0-64
+TEXT ·BetF64(SB),NOSPLIT,$0-64
     vCompareBetIF64Lit($0x6e60e4ca, $0x6e60e4eb, $0x6e60e50c, $0x6e60e52d, $0x6e66e42e, $0x6e67e42f, $0x6e68e430, $0x6e69e431, VAND)
 
-// func cmpNBetF64(src []float64, dst []byte, min float64, max float64)
+// func NBetF64(src []float64, dst []byte, min float64, max float64)
 // w1: $0x6ee6e40a => 'fcmlt.2d v10, v6, v0'
 // w2: $0x6ee7e40b => 'fcmlt.2d v11, v7, v0'
 // w3: $0x6ee8e40c => 'fcmlt.2d v12, v8, v0'
@@ -346,5 +346,5 @@ TEXT ·cmpBetF64(SB),NOSPLIT,$0-64
 // w6: $0x6ee1e4ef => 'fcmgt.2d v15, v7, v1'
 // w7: $0x6ee1e510 => 'fcmgt.2d v16, v8, v1'
 // w8: $0x6ee1e531 => 'fcmgt.2d v17, v9, v1'
-TEXT ·cmpNBetF64(SB),NOSPLIT,$0-64
+TEXT ·NBetF64(SB),NOSPLIT,$0-64
     vCompareBetIF64Lit($0x6ee6e40a, $0x6ee7e40b, $0x6ee8e40c, $0x6ee9e40d, $0x6ee1e4ce, $0x6ee1e4ef, $0x6ee1e510, $0x6ee1e531, VORR)

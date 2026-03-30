@@ -36,22 +36,22 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET     
 
-// func broadcastB(dst []byte, lit byte)
-TEXT ·broadcastB(SB),NOSPLIT,$0-25
+// func BroadcastU8(dst []byte, lit byte)
+TEXT ·BroadcastU8(SB),NOSPLIT,$0-25
     vBCast(MOVB, $1, $64, B16)
 
-// func broadcastI64(dst []int64, lit int64)
-TEXT ·broadcastI64(SB),NOSPLIT,$0-32
+// func BroadcastI64(dst []int64, lit int64)
+TEXT ·BroadcastI64(SB),NOSPLIT,$0-32
     vBCast(MOVD, $8, $8, D2)
 
-// func broadcastI32(dst []int32, lit int32)
-TEXT ·broadcastI32(SB),NOSPLIT,$0-28
+// func BroadcastI32(dst []int32, lit int32)
+TEXT ·BroadcastI32(SB),NOSPLIT,$0-28
     vBCast(MOVW, $4, $16, S4)
 
-// func broadcastF64(dst []float64, lit float64)
-TEXT ·broadcastF64(SB),NOSPLIT,$0-32
+// func BroadcastF64(dst []float64, lit float64)
+TEXT ·BroadcastF64(SB),NOSPLIT,$0-32
     vBCast(MOVD, $8, $8, D2)
 
-// func broadcastF32(dst []float32, lit float32)
-TEXT ·broadcastF32(SB),NOSPLIT,$0-28
+// func BroadcastF32(dst []float32, lit float32)
+TEXT ·BroadcastF32(SB),NOSPLIT,$0-28
     vBCast(MOVW, $4, $16, S4)

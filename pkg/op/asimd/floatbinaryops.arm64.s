@@ -41,68 +41,68 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func addF64Lit(src, dst []float64, lit float64)
+// func AddF64Lit(src, dst []float64, lit float64)
 // w1: $0x4e60d425 => 'fadd.2d	v5, v1, v0'
 // w2: $0x4e60d446 => 'fadd.2d	v6, v2, v0'
 // w3: $0x4e60d467 => 'fadd.2d	v7, v3, v0'
 // w4: $0x4e60d488 => 'fadd.2d	v8, v4, v0'
-TEXT ·addF64Lit(SB),NOSPLIT,$0-56
+TEXT ·AddF64Lit(SB),NOSPLIT,$0-56
     vOpLitFloat($0x4e60d425, $0x4e60d446, $0x4e60d467, $0x4e60d488, MOVD, $8, $8, D2, D)
 
-// func addF32Lit(src, dst []float32, lit float32)
+// func AddF32Lit(src, dst []float32, lit float32)
 // w1: $0x4e20d425 => 'fadd.4s	v5, v1, v0'
 // w2: $0x4e20d446 => 'fadd.4s	v6, v2, v0'
 // w3: $0x4e20d467 => 'fadd.4s	v7, v3, v0'
 // w4: $0x4e20d488 => 'fadd.4s	v8, v4, v0'
-TEXT ·addF32Lit(SB),NOSPLIT,$0-52
+TEXT ·AddF32Lit(SB),NOSPLIT,$0-52
     vOpLitFloat($0x4e20d425, $0x4e20d446, $0x4e20d467, $0x4e20d488, MOVW, $4, $16, S4, S)
 
-// func subF64Lit(src, dst []float64, lit float64)
+// func SubF64Lit(src, dst []float64, lit float64)
 // w1: $0x4ee0d425 => 'fsub.2d	v5, v1, v0'
 // w2: $0x4ee0d446 => 'fsub.2d	v6, v2, v0'
 // w3: $0x4ee0d467 => 'fsub.2d	v7, v3, v0'
 // w4: $0x4ee0d488 => 'fsub.2d	v8, v4, v0'
-TEXT ·subF64Lit(SB),NOSPLIT,$0-56
+TEXT ·SubF64Lit(SB),NOSPLIT,$0-56
     vOpLitFloat($0x4ee0d425, $0x4ee0d446, $0x4ee0d467, $0x4ee0d488, MOVD, $8, $8, D2, D)
 
-// func subF32Lit(src, dst []float32, lit float32)
+// func SubF32Lit(src, dst []float32, lit float32)
 // w1: $0x4ea0d425 => 'fsub.4s	v5, v1, v0'
 // w2: $0x4ea0d446 => 'fsub.4s	v6, v2, v0'
 // w3: $0x4ea0d467 => 'fsub.4s	v7, v3, v0'
 // w4: $0x4ea0d488 => 'fsub.4s	v8, v4, v0'
-TEXT ·subF32Lit(SB),NOSPLIT,$0-52
+TEXT ·SubF32Lit(SB),NOSPLIT,$0-52
     vOpLitFloat($0x4ea0d425, $0x4ea0d446, $0x4ea0d467, $0x4ea0d488, MOVW, $4, $16, S4, S)
 
-// func mulF64Lit(src, dst []float64, lit float64)
+// func MulF64Lit(src, dst []float64, lit float64)
 // w1: $0x6e60dc25 => 'fmul.2d	v5, v1, v0'
 // w2: $0x6e60dc46 => 'fmul.2d	v6, v2, v0'
 // w3: $0x6e60dc67 => 'fmul.2d	v7, v3, v0'
 // w4: $0x6e60dc88 => 'fmul.2d	v8, v4, v0'
-TEXT ·mulF64Lit(SB),NOSPLIT,$0-56
+TEXT ·MulF64Lit(SB),NOSPLIT,$0-56
     vOpLitFloat($0x6e60dc25, $0x6e60dc46, $0x6e60dc67, $0x6e60dc88, MOVD, $8, $8, D2, D)
 
-// func mulF32Lit(src, dst []float32, lit float32)
+// func MulF32Lit(src, dst []float32, lit float32)
 // w1: $0x6e20dc25 => 'fmul.4s	v5, v1, v0'
 // w2: $0x6e20dc46 => 'fmul.4s	v6, v2, v0'
 // w3: $0x6e20dc67 => 'fmul.4s	v7, v3, v0'
 // w4: $0x6e20dc88 => 'fmul.4s	v8, v4, v0'
-TEXT ·mulF32Lit(SB),NOSPLIT,$0-52
+TEXT ·MulF32Lit(SB),NOSPLIT,$0-52
     vOpLitFloat($0x6e20dc25, $0x6e20dc46, $0x6e20dc67, $0x6e20dc88, MOVW, $4, $16, S4, S)
 
-// func divF64Lit(src, dst []float64, lit float64)
+// func DivF64Lit(src, dst []float64, lit float64)
 // w1: $0x6e60fc25 => 'fdiv.2d	v5, v1, v0'
 // w2: $0x6e60fc46 => 'fdiv.2d	v6, v2, v0'
 // w3: $0x6e60fc67 => 'fdiv.2d	v7, v3, v0'
 // w4: $0x6e60fc88 => 'fdiv.2d	v8, v4, v0'
-TEXT ·divF64Lit(SB),NOSPLIT,$0-56
+TEXT ·DivF64Lit(SB),NOSPLIT,$0-56
     vOpLitFloat($0x6e60fc25, $0x6e60fc46, $0x6e60fc67, $0x6e60fc88, MOVD, $8, $8, D2, D)
 
-// func divF32Lit(src, dst []float32, lit float32)
+// func DivF32Lit(src, dst []float32, lit float32)
 // w1: $0x6e20fc25 => 'fdiv.4s	v5, v1, v0'
 // w2: $0x6e20fc46 => 'fdiv.4s	v6, v2, v0'
 // w3: $0x6e20fc67 => 'fdiv.4s	v7, v3, v0'
 // w4: $0x6e20fc88 => 'fdiv.4s	v8, v4, v0'
-TEXT ·divF32Lit(SB),NOSPLIT,$0-52
+TEXT ·DivF32Lit(SB),NOSPLIT,$0-52
     vOpLitFloat($0x6e20fc25, $0x6e20fc46, $0x6e20fc67, $0x6e20fc88, MOVW, $4, $16, S4, S)
 
 #define vOpVecFloat(w1, w2, w3, w4, dSize, chnkSize, spec, spec1) \
@@ -146,66 +146,66 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func addF64Vec(src1, src2, dst []float64)
+// func AddF64Vec(src1, src2, dst []float64)
 // w1: $0x4e65d429 => 'fadd.2d v9, v1, v5'
 // w2: $0x4e66d44a => 'fadd.2d v10, v2, v6'
 // w3: $0x4e67d46b => 'fadd.2d v11, v3, v7'
 // w4: $0x4e68d48c => 'fadd.2d v12, v4, v8'
-TEXT ·addF64Vec(SB),NOSPLIT,$0-72
+TEXT ·AddF64Vec(SB),NOSPLIT,$0-72
     vOpVecFloat($0x4e65d429, $0x4e66d44a, $0x4e67d46b, $0x4e68d48c, $8, $8, D2, D)
 
-// func addF32Vec(src1, src2, dst []float32)
+// func AddF32Vec(src1, src2, dst []float32)
 // w1: $0x4e25d429 => 'fadd.4s v9, v1, v5'
 // w2: $0x4e26d44a => 'fadd.4s v10, v2, v6'
 // w3: $0x4e27d46b => 'fadd.4s v11, v3, v7'
 // w4: $0x4e28d48c => 'fadd.4s v12, v4, v8'
-TEXT ·addF32Vec(SB),NOSPLIT,$0-72
+TEXT ·AddF32Vec(SB),NOSPLIT,$0-72
     vOpVecFloat($0x4e25d429, $0x4e26d44a, $0x4e27d46b, $0x4e28d48c, $4, $16, S4, S)
 
-// func subF64Vec(src1, src2, dst []float64)
+// func SubF64Vec(src1, src2, dst []float64)
 // w1: $0x4ee5d429 => 'fsub.2d v9, v1, v5'
 // w2: $0x4ee6d44a => 'fsub.2d v10, v2, v6'
 // w3: $0x4ee7d46b => 'fsub.2d v11, v3, v7'
 // w4: $0x4ee8d48c => 'fsub.2d v12, v4, v8'
-TEXT ·subF64Vec(SB),NOSPLIT,$0-72
+TEXT ·SubF64Vec(SB),NOSPLIT,$0-72
     vOpVecFloat($0x4ee5d429, $0x4ee6d44a, $0x4ee7d46b, $0x4ee8d48c, $8, $8, D2, D)
 
-// func subF32Vec(src1, src2, dst []float32)
+// func SubF32Vec(src1, src2, dst []float32)
 // w1: $0x4ea5d429 => 'fsub.4s v9, v1, v5'
 // w2: $0x4ea6d44a => 'fsub.4s v10, v2, v6'
 // w3: $0x4ea7d46b => 'fsub.4s v11, v3, v7'
 // w4: $0x4ea8d48c => 'fsub.4s v12, v4, v8'
-TEXT ·subF32Vec(SB),NOSPLIT,$0-72
+TEXT ·SubF32Vec(SB),NOSPLIT,$0-72
     vOpVecFloat($0x4ea5d429, $0x4ea6d44a, $0x4ea7d46b, $0x4ea8d48c, $4, $16, S4, S)
 
-// func mulF64Vec(src1, src2, dst []float64)
+// func MulF64Vec(src1, src2, dst []float64)
 // w1: $0x6e65dc29 => 'fmul.2d v9, v1, v5'
 // w2: $0x6e66dc4a => 'fmul.2d v10, v2, v6'
 // w3: $0x6e67dc6b => 'fmul.2d v11, v3, v7'
 // w4: $0x6e68dc8c => 'fmul.2d v12, v4, v8'
-TEXT ·mulF64Vec(SB),NOSPLIT,$0-72
+TEXT ·MulF64Vec(SB),NOSPLIT,$0-72
     vOpVecFloat($0x6e65dc29, $0x6e66dc4a, $0x6e67dc6b, $0x6e68dc8c, $8, $8, D2, D)
 
-// func mulF32Vec(src1, src2, dst []float32)
+// func MulF32Vec(src1, src2, dst []float32)
 // w1: $0x6e25dc29 => 'fmul.4s v9, v1, v5'
 // w2: $0x6e26dc4a => 'fmul.4s v10, v2, v6'
 // w3: $0x6e27dc6b => 'fmul.4s v11, v3, v7'
 // w4: $0x6e28dc8c => 'fmul.4s v12, v4, v8'
-TEXT ·mulF32Vec(SB),NOSPLIT,$0-72
+TEXT ·MulF32Vec(SB),NOSPLIT,$0-72
     vOpVecFloat($0x6e25dc29, $0x6e26dc4a, $0x6e27dc6b, $0x6e28dc8c, $4, $16, S4, S)
 
-// func divF64Vec(src1, src2, dst []float64)
+// func DivF64Vec(src1, src2, dst []float64)
 // w1: $0x6e65fc29 => 'fdiv.2d v9, v1, v5'
 // w2: $0x6e66fc4a => 'fdiv.2d v10, v2, v6'
 // w3: $0x6e67fc6b => 'fdiv.2d v11, v3, v7'
 // w4: $0x6e68fc8c => 'fdiv.2d v12, v4, v8'
-TEXT ·divF64Vec(SB),NOSPLIT,$0-72
+TEXT ·DivF64Vec(SB),NOSPLIT,$0-72
     vOpVecFloat($0x6e65fc29, $0x6e66fc4a, $0x6e67fc6b, $0x6e68fc8c, $8, $8, D2, D)
 
-// func divF32Vec(src1, src2, dst []float32)
+// func DivF32Vec(src1, src2, dst []float32)
 // w1: $0x6e25fc29 => 'fdiv.4s v9, v1, v5'
 // w2: $0x6e26fc4a => 'fdiv.4s v10, v2, v6'
 // w3: $0x6e27fc6b => 'fdiv.4s v11, v3, v7'
 // w4: $0x6e28fc8c => 'fdiv.4s v12, v4, v8'
-TEXT ·divF32Vec(SB),NOSPLIT,$0-72
+TEXT ·DivF32Vec(SB),NOSPLIT,$0-72
     vOpVecFloat($0x6e25fc29, $0x6e26fc4a, $0x6e27fc6b, $0x6e28fc8c, $4, $16, S4, S)

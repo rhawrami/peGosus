@@ -2,50 +2,98 @@
 
 package op
 
+// GtI64 checks if `src` elements are greater than `lit`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpGtI64(src []int64, dst []byte, lit int64)
+func GtI64(src []int64, dst []byte, lit int64)
 
+// LtI64 checks if `src` elements are less than `lit`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpLtI64(src []int64, dst []byte, lit int64)
+func LtI64(src []int64, dst []byte, lit int64)
 
+// GeI64 checks if `src` elements are greater than or equal to `lit`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpGeI64(src []int64, dst []byte, lit int64)
+func GeI64(src []int64, dst []byte, lit int64)
 
+// LeI64 checks if `src` elements are less than or equal to `lit`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpLeI64(src []int64, dst []byte, lit int64)
+func LeI64(src []int64, dst []byte, lit int64)
 
+// EqI64 checks if `src` elements are equal to `lit`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpEqI64(src []int64, dst []byte, lit int64)
+func EqI64(src []int64, dst []byte, lit int64)
 
+// GtF64 checks if `src` elements are greater than `lit`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpGtF64(src []float64, dst []byte, lit float64)
+func GtF64(src []float64, dst []byte, lit float64)
 
+// LtF64 checks if `src` elements are less than `lit`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpLtF64(src []float64, dst []byte, lit float64)
+func LtF64(src []float64, dst []byte, lit float64)
 
+// GeF64 checks if `src` elements are greater than or equal to `lit`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpGeF64(src []float64, dst []byte, lit float64)
+func GeF64(src []float64, dst []byte, lit float64)
 
+// LeF64 checks if `src` elements are less than or equal to `lit`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpLeF64(src []float64, dst []byte, lit float64)
+func LeF64(src []float64, dst []byte, lit float64)
 
+// EqF64 checks if `src` elements are equal to `lit`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpEqF64(src []float64, dst []byte, lit float64)
+func EqF64(src []float64, dst []byte, lit float64)
 
+// NeqI64 checks if `src` elements are not equal to `lit`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpNeqI64(src []int64, dst []byte, lit int64)
+func NeqI64(src []int64, dst []byte, lit int64)
 
+// NeqF64 checks if `src` elements are equal to `lit`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpNeqF64(src []float64, dst []byte, lit float64)
+func NeqF64(src []float64, dst []byte, lit float64)
 
+// BetI64 checks if `src` elements are between `min` and `max`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpBetI64(src []int64, dst []byte, min int64, max int64)
+func BetI64(src []int64, dst []byte, min int64, max int64)
 
+// NBetI64 checks if `src` elements are not between `min` and `max`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpNBetI64(src []int64, dst []byte, min int64, max int64)
+func NBetI64(src []int64, dst []byte, min int64, max int64)
 
+// BetF64 checks if `src` elements are between `min` and `max`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpBetF64(src []float64, dst []byte, min float64, max float64)
+func BetF64(src []float64, dst []byte, min float64, max float64)
 
+// NBetF64 checks if `src` elements are not between `min` and `max`, and places
+// the bitpacked results in `dst` (bit is set for elements passing condition).
+//
 //go:noescape
-func cmpNBetF64(src []float64, dst []byte, min float64, max float64)
+func NBetF64(src []float64, dst []byte, min float64, max float64)

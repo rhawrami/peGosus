@@ -2,32 +2,52 @@
 
 package op
 
+// SqrtF64 takes the square root of elements in `src`, and places the result in `dst`.
+//
 //go:noescape
-func sqrtF64(src, dst []float64)
+func SqrtF64(src, dst []float64)
 
+// SqF64 takes the square of elements in `src`, and places the result in `dst`.
+//
 //go:noescape
-func sqrtF32(src, dst []float32)
+func SqF64(src, dst []float64)
 
+// AbsF64 takes the absolute value of elements in `src`, and places the result in `dst`.
+//
 //go:noescape
-func sqF64(src, dst []float64)
+func AbsF64(src, dst []float64)
 
+// NegF64 negates elements in `src`, and places the result in `dst`.
+//
 //go:noescape
-func sqF32(src, dst []float32)
+func NegF64(src, dst []float64)
 
+// RecipF64 takes the reciprocal elements in `src`, and places the result in `dst`.
+//
 //go:noescape
-func absF64(src, dst []float64)
+func RecipF64(src, dst []float64)
 
+// SqrtF32 takes the square root of elements in `src`, and places the result in `dst`.
+//
 //go:noescape
-func absF32(src, dst []float32)
+func SqrtF32(src, dst []float32)
 
+// SqF32 takes the square of elements in `src`, and places the result in `dst`.
+//
 //go:noescape
-func negF64(src, dst []float64)
+func SqF32(src, dst []float32)
 
+// AbsF32 takes the absolute value of elements in `src`, and places the result in `dst`.
+//
 //go:noescape
-func negF32(src, dst []float32)
+func AbsF32(src, dst []float32)
 
+// NegF32 negates elements in `src`, and places the result in `dst`.
+//
 //go:noescape
-func recipF64(src, dst []float64)
+func NegF32(src, dst []float32)
 
+// RecipF32 takes the reciprocal elements in `src`, and places the result in `dst`.
+//
 //go:noescape
-func recipF32(src, dst []float32)
+func RecipF32(src, dst []float32)

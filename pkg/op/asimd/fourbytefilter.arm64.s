@@ -53,64 +53,64 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func cmpGtI32(src []int32, dst []byte, lit int32)
+// func GtI32(src []int32, dst []byte, lit int32)
 // w1: $0x4ea034a9 => 'cmgt.4s v9, v5, v0'
 // w2: $0x4ea034ca => 'cmgt.4s v10, v6, v0'
-TEXT ·cmpGtI32(SB),NOSPLIT,$0-52
+TEXT ·GtI32(SB),NOSPLIT,$0-52
     vCompareIF32Lit($0x4ea034a9, $0x4ea034ca)
 
-// func cmpLtI32(src []int32, dst []byte, lit int32)
+// func LtI32(src []int32, dst []byte, lit int32)
 // w1: $0x4ea53409 => 'cmlt.4s v9, v5, v0'
 // w2: $0x4ea6340a => 'cmlt.4s v10, v6, v0'
-TEXT ·cmpLtI32(SB),NOSPLIT,$0-52
+TEXT ·LtI32(SB),NOSPLIT,$0-52
     vCompareIF32Lit($0x4ea53409, $0x4ea6340a)
 
-// func cmpGeI32(src []int32, dst []byte, lit int32)
+// func GeI32(src []int32, dst []byte, lit int32)
 // w1: $0x4ea03ca9 => 'cmge.4s v9, v5, v0'
 // w2: $0x4ea03cca => 'cmge.4s v10, v6, v0'
-TEXT ·cmpGeI32(SB),NOSPLIT,$0-52
+TEXT ·GeI32(SB),NOSPLIT,$0-52
     vCompareIF32Lit($0x4ea03ca9, $0x4ea03cca)
 
-// func cmpLeI32(src []int32, dst []byte, lit int32)
+// func LeI32(src []int32, dst []byte, lit int32)
 // w1: $0x4ea53c09 => 'cmle.4s v9, v5, v0'
 // w2: $0x4ea63c0a => 'cmle.4s v10, v6, v0'
-TEXT ·cmpLeI32(SB),NOSPLIT,$0-52
+TEXT ·LeI32(SB),NOSPLIT,$0-52
     vCompareIF32Lit($0x4ea53c09, $0x4ea63c0a)
 
-// func cmpEqI32(src []int32, dst []byte, lit int32)
+// func EqI32(src []int32, dst []byte, lit int32)
 // w1: $0x6ea08ca9 => 'cmeq.4s v9, v5, v0'
 // w2: $0x6ea08cca => 'cmeq.4s v10, v6, v0'
-TEXT ·cmpEqI32(SB),NOSPLIT,$0-52
+TEXT ·EqI32(SB),NOSPLIT,$0-52
     vCompareIF32Lit($0x6ea08ca9, $0x6ea08cca)
 
-// func cmpGtF32(src []float32, dst []byte, lit float32)
+// func GtF32(src []float32, dst []byte, lit float32)
 // w1: $0x6ea0e4a9 => 'fcmgt.4s v9, v5, v0'
 // w2: $0x6ea0e4ca => 'fcmgt.4s v10, v6, v0'
-TEXT ·cmpGtF32(SB),NOSPLIT,$0-52
+TEXT ·GtF32(SB),NOSPLIT,$0-52
     vCompareIF32Lit($0x6ea0e4a9, $0x6ea0e4ca)
 
-// func cmpLtF32(src []float32, dst []byte, lit float32)
+// func LtF32(src []float32, dst []byte, lit float32)
 // w1: $0x6ea5e409 => 'fcmlt.4s v9, v5, v0'
 // w2: $0x6ea6e40a => 'fcmlt.4s v10, v6, v0'
-TEXT ·cmpLtF32(SB),NOSPLIT,$0-52
+TEXT ·LtF32(SB),NOSPLIT,$0-52
     vCompareIF32Lit($0x6ea5e409, $0x6ea6e40a)
 
-// func cmpGeF32(src []float32, dst []byte, lit float32)
+// func GeF32(src []float32, dst []byte, lit float32)
 // w1: $0x6e20e4a9 => 'fcmge.4s v9, v5, v0'
 // w2: $0x6e20e4ca => 'fcmge.4s v10, v6, v0'
-TEXT ·cmpGeF32(SB),NOSPLIT,$0-52
+TEXT ·GeF32(SB),NOSPLIT,$0-52
     vCompareIF32Lit($0x6e20e4a9, $0x6e20e4ca)
 
-// func cmpLeF32(src []float32, dst []byte, lit float32)
+// func LeF32(src []float32, dst []byte, lit float32)
 // w1: $0x6e25e409 => 'fcmle.4s v9, v5, v0'
 // w2: $0x6e26e40a => 'fcmle.4s v10, v6, v0'
-TEXT ·cmpLeF32(SB),NOSPLIT,$0-52
+TEXT ·LeF32(SB),NOSPLIT,$0-52
     vCompareIF32Lit($0x6e25e409, $0x6e26e40a)
 
-// func cmpEqF32(src []float32, dst []byte, lit float32)
+// func EqF32(src []float32, dst []byte, lit float32)
 // w1: $0x4e20e4a9 => 'fcmeq.4s v9, v5, v0'
 // w2: $0x4e20e4ca => 'fcmeq.4s v10, v6, v0'
-TEXT ·cmpEqF32(SB),NOSPLIT,$0-52
+TEXT ·EqF32(SB),NOSPLIT,$0-52
     vCompareIF32Lit($0x4e20e4a9, $0x4e20e4ca)
 
 #define vNotEqIF32Lit(w1, w2, w3, w4)                      \
@@ -167,20 +167,20 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func cmpNeqI32(src []int32, dst []byte, lit int32)
+// func NeqI32(src []int32, dst []byte, lit int32)
 // w1: $0x6ea08ca9 => 'cmeq.4s v9, v5, v0'
 // w2: $0x6ea08cca => 'cmeq.4s v10, v6, v0'
 // w3: $0x6e20592b => 'not.16b v11, v9'
 // w4: $0x6e20594c => 'not.16b v12, v10'
-TEXT ·cmpNeqI32(SB),NOSPLIT,$0-52
+TEXT ·NeqI32(SB),NOSPLIT,$0-52
     vNotEqIF32Lit($0x6ea08ca9, $0x6ea08cca, $0x6e20592b, $0x6e20594c)
 
-// func cmpNeqF32(src []float32, dst []byte, lit float32)
+// func NeqF32(src []float32, dst []byte, lit float32)
 // w1: $0x4e20e4a9 => 'fcmeq.4s v9, v5, v0'
 // w2: $0x4e20e4ca => 'fcmeq.4s v10, v6, v0'
 // w3: $0x6e20592b => 'not.16b v11, v9'
 // w4: $0x6e20594c => 'not.16b v12, v10'
-TEXT ·cmpNeqF32(SB),NOSPLIT,$0-52
+TEXT ·NeqF32(SB),NOSPLIT,$0-52
     vNotEqIF32Lit($0x4e20e4a9, $0x4e20e4ca, $0x6e20592b, $0x6e20594c)
 
 #define vCompareBetIF32Lit(w1, w2, w3, w4, vBOp)           \
@@ -243,34 +243,34 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func cmpBetI32(src []int32, dst []byte, min int32, max int32)
+// func BetI32(src []int32, dst []byte, min int32, max int32)
 // w1: $0x4ea03c86 => 'cmge.4s v6, v4, v0'
 // w2: $0x4ea03ca7 => 'cmge.4s v7, v5, v0'
 // w3: $0x4ea43c28 => 'cmle.4s v8, v4, v1'
 // w4: $0x4ea53c29 => 'cmle.4s v9, v5, v1'
-TEXT ·cmpBetI32(SB),NOSPLIT,$0-56
+TEXT ·BetI32(SB),NOSPLIT,$0-56
     vCompareBetIF32Lit($0x4ea03c86, $0x4ea03ca7, $0x4ea43c28, $0x4ea53c29, VAND)
 
-// func cmpNBetI32(src []int32, dst []byte, min int32, max int32)
+// func NBetI32(src []int32, dst []byte, min int32, max int32)
 // w1: $0x4ea43406 => 'cmlt.4s v6, v4, v0'
 // w2: $0x4ea53407 => 'cmlt.4s v7, v5, v0'
 // w3: $0x4ea13488 => 'cmgt.4s v8, v4, v1'
 // w4: $0x4ea134a9 => 'cmgt.4s v9, v5, v1'
-TEXT ·cmpNBetI32(SB),NOSPLIT,$0-56
+TEXT ·NBetI32(SB),NOSPLIT,$0-56
     vCompareBetIF32Lit($0x4ea43406, $0x4ea53407, $0x4ea13488, $0x4ea134a9, VORR)
 
-// func cmpBetF32(src []float32, dst []byte, min float32, max float32)
+// func BetF32(src []float32, dst []byte, min float32, max float32)
 // w1: $0x6e20e486 => 'fcmge.4s v6, v4, v0'
 // w2: $0x6e20e4a7 => 'fcmge.4s v7, v5, v0'
 // w3: $0x6e24e428 => 'fcmle.4s v8, v4, v1'
 // w4: $0x6e25e429 => 'fcmle.4s v9, v5, v1'
-TEXT ·cmpBetF32(SB),NOSPLIT,$0-56
+TEXT ·BetF32(SB),NOSPLIT,$0-56
     vCompareBetIF32Lit($0x6e20e486, $0x6e20e4a7, $0x6e24e428, $0x6e25e429, VAND)
 
-// func cmpNBetF32(src []float32, dst []byte, min float32, max float32)
+// func NBetF32(src []float32, dst []byte, min float32, max float32)
 // w1: $0x6ea4e406 => 'fcmlt.4s v6, v4, v0'
 // w2: $0x6ea5e407 => 'fcmlt.4s v7, v5, v0'
 // w3: $0x6ea1e488 => 'fcmgt.4s v8, v4, v1'
 // w4: $0x6ea1e4a9 => 'fcmgt.4s v9, v5, v1'
-TEXT ·cmpNBetF32(SB),NOSPLIT,$0-56
+TEXT ·NBetF32(SB),NOSPLIT,$0-56
     vCompareBetIF32Lit($0x6ea4e406, $0x6ea5e407, $0x6ea1e488, $0x6ea1e4a9, VORR)

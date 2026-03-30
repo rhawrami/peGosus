@@ -64,16 +64,16 @@ exitFn:                                                    \
     MOVD R6, sum+72(FP)                                    \
     RET
 
-// func bitmapANDRetPopCount(src1, src2, dst []byte) uint64
-TEXT ·bitmapANDRetPopCount(SB),NOSPLIT,$0-80
+// func BitWiseAndWithPopCount(src1, src2, dst []byte) uint64
+TEXT ·BitWiseAndWithPopCount(SB),NOSPLIT,$0-80
     combineAndReturnSum(VAND)
 
-// func bitmapORRetPopCount(src1, src2, dst []byte) uint64
-TEXT ·bitmapORRetPopCount(SB),NOSPLIT,$0-80
+// func BitWiseORWithPopCount(src1, src2, dst []byte) uint64
+TEXT ·BitWiseORWithPopCount(SB),NOSPLIT,$0-80
     combineAndReturnSum(VORR)
 
-// func bitmapPopCount(src []byte) uint64
-TEXT ·bitmapPopCount(SB),NOSPLIT,$0-32
+// func BitmapPopCount(src []byte) uint64
+TEXT ·PopCount(SB),NOSPLIT,$0-32
     MOVD srcAddr+0(FP), R0
     MOVD srcLen+8(FP), R1
     EOR R2, R2
