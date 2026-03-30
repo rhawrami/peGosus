@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-var testLens []int = []int{0, 100, 1_000, 10_000, 100_000, 1_000_000}
-var benchLens []int = []int{10, 100, 1_000, 10_000, 100_000, 1_000_000}
+var testLens4Bitmap []int = []int{0, 100, 1_000, 10_000, 100_000, 1_000_000}
+var benchLens4Bitmap []int = []int{10, 100, 1_000, 10_000, 100_000, 1_000_000}
 
 // fallback comparison for BitWiseAndWithPopCount
 func bitWiseAndWithPopCountFB(src1, src2, dst []byte) uint64 {
@@ -56,7 +56,7 @@ func genByteSlice(l int) []byte {
 }
 
 func TestBitWiseAndWithPopCount(t *testing.T) {
-	for _, s := range testLens {
+	for _, s := range testLens4Bitmap {
 		t.Run(fmt.Sprintf("BitWiseAndWithPopCount Size %d", s), func(t *testing.T) {
 			// get rand src, dst slices
 			src1 := genRandByteData(s)
@@ -81,7 +81,7 @@ func TestBitWiseAndWithPopCount(t *testing.T) {
 }
 
 func TestBitWiseOrWithPopCount(t *testing.T) {
-	for _, s := range testLens {
+	for _, s := range testLens4Bitmap {
 		t.Run(fmt.Sprintf("BitWiseOrWithPopCount Size %d", s), func(t *testing.T) {
 			// get rand src, dst slices
 			src1 := genRandByteData(s)
@@ -106,7 +106,7 @@ func TestBitWiseOrWithPopCount(t *testing.T) {
 }
 
 func TestPopCount(t *testing.T) {
-	for _, s := range testLens {
+	for _, s := range testLens4Bitmap {
 		t.Run(fmt.Sprintf("PopCount Size %d", s), func(t *testing.T) {
 			// get rand src
 			src := genRandByteData(s)
@@ -125,7 +125,7 @@ var blackhole uint64
 
 func BenchmarkBitWiseAndWithPopCount(b *testing.B) {
 	// assembly
-	for _, s := range benchLens {
+	for _, s := range benchLens4Bitmap {
 		b.Run(fmt.Sprintf("ASM Size %d", s), func(b *testing.B) {
 			src1 := genRandByteData(s)
 			src2 := genRandByteData(s)
@@ -140,7 +140,7 @@ func BenchmarkBitWiseAndWithPopCount(b *testing.B) {
 		})
 	}
 	// fallback
-	for _, s := range benchLens {
+	for _, s := range benchLens4Bitmap {
 		b.Run(fmt.Sprintf("FB Size %d", s), func(b *testing.B) {
 			src1 := genRandByteData(s)
 			src2 := genRandByteData(s)
@@ -158,7 +158,7 @@ func BenchmarkBitWiseAndWithPopCount(b *testing.B) {
 
 func BenchmarkBitWiseOrWithPopCount(b *testing.B) {
 	// assembly
-	for _, s := range benchLens {
+	for _, s := range benchLens4Bitmap {
 		b.Run(fmt.Sprintf("ASM Size %d", s), func(b *testing.B) {
 			src1 := genRandByteData(s)
 			src2 := genRandByteData(s)
@@ -173,7 +173,7 @@ func BenchmarkBitWiseOrWithPopCount(b *testing.B) {
 		})
 	}
 	// fallback
-	for _, s := range benchLens {
+	for _, s := range benchLens4Bitmap {
 		b.Run(fmt.Sprintf("FB Size %d", s), func(b *testing.B) {
 			src1 := genRandByteData(s)
 			src2 := genRandByteData(s)
@@ -191,7 +191,7 @@ func BenchmarkBitWiseOrWithPopCount(b *testing.B) {
 
 func BenchmarkPopCount(b *testing.B) {
 	// assembly
-	for _, s := range benchLens {
+	for _, s := range benchLens4Bitmap {
 		b.Run(fmt.Sprintf("ASM Size %d", s), func(b *testing.B) {
 			src := genRandByteData(s)
 			b.ResetTimer()
@@ -203,7 +203,7 @@ func BenchmarkPopCount(b *testing.B) {
 		})
 	}
 	// fallback
-	for _, s := range benchLens {
+	for _, s := range benchLens4Bitmap {
 		b.Run(fmt.Sprintf("FB Size %d", s), func(b *testing.B) {
 			src := genRandByteData(s)
 			b.ResetTimer()
