@@ -68,11 +68,11 @@ exitFn:                                                    \
 TEXT ·BitWiseAndWithPopCount(SB),NOSPLIT,$0-80
     combineAndReturnSum(VAND)
 
-// func BitWiseORWithPopCount(src1, src2, dst []byte) uint64
-TEXT ·BitWiseORWithPopCount(SB),NOSPLIT,$0-80
+// func BitWiseOrWithPopCount(src1, src2, dst []byte) uint64
+TEXT ·BitWiseOrWithPopCount(SB),NOSPLIT,$0-80
     combineAndReturnSum(VORR)
 
-// func BitmapPopCount(src []byte) uint64
+// func PopCount(src []byte) uint64
 TEXT ·PopCount(SB),NOSPLIT,$0-32
     MOVD srcAddr+0(FP), R0
     MOVD srcLen+8(FP), R1
@@ -100,7 +100,7 @@ vecLoop:
     VADD V9.B16, V10.B16, V11.B16
     VUADDLV V11.B16, V12
     VMOV V12.D[0], R4
-    ADD R5, R4, R4
+    ADD R5, R4, R5
 
     ADD $64, R2
     CMP R3, R2
@@ -110,12 +110,12 @@ tradLoop:
     VLD1.P 1(R0), V1.B[0]
     VCNT V1.B16, V2.B16
     VMOV V2.B[0], R6
-    ADD R6, R4, R4
+    ADD R6, R5, R5
 
     ADD $1, R2
     CMP R1, R2
     BLT tradLoop
 
 exitFn:
-    MOVD R4, sum+24(FP)
+    MOVD R5, sum+24(FP)
     RET
