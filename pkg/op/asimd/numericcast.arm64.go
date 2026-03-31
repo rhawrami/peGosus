@@ -36,7 +36,7 @@ func CastF32ToF64(src []float32, dst []float64)
 // placing the result in `dst`.
 //
 //go:noescape
-func CastI32ToI64(src []int32, dst []float64)
+func CastI32ToI64(src []int32, dst []int64)
 
 // CastI32ToF64 casts int32 elements in `src` to float64,
 // placing the result in `dst`.
