@@ -13,9 +13,9 @@ type Block struct {
 func (b *Block) Chunks() []*Data { return b.chunks }
 func (b *Block) Length() uint64  { return b.totLength }
 
-// CleanDuplicate returns a copy of `b` with new underlying data (and buffers);
-// think of the returned block as a deep copy of b, with zeroed bytes.
-func (b *Block) CleanDuplicate() *Block {
+// Duplicate returns a copy of `b` with new underlying data (and buffers);
+// think of the returned block as a deep copy of b, with uninitialized bytes.
+func (b *Block) Duplicate() *Block {
 	nChunks := len(b.chunks)
 	c := make([]*Data, nChunks)
 
@@ -72,11 +72,11 @@ func (d *Data) Increment() {
 // Decrement decrements the Data's reference count by 1;
 // returns true if `d's` reference count becomes 0.
 func (d *Data) Decrement() bool {
-	if d.ref.Load() == 1 {
+	if d.ref.Add(-1) == 1 {
 		d.pool.Put(d)
+		return true
 	}
 
-	d.ref.Add(-1)
 	return false
 }
 

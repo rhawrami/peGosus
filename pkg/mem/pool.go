@@ -151,10 +151,8 @@ func (p *childPool) Size() uint64 {
 // Get returns a Data object with logical length `l`.
 func (p *childPool) Get(l uint64) *Data {
 	d := p.pool.Get().(*Data)
-	r := &atomic.Int32{}
-	r.Store(1)
+	d.ref.Store(1)
 
-	d.ref = r
 	d.length = l
 	d.pool = p
 
