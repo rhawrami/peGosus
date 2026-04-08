@@ -12,10 +12,21 @@ type Segment struct {
 	reserved bool         // if false, can be returned/used by slab
 }
 
+// IsAligned checks if the base address for `s` is aligned to `x` bytes.
+func (s *Segment) IsAligned(x int) bool {
+	return isAligned(s.base, x)
+}
+
+// come back after developing Slab more.
+func (s *Segment) Dec() {}
+
 // Inc increments the reference count by 1.
 func (s *Segment) Inc() {
 	s.refCount.Add(1)
 }
+
+// AsBytes casts `s` as a slice of bytes with length `l`.
+func (s *Segment) AsBytes(l int) []byte { return asBT(s.base, l) }
 
 // AsI64T casts `s` as a slice of 64-bit signed integers with length `l`.
 func (s *Segment) AsI64T(l int) []int64 { return asI64T(s.base, l) }

@@ -2,6 +2,10 @@ package mem
 
 import "unsafe"
 
+func isAligned(addr *byte, a int) bool {
+	return uintptr(unsafe.Pointer(addr))&uintptr(a) == 0
+}
+
 func asBT(ptr *byte, length int) []byte {
 	return unsafe.Slice(ptr, length)
 }
