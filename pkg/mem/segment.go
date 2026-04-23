@@ -12,6 +12,18 @@ type Segment struct {
 	reserved bool         // if false, can be returned/used by slab
 }
 
+// Clear clears tracked data for `s`, allowing it to be returned to a slab.
+func (s *Segment) Clear() {
+	s.length = 0
+	s.refCount.Store(0)
+	s.reserved = false
+}
+
+// CanSupport returns true if `s` has space for `l` elements, each of size `t`.
+func (s *Segment) CanSupport(l, t int) bool {
+	return s.capacity >= uint64(l*t)
+}
+
 // IsAligned checks if the base address for `s` is aligned to `x` bytes.
 func (s *Segment) IsAligned(x int) bool {
 	return isAligned(s.base, x)
