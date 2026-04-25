@@ -9,14 +9,12 @@ type Segment struct {
 	capacity uint64       // maximum byte capacity
 	refCount atomic.Int64 // reference count
 	slab     *Slab        // slab that segment belongs to
-	reserved bool         // if false, can be returned/used by slab
 }
 
 // Clear clears tracked data for `s`, allowing it to be returned to a slab.
 func (s *Segment) Clear() {
 	s.length = 0
 	s.refCount.Store(0)
-	s.reserved = false
 }
 
 // CanSupport returns true if `s` has space for `l` elements, each of size `t`.
