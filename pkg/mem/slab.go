@@ -17,7 +17,7 @@ func MakeSlab(l int) *Slab {
 		used:     0,
 		capacity: uint64(l),
 		segments: segments,
-		nHoles:   0,
+		holes:    0,
 	}
 	s.setUp()
 	return s
@@ -31,14 +31,14 @@ type Slab struct {
 	used     uint64     // currently used byte length
 	capacity uint64     // maximum byte capacity
 	segments []*Segment // set of segments
-	nHoles   uint64     // number of holes present
+	holes    uint64     // number of holes present
 }
 
 // Clear gives `s` a fresh slate.
 func (s *Slab) Clear() {
 	s.on = s.base
 	s.used = 0
-	s.nHoles = 0
+	s.holes = 0
 	s.segments = s.segments[:0]
 	s.setUp()
 }
@@ -91,7 +91,7 @@ func (s *Slab) coalesce() bool {
 					s.segments[j] = s.segments[j+1]
 				}
 				s.segments = s.segments[:len(s.segments)-1]
-				s.nHoles -= 1
+				s.holes -= 1
 				l -= 1
 				yay = true
 			}
@@ -113,13 +113,13 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 	}
 
 	// first check if we can use earlier segment
-	if s.nHoles != 0 {
+	if s.holes != 0 {
 		for _, v := range s.segments {
 			if v.refCount.Load() == 0 && v.capacity <= l {
 				v.length = l
 				v.refCount.Store(1)
 
-				s.nHoles -= 1
+				s.holes -= 1
 				return v, true
 			}
 		}
@@ -141,8 +141,25 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 // MakeSegmentWithCoalesce calls MakeSegment, but first attempts
 // to coalesce adjacent free segments.
 func (s *Slab) MakeSegmentWithCoalesce(length int) (*Segment, bool) {
-	if s.nHoles != 0 {
+	if s.holes != 0 {
 		_ = s.coalesce()
 	}
 	return s.MakeSegment(length)
+}
+
+// TakeSegment takes a segment, returning it to `s`.
+func (s *Slab) TakeSegment(g *Segment) {
+	g.length = 0
+	g.refCount.Store(0)
+
+	var h uint64
+	// try to avoid hole if `g` is most recently used segment
+	if g == s.segments[len(s.segments)-2] {
+		edge := s.segments[len(s.segments)-2]
+		g.capacity += edge.capacity
+		s.on = g.base
+		s.segments = s.segments[:len(s.segments)-1]
+		h = 1
+	}
+	s.holes += h
 }

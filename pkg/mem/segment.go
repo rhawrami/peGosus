@@ -11,15 +11,14 @@ type Segment struct {
 	slab     *Slab        // slab that segment belongs to
 }
 
-// Clear clears tracked data for `s`, allowing it to be returned to a slab.
-func (s *Segment) Clear() {
-	s.length = 0
-	s.refCount.Store(0)
-}
-
 // CanSupport returns true if `s` has space for `l` elements, each of size `t`.
 func (s *Segment) CanSupport(l, t int) bool {
 	return s.capacity >= uint64(l*t)
+}
+
+// Put returns `s` to its slab.
+func (s *Segment) Put() {
+	s.slab.TakeSegment(s)
 }
 
 // IsAligned checks if the base address for `s` is aligned to `x` bytes.
@@ -27,8 +26,15 @@ func (s *Segment) IsAligned(x int) bool {
 	return isAligned(s.base, x)
 }
 
-// come back after developing Slab more.
-func (s *Segment) Dec() {}
+// Dec decrements the reference count by 1; if updated count is 0, `s` is
+// returned to its slab; returns false if `s` was returned to its slab.
+func (s *Segment) Dec() bool {
+	if s.refCount.Add(-1) == 0 {
+		s.Put()
+		return false
+	}
+	return true
+}
 
 // Inc increments the reference count by 1.
 func (s *Segment) Inc() {
