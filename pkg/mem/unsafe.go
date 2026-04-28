@@ -4,6 +4,14 @@ import "unsafe"
 
 const alignSize int = 64
 
+func incPtr(b *byte, l int) *byte {
+	return (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(b)) + uintptr(l)))
+}
+
+func decPtr(b *byte, l int) *byte {
+	return (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(b)) - uintptr(l)))
+}
+
 func makeAlignedSlice(l int) []byte {
 	if l <= 0 || l%alignSize != 0 {
 		return nil

@@ -13,6 +13,7 @@ func MakeSlab(l int) *Slab {
 	s := &Slab{
 		buff:     buff,
 		base:     base,
+		on:       base,
 		used:     0,
 		capacity: uint64(l),
 		segments: segments,
@@ -26,6 +27,7 @@ func MakeSlab(l int) *Slab {
 type Slab struct {
 	buff     []byte     // underlying buffer
 	base     *byte      // base address
+	on       *byte      // current address on
 	used     uint64     // currently used byte length
 	capacity uint64     // maximum byte capacity
 	segments []*Segment // set of segments
@@ -43,21 +45,19 @@ func (s *Slab) setUp() {
 	}
 }
 
-// update updates `s`'s metadata, given another `l` bytes being used;
-// update is only meant to be used when `s` has no holes.
-func (s *Slab) update(l, o uint64) {
-	if s.nHoles > 0 {
-		return
-	}
-
+// update updates `s`'s metadata, given another `l` bytes being used.
+func (s *Slab) update(l uint64) {
+	s.on = incPtr(s.base, int(l))
 	s.used += l
+
 	seg := &Segment{
-		base:     &s.buff[o],
+		base:     s.on,
 		length:   0,
 		capacity: s.capacity - s.used,
 		refCount: atomic.Int64{},
 		slab:     s,
 	}
+
 	s.segments = append(s.segments, seg)
 }
 
@@ -71,7 +71,7 @@ func (s *Slab) coalesce() bool {
 	l := len(s.segments)
 	for i := 0; i < l; i++ {
 		if s.segments[i].refCount.Load() == 0 {
-			if s.segments[i+1].refCount.Load() == 0 {
+			if i != (l-1) && s.segments[i+1].refCount.Load() == 0 {
 				a := s.segments[i]
 				b := s.segments[i+1]
 				a.capacity += b.capacity
@@ -81,7 +81,7 @@ func (s *Slab) coalesce() bool {
 					s.segments[j] = s.segments[j+1]
 				}
 				s.segments = s.segments[:len(s.segments)-1]
-				s.nHoles -= 2
+				s.nHoles -= 1
 				l -= 1
 				yay = true
 			}
@@ -90,10 +90,10 @@ func (s *Slab) coalesce() bool {
 	return yay
 }
 
-// NewSegment returns a Segment with at least `length` bytes; returns
+// MakeSegment returns a Segment with at least `length` bytes; returns
 // (nil, false) if `s` cannot support a new segment with `length` bytes
 // in its current state.
-func (s *Slab) NewSegment(length int) (*Segment, bool) {
+func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 	// ensure length divisible by alignment size
 	var l uint64
 	if l < uint64(alignSize) {
@@ -102,26 +102,37 @@ func (s *Slab) NewSegment(length int) (*Segment, bool) {
 		l = uint64(alignSize - (length & (alignSize - 1)) + length)
 	}
 
-	// works despite holes being present
-	if l <= s.segments[len(s.segments)-1].capacity {
-		seg := s.segments[len(s.segments)-1]
-		seg.length = uint64(length)
-		seg.refCount.Store(1)
-
-		s.update(l, (l + s.used))
-		return seg, true
-	}
-
+	// first check if we can use earlier segment
 	if s.nHoles != 0 {
 		for _, v := range s.segments {
 			if v.refCount.Load() == 0 && v.capacity <= l {
 				v.length = l
 				v.refCount.Store(1)
 
-				s.nHoles -= 1 // one less hole
+				s.nHoles -= 1
 				return v, true
 			}
 		}
 	}
+
+	// if earlier segment can't be used, check at the end
+	if l <= s.segments[len(s.segments)-1].capacity {
+		seg := s.segments[len(s.segments)-1]
+		seg.length = uint64(length)
+		seg.refCount.Store(1)
+
+		s.update(l)
+		return seg, true
+	}
+
 	return nil, false
+}
+
+// MakeSegmentWithCoalesce calls MakeSegment, but first attempts
+// to coalesce adjacent free segments.
+func (s *Slab) MakeSegmentWithCoalesce(length int) (*Segment, bool) {
+	if s.nHoles != 0 {
+		_ = s.coalesce()
+	}
+	return s.MakeSegment(length)
 }
