@@ -40,6 +40,7 @@ func (s *Slab) Clear() {
 	s.used = 0
 	s.nHoles = 0
 	s.segments = s.segments[:0]
+	s.setUp()
 }
 
 // setUp creates a single Segment belonging to `s`, with length
