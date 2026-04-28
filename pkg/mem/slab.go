@@ -34,15 +34,24 @@ type Slab struct {
 	nHoles   uint64     // number of holes present
 }
 
+// Clear gives `s` a fresh slate.
+func (s *Slab) Clear() {
+	s.on = s.base
+	s.used = 0
+	s.nHoles = 0
+	s.segments = s.segments[:0]
+}
+
 // setUp creates a single Segment belonging to `s`, with length
 // equal to the length of `s`.
 func (s *Slab) setUp() {
-	s.segments[0] = &Segment{
+	seg := &Segment{
 		base:     s.base,
 		length:   s.capacity,
 		refCount: atomic.Int64{},
 		slab:     s,
 	}
+	s.segments = append(s.segments, seg)
 }
 
 // update updates `s`'s metadata, given another `l` bytes being used.
