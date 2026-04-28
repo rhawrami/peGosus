@@ -52,6 +52,10 @@ func asF32T(ptr *byte, length int) []float32 {
 	return unsafe.Slice((*float32)(unsafe.Pointer(ptr)), length)
 }
 
+func asU64T(ptr *byte, length int) []uint64 {
+	return unsafe.Slice((*uint64)(unsafe.Pointer(ptr)), length)
+}
+
 func asU32T(ptr *byte, length int) []uint32 {
 	return unsafe.Slice((*uint32)(unsafe.Pointer(ptr)), length)
 }

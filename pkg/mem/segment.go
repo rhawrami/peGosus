@@ -56,5 +56,8 @@ func (s *Segment) AsF64T(l int) []float64 { return asF64T(s.base, l) }
 // AsF32T casts `s` as a slice of 32-bit floating point values with length `l`.
 func (s *Segment) AsF32T(l int) []float32 { return asF32T(s.base, l) }
 
+// AsU64T casts `s` as a slice of 64-bit unsigned integers with length `l`.
+func (s *Segment) AsU64T(l int) []uint64 { return asU64T(s.base, l) }
+
 // AsU32T casts `s` as a slice of 32-bit unsigned integers with length `l`.
 func (s *Segment) AsU32T(l int) []uint32 { return asU32T(s.base, l) }

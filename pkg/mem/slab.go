@@ -158,6 +158,7 @@ func (s *Slab) TakeSegment(g *Segment) {
 		edge := s.segments[len(s.segments)-2]
 		g.capacity += edge.capacity
 		s.on = g.base
+		s.used -= g.capacity
 		s.segments = s.segments[:len(s.segments)-1]
 		h = 1
 	}
