@@ -11,6 +11,12 @@ type Segment struct {
 	slab     *Slab        // slab that segment belongs to
 }
 
+// Len returns the segment's current byte length.
+func (s *Segment) Len() uint64 { return s.length }
+
+// Cap returns the segment's maximum byte capacity.
+func (s *Segment) Cap() uint64 { return s.capacity }
+
 // CanSupport returns true if `s` has space for `l` elements, each of size `t`.
 func (s *Segment) CanSupport(l, t int) bool {
 	return s.capacity >= uint64(l*t)
@@ -39,6 +45,24 @@ func (s *Segment) Dec() bool {
 // Inc increments the reference count by 1.
 func (s *Segment) Inc() {
 	s.refCount.Add(1)
+}
+
+// AddLength increases the length by `l`.
+func (s *Segment) AddLength(l int) {
+	if uint64(l)+s.length > s.capacity {
+		s.length = s.capacity
+	} else {
+		s.length += uint64(l)
+	}
+}
+
+// SubLength decreases the length by `l`.
+func (s *Segment) SubLength(l int) {
+	if uint64(l) > s.length {
+		s.length = 0
+	} else {
+		s.length -= uint64(l)
+	}
 }
 
 // AsBytes casts `s` as a slice of bytes with length `l`.
