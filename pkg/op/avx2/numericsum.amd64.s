@@ -20,7 +20,7 @@
     VPXOR Y12, Y12, Y12                                    \
                                                            \
     CMPQ CX, chnkSize                                      \
-    JLT tradLoopInit                                       \
+    JLE tradLoopInit                                       \
                                                            \
 vecLoop:                                                   \
     vVecOp                                                 \
@@ -211,7 +211,7 @@ TEXT ·sumF32(SB),NOSPLIT,$0-48
     VPXOR Y10, Y10, Y10                                    \
                                                            \
     CMPQ CX, $8                                            \
-    JLT tradLoopInit                                       \
+    JLE tradLoopInit                                       \
                                                            \
 vecLoop:                                                   \
     vMovOp                                                 \

@@ -19,7 +19,7 @@
     JEQ exitFn                                             \
                                                            \
     CMPQ CX, $8                                            \
-    JLT tradLoop                                           \
+    JLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     vMovOp (AX), Y1                                        \
@@ -134,7 +134,7 @@ TEXT ·cmpNeqF32Lit(SB),NOSPLIT,$0-52
     JEQ exitFn                                             \
                                                            \
     CMPQ CX, $8                                            \
-    JLT tradLoop                                           \
+    JLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     vMovOp (AX), Y2                                        \

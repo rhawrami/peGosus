@@ -32,7 +32,7 @@
     initBrdCstOp bReg, Y3                                  \
                                                            \
     CMPQ CX, chnkSize                                      \
-    JLT tradLoop                                           \
+    JLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     vMovOp (AX), Y4                                        \
@@ -126,7 +126,7 @@ TEXT ·minF32(SB),NOSPLIT,$0-48
     VPBROADCASTQ R8, Y3                                    \ 
                                                            \
     CMPQ CX, $16                                           \ 
-    JLT tradLoop                                           \ 
+    JLE tradLoop                                           \ 
                                                            \
 vecLoop:                                                   \ 
     VMOVDQU (AX), Y4                                       \ 
@@ -216,7 +216,7 @@ TEXT ·minI64(SB),NOSPLIT,$0-48
     initBrdCstOp bReg, Y3                                  \
                                                            \
     CMPQ CX, chnkSize                                      \
-    JLT tradLoop                                           \
+    JLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     vMovOp (AX), Y4                                        \
@@ -310,7 +310,7 @@ TEXT ·minmaxI64(SB),NOSPLIT,$0-48
     VPBROADCASTQ R8, Y3 
 
     CMPQ CX, $8
-    JLT tradLoop 
+    JLE tradLoop 
 
 vecLoop: 
     VMOVDQU (AX), Y4 
@@ -386,7 +386,7 @@ exitFn:
     VPXOR Y6, Y6, Y6                                       \
                                                            \
     CMPQ CX, $8                                            \
-    JLT tradLoopInit                                       \
+    JLE tradLoopInit                                       \
                                                            \
 vecLoop:                                                   \
     vMovOp (AX), Y2                                        \
@@ -487,7 +487,7 @@ TEXT ·minF32WithValidity(SB),NOSPLIT,$0-72
     VPXOR Y10, Y10, Y10                                    \
                                                            \
     CMPQ CX, $8                                            \
-    JLT tradLoopInit                                       \
+    JLE tradLoopInit                                       \
                                                            \
 vecLoop:                                                   \
     vMovOp (AX), Y4                                        \
@@ -610,7 +610,7 @@ TEXT ·minF64WithValidity(SB),NOSPLIT,$0-72
     VPXOR Y6, Y6, Y6                                       \
                                                            \
     CMPQ CX, $8                                            \
-    JLT tradLoopInit                                       \
+    JLE tradLoopInit                                       \
                                                            \
 vecLoop:                                                   \
     vMovOp (AX), Y2                                        \
@@ -719,7 +719,7 @@ TEXT ·minmaxF32WithValidity(SB),NOSPLIT,$0-72
     VPXOR Y10, Y10, Y10                                    \
                                                            \
     CMPQ CX, $8                                            \
-    JLT tradLoopInit                                       \
+    JLE tradLoopInit                                       \
                                                            \
 vecLoop:                                                   \
     vMovOp (AX), Y4                                        \

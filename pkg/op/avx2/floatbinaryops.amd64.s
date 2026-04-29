@@ -15,7 +15,7 @@
     JEQ exitFn                                             \
                                                            \
     CMPQ CX, chnkSize                                      \
-    JLT tradLoop                                           \
+    JLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     vMovOp (AX), Y1                                        \
@@ -94,7 +94,7 @@ TEXT ·divF32Lit(SB),NOSPLIT,$0-52
     JEQ exitFn                                             \
                                                            \
     CMPQ CX, chnkSize                                      \
-    JLT tradLoop                                           \
+    JLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     vMovOp (AX), Y1                                        \

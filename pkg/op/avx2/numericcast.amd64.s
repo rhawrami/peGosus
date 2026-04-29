@@ -14,7 +14,7 @@
     JEQ exitFn                                             \
                                                            \
     CMPQ CX, $32                                           \
-    JLT tradLoop                                           \
+    JLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     vOp (AX), Y1                                           \
@@ -66,7 +66,7 @@ TEXT ·castF32ToI32(SB),NOSPLIT,$0-48
     JEQ exitFn                                             \
                                                            \
     CMPQ CX, $16                                           \
-    JLT tradLoop                                           \
+    JLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     vOp (AX), Y1                                           \
@@ -121,7 +121,7 @@ TEXT ·castI32ToF64(SB),NOSPLIT,$0-48
     JEQ exitFn
 
     CMPQ CX, $16
-    JLT tradLoop
+    JLE tradLoop
 
 vecLoop:
     VCVTDQ2PD (AX), Y1
@@ -163,7 +163,7 @@ TEXT ·castF32ToI64(SB),NOSPLIT,$0-48
     JEQ exitFn
 
     CMPQ CX, $4
-    JLT tradLoop
+    JLE tradLoop
 
 vecLoop:
     VCVTPS2PD (AX), Y1
@@ -211,7 +211,7 @@ TEXT ·castI64ToF64(SB),NOSPLIT,$0-48
     JEQ exitFn
 
     CMPQ CX, $4
-    JLT tradLoop
+    JLE tradLoop
 
 vecLoop:
     VCVTSI2SDQ (AX), X1, X1
@@ -253,7 +253,7 @@ TEXT ·castF64ToI64(SB),NOSPLIT,$0-48
     JEQ exitFn
 
     CMPQ CX, $4
-    JLT tradLoop
+    JLE tradLoop
 
 vecLoop:
     VMOVUPD (AX), Y1
@@ -301,7 +301,7 @@ TEXT ·castI64ToF32(SB),NOSPLIT,$0-48
     JEQ exitFn
 
     CMPQ CX, $4
-    JLT tradLoop
+    JLE tradLoop
 
 vecLoop:
     VCVTSI2SDQ (AX), X1, X1
@@ -346,7 +346,7 @@ TEXT ·castF64ToI32(SB),NOSPLIT,$0-48
     JEQ exitFn
 
     CMPQ CX, $16
-    JLT tradLoop
+    JLE tradLoop
 
 vecLoop:
     VCVTTPD2DQY (AX), X1

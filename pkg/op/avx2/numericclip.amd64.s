@@ -16,7 +16,7 @@
     JEQ exitFn                                             \
                                                            \
     CMPQ CX, chnkSize                                      \
-    JLT tradLoop                                           \
+    JLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     vMovOp (AX), Y2                                        \
@@ -78,7 +78,7 @@ TEXT ·clipI32WithI32Bounds(SB),NOSPLIT,$0-56
     JEQ exitFn
 
     CMPQ CX, $32
-    JLT tradLoop
+    JLE tradLoop
 
 vecLoop:
     VMOVDQU (AX), Y2
@@ -132,7 +132,7 @@ TEXT ·clipI64WithI64Bounds(SB),NOSPLIT,$0-64
     JEQ exitFn
 
     CMPQ CX, $16
-    JLT tradLoop
+    JLE tradLoop
 
 vecLoop:
     VMOVDQU (AX), Y2
@@ -196,7 +196,7 @@ TEXT ·clipI64WithF64Bounds(SB),NOSPLIT,$0-64
     JEQ exitFn
 
     CMPQ CX, $4
-    JLT tradLoop
+    JLE tradLoop
 
 vecLoop:
     VCVTSI2SDQ (AX), X2, X2
@@ -244,7 +244,7 @@ TEXT ·clipI32WithF32Bounds(SB),NOSPLIT,$0-56
     JEQ exitFn
 
     CMPQ CX, $32
-    JLT tradLoop
+    JLE tradLoop
 
 vecLoop:
     VMOVDQU (AX), Y2

@@ -14,7 +14,7 @@
     JEQ exitFn                                             \
                                                            \
     CMPQ CX, chnkSize                                      \
-    JLT tradLoop                                           \
+    JLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     vBrdCstOp tReg, Y1                                     \

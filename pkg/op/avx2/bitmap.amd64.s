@@ -18,7 +18,7 @@
     JEQ exitFn                                             \
                                                            \
     CMPQ CX, $16                                           \
-    JLT tradLoop                                           \
+    JLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     MOVQ (AX), R9                                          \
@@ -85,7 +85,7 @@ TEXT ·bitmapPopCount(SB),NOSPLIT,$0-32
     JEQ exitFn
 
     CMPQ CX, $24
-    JLT tradLoop
+    JLE tradLoop
 
 vecLoop:
     POPCNTQ (AX), R8
