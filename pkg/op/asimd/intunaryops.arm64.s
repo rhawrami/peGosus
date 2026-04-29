@@ -13,7 +13,7 @@
     BEQ exitFn                                             \
                                                            \
     CMP chnkSize, R2                                       \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 64(R0), [V1.spec, V2.spec, V3.spec, V4.spec]    \
@@ -90,7 +90,7 @@ TEXT ·SqI32(SB),NOSPLIT,$0-48
     BEQ exitFn                                             \
                                                            \
     CMP chnkSize, R2                                       \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 64(R0), [V1.spec, V2.spec, V3.spec, V4.spec]    \
@@ -153,7 +153,7 @@ TEXT ·SqI64(SB),NOSPLIT,$0-48
     BEQ exitFn                                             \
                                                            \
     CMP chnkSize, R2                                       \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 64(R0), [V1.spec, V2.spec, V3.spec, V4.spec]    \
@@ -220,7 +220,7 @@ TEXT ·SqrtI32(SB),NOSPLIT,$0-48
     BEQ exitFn                                             \
                                                            \
     CMP chnkSize, R2                                       \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 64(R0), [V1.spec, V2.spec, V3.spec, V4.spec]    \

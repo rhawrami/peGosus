@@ -21,7 +21,7 @@
     BEQ exitFn                                             \
                                                            \
     CMP $8, R2                                             \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 64(R0), [V5.D2, V6.D2, V7.D2, V8.D2]            \
@@ -160,7 +160,7 @@ TEXT ·EqF64(SB),NOSPLIT,$0-56
     BEQ exitFn                                             \
                                                            \
     CMP $8, R2                                             \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 64(R0), [V5.D2, V6.D2, V7.D2, V8.D2]            \
@@ -250,7 +250,7 @@ TEXT ·NeqF64(SB),NOSPLIT,$0-56
     BEQ exitFn                                             \
                                                            \
     CMP $8, R2                                             \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 64(R0), [V6.D2, V7.D2, V8.D2, V9.D2]            \

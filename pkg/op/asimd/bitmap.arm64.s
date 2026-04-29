@@ -17,7 +17,7 @@
     BEQ exitFn                                             \ 
                                                            \
     CMP $64, R3                                            \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 64(R0), [V1.B16, V2.B16, V3.B16, V4.B16]        \
@@ -85,7 +85,7 @@ TEXT ·PopCount(SB),NOSPLIT,$0-32
     BEQ exitFn
 
     CMP $64, R1
-    BLT tradLoop
+    BLE tradLoop
 
 vecLoop:
     VLD1.P 64(R0), [V1.B16, V2.B16, V3.B16, V4.B16]

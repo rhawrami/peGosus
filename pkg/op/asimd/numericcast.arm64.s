@@ -13,7 +13,7 @@
     BEQ exitFn                                             \
                                                            \
     CMP chnkSize, R2                                       \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 64(R0), [V1.spec, V2.spec, V3.spec, V4.spec]    \
@@ -82,7 +82,7 @@ TEXT ·CastF32ToI32(SB),NOSPLIT,$0-48
     BEQ exitFn                                             \
                                                            \
     CMP $8, R2                                             \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 32(R0), [V1.S4, V2.S4]                          \
@@ -135,7 +135,7 @@ TEXT ·CastI32ToI64(SB),NOSPLIT,$0-48
     BEQ exitFn                                             \
                                                            \
     CMP $8, R2                                             \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 32(R0), [V1.S4, V2.S4]                          \
@@ -201,7 +201,7 @@ TEXT ·CastF32ToI64(SB),NOSPLIT,$0-48
     BEQ exitFn                                             \
                                                            \
     CMP $8, R2                                             \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 64(R0), [V1.D2, V2.D2, V3.D2, V4.D2]            \

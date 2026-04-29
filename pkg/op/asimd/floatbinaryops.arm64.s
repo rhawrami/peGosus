@@ -15,7 +15,7 @@
     BEQ exitFn                                             \
                                                            \
     CMP chnkSize, R2                                       \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 64(R0), [V1.spec, V2.spec, V3.spec, V4.spec]    \
@@ -117,7 +117,7 @@ TEXT ·DivF32Lit(SB),NOSPLIT,$0-52
     BEQ exitFn                                             \
                                                            \
     CMP chnkSize, R3                                       \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 64(R0), [V1.spec, V2.spec, V3.spec, V4.spec]    \

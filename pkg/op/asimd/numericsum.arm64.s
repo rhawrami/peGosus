@@ -20,7 +20,7 @@
     BEQ exitFn                                             \
                                                            \
     CMP chnkSize, R2                                       \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     vVecOp                                                 \
@@ -174,7 +174,7 @@ TEXT ·SumF32(SB),NOSPLIT,$0-48
     EOR R9, R9                                             \
                                                            \                                                               
     CMP $8, R3                                             \
-    BLT tradLoopInit                                       \
+    BLE tradLoopInit                                       \
                                                            \
 vecLoop:                                                   \
     VLD1R.P 1(R1), [V13.B16]                               \

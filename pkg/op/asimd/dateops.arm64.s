@@ -105,7 +105,7 @@ TEXT ·extractYear(SB),NOSPLIT,$0-72
     VLD1R.P 4(R5), [V15.S4]
 
     CMP $4, R2
-    BLT tradLoop
+    BLE tradLoop
 
 vecLoop:
     VLD1.P 16(R0), [V16.S4]
@@ -175,7 +175,7 @@ TEXT ·extractMonth(SB),NOSPLIT,$0-72
     BEQ exitFn
 
     CMP $4, R2
-    BLT tradLoop
+    BLE tradLoop
 
 vecLoop:
     VLD1.P 16(R0), [V16.S4]
@@ -239,7 +239,7 @@ TEXT ·extractDay(SB),NOSPLIT,$0-72
     BEQ exitFn
 
     CMP $4, R2
-    BLT tradLoop
+    BLE tradLoop
 
 vecLoop:
     VLD1.P 16(R0), [V16.S4]
@@ -299,7 +299,7 @@ TEXT ·truncateYear(SB),NOSPLIT,$0-72
     WORD $0x4e20d63c // 'fadd.4s v28, v17, v1'
 
     CMP $4, R2
-    BLT tradLoop
+    BLE tradLoop
 
 vecLoop:
     VLD1.P 16(R0), [V16.S4]
@@ -408,7 +408,7 @@ TEXT ·truncateMonth(SB),NOSPLIT,$0-72
     WORD $0x4ea0d55b // 'fsub.4s v27, v10, v0'
 
     CMP $4, R2
-    BLT tradLoop
+    BLE tradLoop
 
 vecLoop:
     VLD1.P 16(R0), [V16.S4]
@@ -530,7 +530,7 @@ TEXT ·extractDayOfWeek(SB),NOSPLIT,$0-48
     WORD $0x4f00f785         // 'fmov.4s v5, #7.00'
 
     CMP $4, R2
-    BLT tradLoop
+    BLE tradLoop
 
 vecLoop:
     VLD1.P 16(R0), [V6.S4]

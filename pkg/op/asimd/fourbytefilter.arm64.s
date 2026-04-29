@@ -19,7 +19,7 @@
     BEQ exitFn                                             \
                                                            \
     CMP $8, R2                                             \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 32(R0), [V5.S4, V6.S4]                          \
@@ -130,7 +130,7 @@ TEXT ·EqF32(SB),NOSPLIT,$0-52
     BEQ exitFn                                             \
                                                            \
     CMP $8, R2                                             \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 32(R0), [V5.S4, V6.S4]                          \
@@ -202,7 +202,7 @@ TEXT ·NeqF32(SB),NOSPLIT,$0-52
     BEQ exitFn                                             \
                                                            \
     CMP $8, R2                                             \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 32(R0), [V4.S4, V5.S4]                          \

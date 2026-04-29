@@ -13,7 +13,7 @@
     BEQ exitFn                                             \
                                                            \
     CMP chnkSize, R2                                       \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VDUP R5, V1.spec                                       \

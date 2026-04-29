@@ -17,7 +17,7 @@
     BEQ exitFn                                             \
                                                            \
     CMP chnkSize, R2                                       \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 64(R0), [V2.spec, V3.spec, V4.spec, V5.spec]    \
@@ -101,7 +101,7 @@ TEXT ·ClipI32WithI32Bounds(SB),NOSPLIT,$0-56
     BEQ exitFn                                             \
                                                            \
     CMP $8, R2                                             \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 64(R0), [V2.D2, V3.D2, V4.D2, V5.D2]            \
@@ -179,7 +179,7 @@ TEXT ·ClipI64WithI64Bounds(SB),NOSPLIT,$0-64
     BEQ exitFn                                             \
                                                            \
     CMP chnkSize, R2                                       \
-    BLT tradLoop                                           \
+    BLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
     VLD1.P 64(R0), [V2.spec, V3.spec, V4.spec, V5.spec]    \
