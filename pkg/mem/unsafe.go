@@ -1,20 +1,31 @@
 package mem
 
-import "unsafe"
+import (
+	"unsafe"
+)
 
+// alignSize sets for all slices the following:
+// a) memory alignment (e.g., &s[0] divisibly by alignSize)
+// b) byte alignment (e.g., len(s) divisible by alignSize)
 const alignSize int = 64
 
+// incPtr increments `b` by `l` bytes.
 func incPtr(b *byte, l int) *byte {
 	return (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(b)) + uintptr(l)))
 }
 
+// decPtr decrements `b` by `l` bytes.
 func decPtr(b *byte, l int) *byte {
 	return (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(b)) - uintptr(l)))
 }
 
+// makeAlignedSlice returns a byte slice with len >= `l`.
 func makeAlignedSlice(l int) []byte {
-	if l <= 0 || l%alignSize != 0 {
-		return nil
+	if l <= alignSize {
+		l = alignSize
+	}
+	if l%alignSize != 0 {
+		l += (l - (l & (alignSize - 1)))
 	}
 
 	s := make([]byte, l+alignSize)
@@ -28,6 +39,7 @@ func makeAlignedSlice(l int) []byte {
 	return s
 }
 
+// isAligned returns true if `addr` is divisble by `a`.
 func isAligned(addr *byte, a int) bool {
 	return uintptr(unsafe.Pointer(addr))&uintptr(a-1) == 0
 }

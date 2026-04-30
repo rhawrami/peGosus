@@ -47,7 +47,8 @@ func (s *Segment) Inc() {
 	s.refCount.Add(1)
 }
 
-// AddLength increases the length by `l`.
+// AddLength increases the length by `l`; sets length to the max
+// length if `l` + current length > capacity.
 func (s *Segment) AddLength(l int) {
 	if uint64(l)+s.length > s.capacity {
 		s.length = s.capacity
@@ -56,7 +57,8 @@ func (s *Segment) AddLength(l int) {
 	}
 }
 
-// SubLength decreases the length by `l`.
+// SubLength decreases the length by `l`; sets length to 0
+// if `l` > current length.
 func (s *Segment) SubLength(l int) {
 	if uint64(l) > s.length {
 		s.length = 0

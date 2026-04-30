@@ -2,9 +2,10 @@ package mem
 
 import "sync/atomic"
 
+// sets the default capacity for a slab's segment set.
 const defaultSegL int = 10
 
-// MakeSlab generates a new Slab object with `l` bytes.
+// MakeSlab generates a new Slab object with at least `l` bytes.
 func MakeSlab(l int) *Slab {
 	buff := makeAlignedSlice(l)
 	base := &buff[0]
@@ -15,15 +16,18 @@ func MakeSlab(l int) *Slab {
 		base:     base,
 		on:       base,
 		used:     0,
-		capacity: uint64(l),
+		capacity: uint64(len(buff)),
 		segments: segments,
 		holes:    0,
 	}
+
 	s.setUp()
 	return s
 }
 
-// Slab represents a contiguous byte buffer.
+// Slab represents a contiguous chunk of memory; The underlying memory is
+// guaranteed to be at least `alignSize` bytes in length, divisible by `alignSize`
+// bytes in length, and divisible by `alignSize` in its base address.
 type Slab struct {
 	buff     []byte     // underlying buffer
 	base     *byte      // base address
@@ -34,7 +38,8 @@ type Slab struct {
 	holes    uint64     // number of holes present
 }
 
-// Clear gives `s` a fresh slate.
+// Clear gives `s` a fresh slate; should be called knowing that all related
+// segments will now be undefined.
 func (s *Slab) Clear() {
 	s.on = s.base
 	s.used = 0
@@ -43,12 +48,23 @@ func (s *Slab) Clear() {
 	s.setUp()
 }
 
-// setUp creates a single Segment belonging to `s`, with length
-// equal to the length of `s`.
+// Nuke sets all pointers (including the underlying buffer) to nil. Not really
+// necessary, but I thought a function called `Nuke` was kind of cool :)
+func (s *Slab) Nuke() {
+	s.buff = nil
+	s.base = nil
+	s.on = nil
+	s.segments = nil
+}
+
+// setUp creates a single Segment belonging to `s`, with length and capacity
+// equal to the capacity of `s`.
 func (s *Slab) setUp() {
+	s.segments = s.segments[:0]
 	seg := &Segment{
 		base:     s.base,
 		length:   s.capacity,
+		capacity: s.capacity,
 		refCount: atomic.Int64{},
 		slab:     s,
 	}
@@ -57,7 +73,7 @@ func (s *Slab) setUp() {
 
 // update updates `s`'s metadata, given another `l` bytes being used.
 func (s *Slab) update(l uint64) {
-	s.on = incPtr(s.base, int(l))
+	s.on = incPtr(s.on, int(l))
 	s.used += l
 
 	seg := &Segment{
@@ -78,14 +94,14 @@ func (s *Slab) coalesce() bool {
 	var yay bool
 
 	// # segments can change during loop
-	l := len(s.segments)
+	l := len(s.segments) - 1
 	for i := 0; i < l; i++ {
-		if s.segments[i].refCount.Load() == 0 {
-			if i != (l-1) && s.segments[i+1].refCount.Load() == 0 {
-				a := s.segments[i]
-				b := s.segments[i+1]
-				a.capacity += b.capacity
-
+		if len(s.segments) <= 2 {
+			break
+		}
+		if left := s.segments[i]; left.refCount.Load() == 0 {
+			if right := s.segments[i+1]; right.refCount.Load() == 0 {
+				left.capacity += right.capacity
 				// shift down by one, except final segment
 				for j := i + 1; j < len(s.segments)-1; j++ {
 					s.segments[j] = s.segments[j+1]
@@ -105,17 +121,19 @@ func (s *Slab) coalesce() bool {
 // in its current state.
 func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 	// ensure length divisible by alignment size
-	var l uint64
+	l := uint64(length)
 	if l < uint64(alignSize) {
 		l = uint64(alignSize)
 	} else {
-		l = uint64(alignSize - (length & (alignSize - 1)) + length)
+		if l&(uint64(alignSize)-1) != 0 {
+			l = uint64(alignSize - (length & (alignSize - 1)) + length)
+		}
 	}
 
 	// first check if we can use earlier segment
 	if s.holes != 0 {
 		for _, v := range s.segments {
-			if v.refCount.Load() == 0 && v.capacity <= l {
+			if v.refCount.Load() == 0 && l <= v.capacity {
 				v.length = l
 				v.refCount.Store(1)
 
@@ -129,6 +147,7 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 	if l <= s.segments[len(s.segments)-1].capacity {
 		seg := s.segments[len(s.segments)-1]
 		seg.length = uint64(length)
+		seg.capacity = uint64(length)
 		seg.refCount.Store(1)
 
 		s.update(l)
@@ -152,15 +171,15 @@ func (s *Slab) TakeSegment(g *Segment) {
 	g.length = 0
 	g.refCount.Store(0)
 
-	var h uint64
-	// try to avoid hole if `g` is most recently used segment
+	var h uint64 = 1
+	// try to avoid hole if `g` is penultimate segment
 	if g == s.segments[len(s.segments)-2] {
-		edge := s.segments[len(s.segments)-2]
+		edge := s.segments[len(s.segments)-1]
 		g.capacity += edge.capacity
 		s.on = g.base
 		s.used -= g.capacity
 		s.segments = s.segments[:len(s.segments)-1]
-		h = 1
+		h = 0
 	}
 	s.holes += h
 }
