@@ -200,6 +200,13 @@ func (d *Data) SubLength(l, o uint64) {
 	d.length -= l
 }
 
+// SetLength sets segment `o` to `l` bytes of length.
+func (d *Data) SetLength(l, o uint64) {
+	d.length -= d.segments[0].seg.length
+	d.segments[0].seg.SetLength(int(l))
+	d.length += d.segments[0].seg.length
+}
+
 // Merge merges `x` to `d`.
 func (d *Data) Merge(x *Data) {
 	d.length += x.length

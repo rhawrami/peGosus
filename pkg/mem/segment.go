@@ -67,6 +67,16 @@ func (s *Segment) SubLength(l int) {
 	}
 }
 
+// SetLength sets the length to `l` bytes; sets length to capacity
+// if `l` > capacity.
+func (s *Segment) SetLength(l int) {
+	length := uint64(l)
+	if length > s.capacity {
+		length = s.capacity
+	}
+	s.length = length
+}
+
 // AsBytes casts `s` as a slice of bytes with length `l`.
 func (s *Segment) AsBytes(l int) []byte { return asBT(s.base, l) }
 
