@@ -119,7 +119,7 @@ func (d *Data) AddSegment(s *Segment, inc bool) {
 func (d *Data) DropSegment(o uint64, dec bool) {
 	var decBy int64 = 0
 	if dec {
-		decBy = 1
+		decBy = -1
 	}
 	g := d.segments[o].seg
 	d.length -= g.length
@@ -229,7 +229,7 @@ func (d *Data) SubLength(l, o uint64) {
 func (d *Data) SetLength(l, o uint64) {
 	d.length -= d.segments[o].seg.length
 	d.segments[o].seg.SetLength(int(l))
-	d.length += d.segments[0].seg.length
+	d.length += d.segments[o].seg.length
 }
 
 // Merge merges `x` to `d`; if inc is true, all segments
