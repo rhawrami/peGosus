@@ -31,6 +31,17 @@ func MakeData(s []*Segment) *Data {
 	}
 }
 
+// MakeDataFromSingleSegment returns a Data object with a single segment.
+func MakeDataFromSingleSegment(g *Segment) *Data {
+	return &Data{
+		length:   g.length,
+		capacity: g.capacity,
+		segments: []*DataSegment{
+			{seg: g, offID: 0},
+		},
+	}
+}
+
 // SizeProfile represents either a set of data segment
 // lengths or capacities.
 type SizeProfile struct {
