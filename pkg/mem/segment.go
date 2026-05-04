@@ -79,7 +79,7 @@ func (s *Segment) SetLength(l int) {
 
 // MemSetU8 sets every byte, from [base address + `o`] to `l` bytes,
 // with the value `v`; panics if base not aligned to 64 bytes.
-func (s *Segment) MemSetU8(l, o uint64, v uint8) {
+func (s *Segment) MemSetU8(v uint8, l, o uint64) {
 	if s.length < (o+l) || s.length < o {
 		panic("MemSetU8: offseted length greated than segment length")
 	}
@@ -90,7 +90,7 @@ func (s *Segment) MemSetU8(l, o uint64, v uint8) {
 // MemSetU32 sets every four bytes, from [base address + `o`] to `l` bytes,
 // with the value `v`; panics if base not aligned to 64 bytes, or if length is
 // not divisible by four.
-func (s *Segment) MemSetU32(l, o uint64, v uint32) {
+func (s *Segment) MemSetU32(v uint32, l, o uint64) {
 	if s.length < (o+l) || s.length < o {
 		panic("MemSetU32: offseted length greated than segment length")
 	}
@@ -105,7 +105,7 @@ func (s *Segment) MemSetU32(l, o uint64, v uint32) {
 // MemSetU64 sets every eight bytes, from [base address + `o`] to `l` bytes,
 // with the value `v`; panics if base not aligned to 64 bytes, or if length is
 // not divisible by eight.
-func (s *Segment) MemSetU64(l, o, v uint64) {
+func (s *Segment) MemSetU64(v, l, o uint64) {
 	if s.length < (o+l) || s.length < o {
 		panic("MemSetU64: offseted length greated than segment length")
 	}
