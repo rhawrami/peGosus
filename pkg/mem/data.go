@@ -58,6 +58,9 @@ type Data struct {
 	segments []*DataSegment // set of data segments
 }
 
+// SegmentAt returns the segment at offset `o`.
+func (d *Data) SegmentAt(o uint64) *Segment { return d.segments[o].seg }
+
 // updateOffsetIDs updates the offset ID of each segment, ensuring
 // IDs correspond to slice positions.
 func (d *Data) updateOffsetIDs() {
@@ -96,8 +99,14 @@ func (d *Data) LenAndCapProfile() (SizeProfile, SizeProfile) {
 	return SizeProfile{p: lp}, SizeProfile{p: cp}
 }
 
-// AddSegment adds a segment to `d`.
-func (d *Data) AddSegment(s *Segment) {
+// AddSegment adds a segment to `d`; if inc is true, increments by one.
+func (d *Data) AddSegment(s *Segment, inc bool) {
+	var incBy int64 = 0
+	if inc {
+		incBy = 1
+	}
+	s.refCount.Add(incBy)
+
 	ds := &DataSegment{seg: s, offID: uint64(len(d.segments))}
 
 	d.length += s.length
@@ -106,10 +115,15 @@ func (d *Data) AddSegment(s *Segment) {
 }
 
 // DropSegment drops the segment at position `o` from
-// `d`.
-func (d *Data) DropSegment(o uint64) {
-	d.length -= d.segments[o].seg.length
-	d.capacity -= d.segments[o].seg.capacity
+// `d`; if dec is true, decrements by one.
+func (d *Data) DropSegment(o uint64, dec bool) {
+	var decBy int64 = 0
+	if dec {
+		decBy = 1
+	}
+	g := d.segments[o].seg
+	d.length -= g.length
+	d.capacity -= g.capacity
 
 	for i := int(o); i < len(d.segments)-1; i++ {
 		d.segments[i] = d.segments[i+1]
@@ -117,7 +131,7 @@ func (d *Data) DropSegment(o uint64) {
 	}
 
 	d.segments = d.segments[:len(d.segments)-1]
-
+	g.refCount.Add(decBy)
 }
 
 // IncAll increments the reference count on all segments.
@@ -233,4 +247,31 @@ func (d *Data) Merge(x *Data, inc bool) {
 	}
 
 	d.updateOffsetIDs()
+}
+
+// MemSetU8 sets every byte, for each segment, with `x`,
+// up to the segment's length; for setting one segment only,
+// call MemSetU8 on that segment.
+func (d *Data) MemSetU8(x uint8) {
+	for _, v := range d.segments {
+		v.seg.MemSetU8(x)
+	}
+}
+
+// MemSetU32 sets every four bytes, for each segment, with `x`,
+// up to the segment's length; for setting one segment only,
+// call MemSetU32 on that segment.
+func (d *Data) MemSetU32(x uint32) {
+	for _, v := range d.segments {
+		v.seg.MemSetU32(x)
+	}
+}
+
+// MemSetU64 sets every eight bytes, for each segment, with `x`,
+// up to the segment's length; for setting one segment only,
+// call MemSetU64 on that segment.
+func (d *Data) MemSetU64(x uint64) {
+	for _, v := range d.segments {
+		v.seg.MemSetU64(x)
+	}
 }
