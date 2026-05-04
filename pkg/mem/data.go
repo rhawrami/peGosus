@@ -207,11 +207,17 @@ func (d *Data) SetLength(l, o uint64) {
 	d.length += d.segments[0].seg.length
 }
 
-// Merge merges `x` to `d`.
-func (d *Data) Merge(x *Data) {
+// Merge merges `x` to `d`; if inc is true, all segments
+// in `x` are incremented.
+func (d *Data) Merge(x *Data, inc bool) {
+	a := int64(0)
+	if inc {
+		a = 1
+	}
 	d.length += x.length
 	d.capacity += x.capacity
 	for _, v := range x.segments {
+		v.seg.refCount.Add(a)
 		d.segments = append(d.segments, v)
 	}
 
