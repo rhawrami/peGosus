@@ -38,8 +38,8 @@ func (p *Pawner) MakeSegmentForce() *Segment {
 		return g
 	}
 
-	// add room for at least five more 128-byte segments
-	p.s.Grow(int(p.s.capacity) + pawnSegmentSize*5)
+	// add room for at least ten more 128-byte segments
+	p.s.Grow(int(p.s.capacity) + pawnSegmentSize*10)
 	gF, ok := p.s.MakeSegment(pawnSegmentSize)
 	if !ok {
 		// this should not happen
