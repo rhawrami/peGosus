@@ -67,6 +67,45 @@ type Allocator struct {
 	scratch  *Scratch // slab for temporary objects
 }
 
+// Clear clears all underlying slabs in `a`.
+func (a *Allocator) Clear() {
+	for _, v := range a.slabs {
+		v.Clear()
+	}
+	a.on = 0
+
+	if a.PawnerIsValid() {
+		a.pawner.Clear()
+	}
+
+	if a.ScratchIsValid() {
+		a.scratch.Clear()
+	}
+}
+
+// ClearSlabs clears all slabs in the slab set, excluding the
+// pawner and scratch.
+func (a *Allocator) ClearSlabs() {
+	for _, v := range a.slabs {
+		v.Clear()
+	}
+	a.on = 0
+}
+
+// ClearPawner clears the pawner slab, if non-nil.
+func (a *Allocator) ClearPawner() {
+	if a.PawnerIsValid() {
+		a.pawner.Clear()
+	}
+}
+
+// ClearScratch clears the scratch slab, if non-nil.
+func (a *Allocator) ClearScratch() {
+	if a.ScratchIsValid() {
+		a.scratch.Clear()
+	}
+}
+
 // Grow adds another slab with at least `l` bytes to the allocator.
 func (a *Allocator) Grow(l int) {
 	s := MakeSlab(l)
