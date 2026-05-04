@@ -77,39 +77,43 @@ func (s *Segment) SetLength(l int) {
 	s.length = length
 }
 
-// MemSetU8 sets every byte, from the base address to the byte length
+// MemSetU8 sets every byte, from [base address + `o`] to `l` bytes,
 // with the value `v`; panics if base not aligned to 64 bytes.
-func (s *Segment) MemSetU8(v uint8) {
-	if !s.IsAligned(alignSize) {
-		panic("MemSetU8: base not aligned to 64 bytes")
+func (s *Segment) MemSetU8(l, o uint64, v uint8) {
+	if s.length < (o+l) || s.length < o {
+		panic("MemSetU8: offseted length greated than segment length")
 	}
-	setU8(s.base, s.length, v)
+	addr := incPtr(s.base, int(o))
+	setU8(addr, l, v)
 }
 
-// MemSetU32 sets every four bytes, from the base address to the byte length
+// MemSetU32 sets every four bytes, from [base address + `o`] to `l` bytes,
 // with the value `v`; panics if base not aligned to 64 bytes, or if length is
 // not divisible by four.
-func (s *Segment) MemSetU32(v uint32) {
-	if !s.IsAligned(alignSize) {
-		panic("MemSetU32: base not aligned to 64 bytes")
+func (s *Segment) MemSetU32(l, o uint64, v uint32) {
+	if s.length < (o+l) || s.length < o {
+		panic("MemSetU32: offseted length greated than segment length")
 	}
-	if s.length/4 != 0 {
-		panic("MemSetU32: length not divisible by 4")
+	addr := incPtr(s.base, int(o))
+	if l%4 != 0 {
+		panic("MemSetU32: address not divisible by 4")
 	}
-	setU32(s.base, s.length/4, v)
+
+	setU32(addr, l/4, v)
 }
 
-// MemSetU64 sets every eight bytes, from the base address to the byte length
+// MemSetU64 sets every eight bytes, from [base address + `o`] to `l` bytes,
 // with the value `v`; panics if base not aligned to 64 bytes, or if length is
 // not divisible by eight.
-func (s *Segment) MemSetU64(v uint64) {
-	if !s.IsAligned(alignSize) {
-		panic("MemSetU64: base not aligned to 64 bytes")
+func (s *Segment) MemSetU64(l, o, v uint64) {
+	if s.length < (o+l) || s.length < o {
+		panic("MemSetU64: offseted length greated than segment length")
 	}
-	if s.length/8 != 0 {
+	addr := incPtr(s.base, int(o))
+	if l%8 != 0 {
 		panic("MemSetU64: length not divisible by 8")
 	}
-	setU64(s.base, s.length/8, v)
+	setU64(addr, l/8, v)
 }
 
 // AsBytes casts `s` as a slice of bytes with length `l`.

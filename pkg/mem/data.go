@@ -251,27 +251,27 @@ func (d *Data) Merge(x *Data, inc bool) {
 
 // MemSetU8 sets every byte, for each segment, with `x`,
 // up to the segment's length; for setting one segment only,
-// call MemSetU8 on that segment.
+// or applying an offset, call MemSetU8 on that segment.
 func (d *Data) MemSetU8(x uint8) {
 	for _, v := range d.segments {
-		v.seg.MemSetU8(x)
+		v.seg.MemSetU8(v.seg.length, 0, x)
 	}
 }
 
 // MemSetU32 sets every four bytes, for each segment, with `x`,
 // up to the segment's length; for setting one segment only,
-// call MemSetU32 on that segment.
+// or applying an offset, call MemSetU32 on that segment.
 func (d *Data) MemSetU32(x uint32) {
 	for _, v := range d.segments {
-		v.seg.MemSetU32(x)
+		v.seg.MemSetU32(v.seg.length, 0, x)
 	}
 }
 
 // MemSetU64 sets every eight bytes, for each segment, with `x`,
 // up to the segment's length; for setting one segment only,
-// call MemSetU64 on that segment.
+// or applying an offset, call MemSetU64 on that segment.
 func (d *Data) MemSetU64(x uint64) {
 	for _, v := range d.segments {
-		v.seg.MemSetU64(x)
+		v.seg.MemSetU64(v.seg.length, 0, x)
 	}
 }

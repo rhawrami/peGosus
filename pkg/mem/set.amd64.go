@@ -6,26 +6,26 @@ import "golang.org/x/sys/cpu"
 
 func init() {
 	if cpu.X86.HasAVX2 {
-		setU8 = setU8AlignedAVX2
-		setU32 = setU32AlignedAVX2
-		setU64 = setU64AlignedAVX2
+		setU8 = setU8UnalignedAVX2
+		setU32 = setU32UnalignedAVX2
+		setU64 = setU64UnalignedAVX2
 	}
 }
 
-// setU8AlignedAVX2 sets every byte, starting at `a` and going on for
-// `l` bytes, with the value `v`; assumes 32-byte alignment.
+// setU8UnalignedAVX2 sets every byte, starting at `a` and going on for
+// `l` bytes, with the value `v`.
 //
 //go:noescape
-func setU8AlignedAVX2(a *byte, l uint64, v uint8)
+func setU8UnalignedAVX2(a *byte, l uint64, v uint8)
 
-// setU32AlignedAVX2 sets every four bytes, starting at `a` and going on for
-// `l` bytes, with the value `v`; assumes 32-byte alignment.
+// setU32UnalignedAVX2 sets every four bytes, starting at `a` and going on for
+// `l` bytes, with the value `v`.
 //
 //go:noescape
-func setU32AlignedAVX2(a *byte, l uint64, v uint32)
+func setU32UnalignedAVX2(a *byte, l uint64, v uint32)
 
-// setU64AlignedAVX2 sets every eight bytes, starting at `a` and going on for
-// `l` bytes, with the value `v`; assumes 32-byte alignment.
+// setU64UnalignedAVX2 sets every eight bytes, starting at `a` and going on for
+// `l` bytes, with the value `v`.
 //
 //go:noescape
-func setU64AlignedAVX2(a *byte, l uint64, v uint64)
+func setU64UnalignedAVX2(a *byte, l uint64, v uint64)
