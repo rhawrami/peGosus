@@ -79,6 +79,12 @@ func (s *Slab) Grow(l int) {
 	s.segments[len(s.segments)-1].capacity = s.capacity - s.used
 }
 
+// FreeSpaceAtEnd returns the byte capacity of the final segment
+// (e.g, remaining space at end of slab, ignoring holes).
+func (s *Slab) FreeSpaceAtEnd() int {
+	return int(s.segments[len(s.segments)-1].capacity)
+}
+
 // setUp creates a single Segment belonging to `s`, with length and capacity
 // equal to the capacity of `s`.
 func (s *Slab) setUp() {
@@ -93,15 +99,16 @@ func (s *Slab) setUp() {
 	s.segments = append(s.segments, seg)
 }
 
-// update updates `s`'s metadata, given another `l` bytes being used.
-func (s *Slab) update(l uint64) {
+// update updates `s`'s metadata, given another `l` bytes being used, and a
+// previous byte capacity of `p`.
+func (s *Slab) update(l, p uint64) {
 	s.on = incPtr(s.on, int(l))
 	s.used += l
 
 	seg := &Segment{
 		base:     s.on,
 		length:   0,
-		capacity: s.capacity - s.used,
+		capacity: p - l,
 		refCount: atomic.Int64{},
 		slab:     s,
 	}
@@ -154,11 +161,35 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 
 	// first check if we can use earlier segment
 	if s.holes != 0 {
-		for _, v := range s.segments {
+		for i := 0; i < len(s.segments)-1; i++ {
+			v := s.segments[i]
 			if v.refCount.Load() == 0 && l <= v.capacity {
+
+				// if we only need 50% or less of the capacity, bisect into
+				// two parts (not necessarily equal parts though)
+				if l*2 <= v.capacity {
+					// append blank segment, shift segments over by one
+					s.segments = append(s.segments, &Segment{})
+					for j := len(s.segments) - 2; j > i; j-- {
+						s.segments[j+1] = s.segments[j]
+					}
+
+					// keep right side free
+					right := s.segments[i+1]
+					right.base = incPtr(v.base, int(l))
+					right.length = 0
+					right.capacity = v.capacity - l
+					right.refCount = atomic.Int64{}
+					right.slab = s
+
+					s.holes += 1
+					v.capacity = l
+				}
+
 				v.length = l
 				v.refCount.Store(1)
 
+				s.used += v.capacity
 				s.holes -= 1
 				return v, true
 			}
@@ -166,13 +197,13 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 	}
 
 	// if earlier segment can't be used, check at the end
-	if l <= s.segments[len(s.segments)-1].capacity {
+	if oldCap := s.segments[len(s.segments)-1].capacity; l <= oldCap {
 		seg := s.segments[len(s.segments)-1]
 		seg.length = uint64(length)
 		seg.capacity = uint64(length)
 		seg.refCount.Store(1)
 
-		s.update(l)
+		s.update(l, oldCap)
 		return seg, true
 	}
 
@@ -182,7 +213,7 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 // MakeSegmentWithCoalesce calls MakeSegment, but first attempts
 // to coalesce adjacent free segments.
 func (s *Slab) MakeSegmentWithCoalesce(length int) (*Segment, bool) {
-	if s.holes != 0 {
+	if s.holes > 1 {
 		_ = s.coalesce()
 	}
 	return s.MakeSegment(length)
@@ -190,6 +221,7 @@ func (s *Slab) MakeSegmentWithCoalesce(length int) (*Segment, bool) {
 
 // TakeSegment takes a segment, returning it to `s`.
 func (s *Slab) TakeSegment(g *Segment) {
+	s.used -= g.capacity
 	g.length = 0
 	g.refCount.Store(0)
 
@@ -199,7 +231,6 @@ func (s *Slab) TakeSegment(g *Segment) {
 		edge := s.segments[len(s.segments)-1]
 		g.capacity += edge.capacity
 		s.on = g.base
-		s.used -= g.capacity
 		s.segments = s.segments[:len(s.segments)-1]
 		h = 0
 	}
