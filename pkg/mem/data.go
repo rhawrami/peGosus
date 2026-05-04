@@ -214,7 +214,7 @@ func (d *Data) SubLength(l, o uint64) {
 // SetLength sets segment `o` to `l` bytes of length.
 func (d *Data) SetLength(l, o uint64) {
 	d.length -= d.segments[o].seg.length
-	d.segments[0].seg.SetLength(int(l))
+	d.segments[o].seg.SetLength(int(l))
 	d.length += d.segments[0].seg.length
 }
 
