@@ -9,6 +9,17 @@ import (
 // b) byte alignment (e.g., len(s) divisible by alignSize)
 const alignSize int = 64
 
+// calcOffset calculates the difference, in bytes, between
+// `addr` and `base`; panics if `base` > `addr`.
+func calcOffset(base, addr *byte) int {
+	b := uintptr(unsafe.Pointer(base))
+	a := uintptr(unsafe.Pointer(addr))
+	if b > a {
+		panic("calcOffset: base > addr")
+	}
+	return int(a - b)
+}
+
 // incPtr increments `b` by `l` bytes.
 func incPtr(b *byte, l int) *byte {
 	return (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(b)) + uintptr(l)))

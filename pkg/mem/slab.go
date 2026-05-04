@@ -57,6 +57,28 @@ func (s *Slab) Nuke() {
 	s.segments = nil
 }
 
+// Grow grows the underlying buffer to at least `l` bytes; requires copy of
+// old to new buffer.
+func (s *Slab) Grow(l int) {
+	if uint64(l) <= s.capacity {
+		return
+	}
+
+	newB := makeAlignedSlice(l)
+	copy(newB, s.buff)
+
+	oldBase := s.base
+	newBase := &newB[0]
+	for _, v := range s.segments {
+		v.base = incPtr(newBase, calcOffset(oldBase, v.base))
+	}
+
+	s.buff = newB
+	s.base = newBase
+	s.capacity = uint64(len(newB))
+	s.segments[len(s.segments)-1].capacity = s.capacity - s.used
+}
+
 // setUp creates a single Segment belonging to `s`, with length and capacity
 // equal to the capacity of `s`.
 func (s *Slab) setUp() {
