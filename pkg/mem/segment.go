@@ -77,6 +77,41 @@ func (s *Segment) SetLength(l int) {
 	s.length = length
 }
 
+// MemSetU8 sets every byte, from the base address to the byte length
+// with the value `v`; panics if base not aligned to 64 bytes.
+func (s *Segment) MemSetU8(v uint8) {
+	if !s.IsAligned(alignSize) {
+		panic("MemSetU8: base not aligned to 64 bytes")
+	}
+	setU8(s.base, s.length, v)
+}
+
+// MemSetU32 sets every four bytes, from the base address to the byte length
+// with the value `v`; panics if base not aligned to 64 bytes, or if length is
+// not divisible by four.
+func (s *Segment) MemSetU32(v uint32) {
+	if !s.IsAligned(alignSize) {
+		panic("MemSetU32: base not aligned to 64 bytes")
+	}
+	if s.length/4 != 0 {
+		panic("MemSetU32: length not divisible by 4")
+	}
+	setU32(s.base, s.length/4, v)
+}
+
+// MemSetU64 sets every eight bytes, from the base address to the byte length
+// with the value `v`; panics if base not aligned to 64 bytes, or if length is
+// not divisible by eight.
+func (s *Segment) MemSetU64(v uint64) {
+	if !s.IsAligned(alignSize) {
+		panic("MemSetU64: base not aligned to 64 bytes")
+	}
+	if s.length/8 != 0 {
+		panic("MemSetU64: length not divisible by 8")
+	}
+	setU64(s.base, s.length/8, v)
+}
+
 // AsBytes casts `s` as a slice of bytes with length `l`.
 func (s *Segment) AsBytes(l int) []byte { return asBT(s.base, l) }
 
