@@ -22,17 +22,23 @@ func calcOffset(base, addr *byte) int {
 
 // incPtr increments `b` by `l` bytes.
 func incPtr(b *byte, l int) *byte {
+	if l < 0 {
+		panic("incPtr: cannot increment by negative bytes")
+	}
 	return (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(b)) + uintptr(l)))
 }
 
 // decPtr decrements `b` by `l` bytes.
 func decPtr(b *byte, l int) *byte {
+	if l < 0 {
+		panic("decPtr: cannot decrement by negative bytes")
+	}
 	return (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(b)) - uintptr(l)))
 }
 
 // makeAlignedSlice returns a byte slice with len >= `l`.
 func makeAlignedSlice(l int) []byte {
-	if l <= alignSize {
+	if l < alignSize {
 		l = alignSize
 	}
 	if l%alignSize != 0 {
