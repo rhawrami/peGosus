@@ -36,14 +36,14 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET     
 
-// func setU8(a *byte, l uint64, v byte)
+// func setU8(a *byte, n uint64, v byte)
 TEXT ·setU8(SB),NOSPLIT,$0-17
     vSet(MOVB, $1, $64, B16)
 
-// func setU32(a *byte, l uint64, v uint32)
+// func setU32(a *byte, n uint64, v uint32)
 TEXT ·setU32(SB),NOSPLIT,$0-20
     vSet(MOVW, $4, $16, S4)
 
-// func setU64(a *byte, l uint64, v uint64)
+// func setU64(a *byte, n uint64, v uint64)
 TEXT ·setU64(SB),NOSPLIT,$0-24
     vSet(MOVD, $8, $8, D2)
