@@ -1,6 +1,9 @@
 package mem
 
-import "sync/atomic"
+import (
+	"fmt"
+	"sync/atomic"
+)
 
 // Segment represents one piece of a slab.
 type Segment struct {
@@ -9,6 +12,14 @@ type Segment struct {
 	capacity uint64       // maximum byte capacity
 	refCount atomic.Int64 // reference count
 	slab     *Slab        // slab that segment belongs to
+}
+
+// String summarizes a segment's state.
+func (s *Segment) String() string {
+	return fmt.Sprintf(
+		"%p @ slab %p: len %d; cap %d; rfc %d;",
+		s, s.slab, s.length, s.capacity, s.refCount.Load(),
+	)
 }
 
 // Len returns the segment's current byte length.
