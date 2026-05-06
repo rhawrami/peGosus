@@ -1,11 +1,11 @@
 package mem
 
 // MakeSlabSet returns a SlabSet, given a size profile.
-func MakeSlabSet(p SizeProfile) *SlabSet {
+func MakeSlabSet(p []uint64) *SlabSet {
 	var capacity uint64
-	slabs := make([]*Slab, len(p.AsSlice()))
+	slabs := make([]*Slab, len(p))
 
-	for i, v := range p.AsSlice() {
+	for i, v := range p {
 		b := MakeSlab(int(v))
 		capacity += b.capacity
 		slabs[i] = b
@@ -49,6 +49,34 @@ func (s *SlabSet) GrowWithSize(l int) {
 	b := MakeSlab(l)
 	s.capacity += b.capacity
 	s.slabs = append(s.slabs, b)
+}
+
+// Accept takes in `b`, and adds it to the set, also updating `on`.
+func (s *SlabSet) Accept(b *Slab) {
+	s.capacity += b.capacity
+	s.slabs = append(s.slabs, b)
+	if (s.slabs[s.on].capacity - s.slabs[s.on].used) > (b.capacity - b.used) {
+		s.on = len(s.slabs) - 1
+	}
+}
+
+// Remove removes the slab at offset `o`, also updating `on`.
+func (s *SlabSet) Remove(o int) {
+	s.capacity -= s.slabs[o].capacity
+
+	var newOn int
+	var c uint64
+	for i := o; i < len(s.slabs)-1; i++ {
+		v := s.slabs[i+1]
+		if v.capacity > c {
+			c = v.capacity
+			newOn = i
+		}
+		s.slabs[i] = v
+	}
+
+	s.slabs = s.slabs[:len(s.slabs)-1]
+	s.on = newOn
 }
 
 // SetOn sets on to the slab with the greatest unused capacity.
@@ -102,4 +130,24 @@ func (s *SlabSet) GrowAndMakeSegment(l int) *Segment {
 	s.GrowWithSize(sL)
 	g, _ := s.slabs[s.on].MakeSegment(l)
 	return g
+}
+
+// transferSlab takes the first open slab (e.g., used = 0) from `src`,
+// and transfers it to `dst`; does nothing if `src` has no open slabs.
+func transferSlab(dst, src *SlabSet) {
+	var a *Slab
+	var ok bool
+
+	for i, v := range src.slabs {
+		if v.used == 0 {
+			a = v
+			ok = true
+			src.Remove(i)
+			break
+		}
+	}
+
+	if ok {
+		dst.Accept(a)
+	}
 }
