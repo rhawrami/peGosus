@@ -249,6 +249,30 @@ func (d *Data) Merge(x *Data, inc bool) {
 	d.updateOffsetIDs()
 }
 
+// RechunkCopy copies all underlying data (up to each segment length) from
+// `d` to `dst`, where `dst` is data with only one underlying segment;
+// panics if `dst` has more than one segment; panics if `dst` does not
+// have enough capacity.
+func (d *Data) RechunkCopy(dst *Data) {
+	if d.length > dst.length {
+		panic("Rechunk: dst does not have enough capacity")
+	}
+	if len(dst.segments) != 1 {
+		panic("Rechunk: dst does not have only one segment.")
+	}
+
+	dst.length = d.length
+	dst.segments[0].seg.length = d.length
+
+	on := 0
+	target := dst.segments[0].seg.AsBytes(int(dst.length))
+	for _, v := range d.segments {
+		source := v.Seg().AsBytes(int(v.seg.length))
+		x := copy(target[on:], source)
+		on += x
+	}
+}
+
 // MemSetU8 sets every byte, for each segment, with `x`,
 // up to the segment's length; for setting one segment only,
 // or applying an offset, call MemSetU8 on that segment.
