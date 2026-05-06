@@ -254,15 +254,15 @@ func (d *Data) Merge(x *Data, inc bool) {
 // panics if `dst` has more than one segment; panics if `dst` does not
 // have enough capacity.
 func (d *Data) RechunkCopy(dst *Data) {
-	if d.length > dst.length {
+	if d.length > dst.capacity {
 		panic("Rechunk: dst does not have enough capacity")
 	}
 	if len(dst.segments) != 1 {
 		panic("Rechunk: dst does not have only one segment.")
 	}
 
-	dst.length = d.length
-	dst.segments[0].seg.length = d.length
+	dst.SetLength(d.length, 0)
+	dst.segments[0].seg.SetLength(int(d.length))
 
 	on := 0
 	target := dst.segments[0].seg.AsBytes(int(dst.length))

@@ -42,7 +42,7 @@ func makeAlignedSlice(l int) []byte {
 		l = alignSize
 	}
 	if l%alignSize != 0 {
-		l += (l - (l & (alignSize - 1)))
+		l += (l & (alignSize - 1))
 	}
 
 	s := make([]byte, l+alignSize)

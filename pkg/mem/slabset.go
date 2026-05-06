@@ -86,6 +86,7 @@ func (s *SlabSet) SetOn() {
 	for i, v := range s.slabs {
 		if rS := v.capacity - v.used; rS > r {
 			o = i
+			r = rS
 		}
 	}
 	s.on = o

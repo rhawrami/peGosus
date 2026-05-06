@@ -50,7 +50,7 @@ func (a *AllocStats) resetLastOptimized() {
 func (a *AllocStats) updateAvgReq(l int) {
 	r := uint64(l)
 	if a.avgReq != 0 {
-		a.avgReq = (a.avgReq + uint64(l)) >> 1
+		r = (a.avgReq + uint64(l)) >> 1
 	}
 	a.avgReq = r
 }
