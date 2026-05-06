@@ -145,6 +145,81 @@ func (s *Slab) coalesce() bool {
 	return yay
 }
 
+// FullCoalesce attempts to coalesce all adjacent free segments;
+// returns true if at least one coalesce attempt was successful.
+func (s *Slab) FullCoalesce() bool {
+	var yay bool
+	// guaranteed to concat edge segment and penultimate segment
+	// (see TakeSegment), so need at least 4 segments to coalesce.
+	if s.holes < 2 || len(s.segments) < 4 {
+		return yay
+	}
+
+	// take two passes
+	// first pass: find set of adjacent free segments
+	var startCtr bool
+	var start, stop int
+	// if pos[i] != 0, then there is a set of adjacent free segs starting
+	// at i and ending at (inclusive) i+pos[i]
+	pos := make([]int, len(s.segments)-1)
+
+	for i := 0; i < len(s.segments)-1; i++ {
+		if s.segments[i].IsFree() {
+			if !startCtr {
+				startCtr = true
+				start = i
+				stop = i
+			} else {
+				stop = i
+			}
+		} else {
+			if startCtr && stop > start {
+				pos[start] = stop
+				startCtr = false
+			}
+		}
+	}
+
+	// second pass: plug the holes
+	i := 0
+	l := len(s.segments) - 1
+
+	for i < l {
+		pI := pos[i]
+		diff := pI - i
+		if pI == 0 {
+			i += 1
+			continue
+		}
+
+		// get new capacity
+		c := s.segments[i].capacity
+		for j := i; j < pI+1; j++ {
+			c += s.segments[j].capacity
+		}
+		s.segments[i].capacity = c
+
+		// drop non-leftmost segments, shift everything over
+		for j := i; j < len(s.segments)-diff; j++ {
+			s.segments[j] = s.segments[j+diff]
+		}
+		s.segments = s.segments[:len(s.segments)-diff]
+		l -= pI
+
+		// if more than two adjacent, hole count reduced by diff-1
+		if diff > 1 {
+			s.holes -= uint64(diff - 1)
+		} else {
+			s.holes -= 1
+		}
+
+		yay = true
+		i += 1
+	}
+
+	return yay
+}
+
 // MakeSegment returns a Segment with at least `length` bytes; returns
 // (nil, false) if `s` cannot support a new segment with `length` bytes
 // in its current state.

@@ -17,6 +17,9 @@ func (s *Segment) Len() uint64 { return s.length }
 // Cap returns the segment's maximum byte capacity.
 func (s *Segment) Cap() uint64 { return s.capacity }
 
+// IsFree returns true if the reference count is 0.
+func (s *Segment) IsFree() bool { return s.refCount.Load() == 0 }
+
 // CanSupport returns true if `s` has space for `l` elements, each of size `t`.
 func (s *Segment) CanSupport(l, t int) bool {
 	return s.capacity >= uint64(l*t)
