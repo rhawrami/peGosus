@@ -1,6 +1,9 @@
 package mem
 
-import "sync/atomic"
+import (
+	"fmt"
+	"sync/atomic"
+)
 
 // sets the default capacity for a slab's segment set.
 const defaultSegL int = 10
@@ -36,6 +39,33 @@ type Slab struct {
 	capacity uint64     // maximum byte capacity
 	segments []*Segment // set of segments
 	holes    uint64     // number of holes present
+}
+
+func (s *Slab) String() string {
+	share := float64(s.used) / float64(s.capacity) * 100
+	size := (14 + // address
+		6 + // " Slab["
+		7 + // assuming avg slab is 1 MB
+		15 + // "B, XXX% used] {"
+		2*len(s.segments) + // "[u|f],"
+		2) // "|}"
+
+	b := make([]byte, 0, size)
+	b = append(b, fmt.Sprintf("%p Slab[%dB, %.00f%% used] {", s, s.capacity, share)...)
+	for i := 0; i < len(s.segments)-1; i++ {
+		var x byte = 'u'
+		if s.segments[i].IsFree() {
+			x = 'f'
+		}
+		b = append(b, x)
+		b = append(b, ',')
+	}
+	if b[len(b)-1] == ',' {
+		b = b[:len(b)-1]
+	}
+	b = append(b, "|f}"...)
+
+	return string(b)
 }
 
 // Clear gives `s` a fresh slate; should be called knowing that all related
@@ -274,8 +304,8 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 	// if earlier segment can't be used, check at the end
 	if oldCap := s.segments[len(s.segments)-1].capacity; l <= oldCap {
 		seg := s.segments[len(s.segments)-1]
-		seg.length = uint64(length)
-		seg.capacity = uint64(length)
+		seg.length = uint64(l)
+		seg.capacity = uint64(l)
 		seg.refCount.Store(1)
 
 		s.update(l, oldCap)

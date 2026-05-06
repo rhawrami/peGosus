@@ -17,8 +17,11 @@ type Segment struct {
 // String summarizes a segment's state.
 func (s *Segment) String() string {
 	return fmt.Sprintf(
-		"%p @ slab %p: len %d; cap %d; rfc %d;",
-		s, s.slab, s.length, s.capacity, s.refCount.Load(),
+		"%p Segm[%dB, %.0f%% used] {%d}",
+		s,
+		s.capacity,
+		float64(s.length)/float64(s.length)*100,
+		s.refCount.Load(),
 	)
 }
 
