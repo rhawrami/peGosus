@@ -36,7 +36,15 @@ func (s *SlabSet) Clear() {
 	s.on = 0
 }
 
-// Grow adds a slab with byte capacity equal to the first slab
+// Nuke nukes `s` and all its underlying slabs.
+func (s *SlabSet) Nuke() {
+	for _, v := range s.slabs {
+		v.Nuke()
+	}
+	s.slabs = nil
+}
+
+// Grow adds a slab with byte capacity equal to the first slab.
 // in the set.
 func (s *SlabSet) Grow() {
 	b := MakeSlab(int(s.slabs[0].capacity))
@@ -49,6 +57,23 @@ func (s *SlabSet) GrowWithSize(l int) {
 	b := MakeSlab(l)
 	s.capacity += b.capacity
 	s.slabs = append(s.slabs, b)
+}
+
+// Optimize runs a FullCoalesce on all slabs, and updates on to the
+// slab with the greatest remaining capacity.
+func (s *SlabSet) Optimize() {
+	r := s.slabs[s.on].capacity - s.slabs[s.on].used
+	o := s.on
+
+	for i, v := range s.slabs {
+		_ = v.FullCoalesce()
+		if rem := (v.capacity - v.used); rem > r {
+			r = rem
+			o = i
+		}
+	}
+
+	s.on = o
 }
 
 // Accept takes in `b`, and adds it to the set, also updating `on`.
@@ -65,11 +90,11 @@ func (s *SlabSet) Remove(o int) {
 	s.capacity -= s.slabs[o].capacity
 
 	var newOn int
-	var c uint64
+	var r uint64
 	for i := o; i < len(s.slabs)-1; i++ {
 		v := s.slabs[i+1]
-		if v.capacity > c {
-			c = v.capacity
+		if rem := v.capacity - v.used; rem > r {
+			r = rem
 			newOn = i
 		}
 		s.slabs[i] = v
@@ -84,9 +109,9 @@ func (s *SlabSet) SetOn() {
 	var o int
 	var r uint64
 	for i, v := range s.slabs {
-		if rS := v.capacity - v.used; rS > r {
+		if rem := v.capacity - v.used; rem > r {
 			o = i
-			r = rS
+			r = rem
 		}
 	}
 	s.on = o
@@ -151,4 +176,16 @@ func transferSlab(dst, src *SlabSet) {
 	if ok {
 		dst.Accept(a)
 	}
+}
+
+// transferSlabWithOffset takes the slab at offset `o` in `src`, and transfers
+// it to `dst`; does nothing if slab at `o` isn't open.
+func transferSlabWithOffset(dst, src *SlabSet, o int) {
+	a := src.slabs[o]
+	if a.used != 0 {
+		return
+	}
+
+	src.Remove(o)
+	dst.Accept(a)
 }

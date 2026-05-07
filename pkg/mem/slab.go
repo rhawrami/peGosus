@@ -78,8 +78,7 @@ func (s *Slab) Clear() {
 	s.setUp()
 }
 
-// Nuke sets all pointers (including the underlying buffer) to nil. Not really
-// necessary, but I thought a function called `Nuke` was kind of cool :)
+// Nuke sets all pointers (including the underlying buffer) to nil.
 func (s *Slab) Nuke() {
 	s.buff = nil
 	s.base = nil
@@ -88,7 +87,7 @@ func (s *Slab) Nuke() {
 }
 
 // Grow grows the underlying buffer to at least `l` bytes; requires copy of
-// old to new buffer.
+// old to new buffer; does nothing if `l` is less than the current capacity.
 func (s *Slab) Grow(l int) {
 	if uint64(l) <= s.capacity {
 		return
@@ -148,9 +147,12 @@ func (s *Slab) update(l, p uint64) {
 
 // coalesce attempts to coalesce free adjacent segments
 // into one; returns true if at least one coalescence succeeded;
-// for now, only two contiguous segments can be coalesced.
+// only two contiguous segments can be coalesced.
 func (s *Slab) coalesce() bool {
 	var yay bool
+	if s.holes < 2 {
+		return yay
+	}
 
 	// # segments can change during loop
 	l := len(s.segments) - 1
@@ -258,10 +260,9 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 	l := uint64(length)
 	if l < uint64(alignSize) {
 		l = uint64(alignSize)
-	} else {
-		if l&(uint64(alignSize)-1) != 0 {
-			l = uint64(alignSize - (length & (alignSize - 1)) + length)
-		}
+	}
+	if l&(uint64(alignSize)-1) != 0 {
+		l = uint64(alignSize - (length & (alignSize - 1)) + length)
 	}
 
 	// first check if we can use earlier segment
