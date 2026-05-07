@@ -1,5 +1,7 @@
 package mem
 
+const optCycleDefault uint64 = 10
+
 // MakeAllocConfig returns an AllocConfig object.
 func MakeAllocConfig(generalProfile, scratchProfile []uint64) AllocConfig {
 	return AllocConfig{
@@ -20,7 +22,7 @@ func MakeAllocatorWithConfig(cfg AllocConfig) *Allocator {
 	scratch := MakeSlabSet(cfg.scratchProfile)
 
 	return &Allocator{
-		stats:   &AllocStats{},
+		stats:   &AllocStats{cycle: optCycleDefault},
 		general: general,
 		scratch: scratch,
 	}
@@ -34,16 +36,12 @@ const (
 	reqScratch
 )
 
-// AllocStats tracks allocation statistics; may be used later.
+// AllocStats tracks allocation statistics; will be used later.
 type AllocStats struct {
+	cycle         uint64    // max number of allocations before next optimization must be ran
 	lastOptimized uint64    // number of allocations since last optimization
 	avgReq        uint64    // rounded average allocation request size
-	nLocs         [2]uint64 // number of allocations per general/scratch
-}
-
-// resetLastOptimized sets lastOptimized to zero.
-func (a *AllocStats) resetLastOptimized() {
-	a.lastOptimized = 0
+	nLocs         [2]uint64 // number of allocations per general/scratch (since last optimization)
 }
 
 // updateAvgReq updates the average request size.
@@ -68,10 +66,11 @@ func (a *AllocStats) updateState(n int, l reqLoc) {
 	a.updateNLocs(l)
 }
 
-// Allocator allocates and manages memory.
+// Allocator allocates and manages memory; the current optimization logic is
+// extremely basic, and will be built out over time :)
 type Allocator struct {
 	stats   *AllocStats // allocation statistics
-	general *SlabSet    // set for general, non-temporary use
+	general *SlabSet    // set for general, non-temporary data
 	scratch *SlabSet    // set for temporary data
 }
 
@@ -103,11 +102,32 @@ func (a *Allocator) GrowScratch(l int) {
 	a.scratch.GrowWithSize(l)
 }
 
+// Optimize runs Optimize on the slab sets, also resetting the
+// number of requests per location.
+func (a *Allocator) Optimize() {
+	a.stats.lastOptimized = 0
+	a.stats.nLocs[0] = 0
+	a.stats.nLocs[1] = 0
+
+	a.general.Optimize()
+	// if for some reason, we call Optimize in middle of operation,
+	// rather than at the start.
+	a.scratch.Optimize()
+}
+
+// CheckOptimize checks if `a` needs to run a set of optimizations.
+func (a *Allocator) CheckOptimize() {
+	if a.stats.lastOptimized > a.stats.cycle {
+		a.Optimize()
+	}
+}
+
 // AllocTemp returns a Data object with a single segment, with the
 // implication that the object is temporary and will be freed shortly.
 func (a *Allocator) AllocTemp(l int) *Data {
+	a.CheckOptimize()
 	a.stats.updateState(l, reqScratch)
-	// check scratch, then general, then grow scratch
+	// check scratch, then general, then grow scratch if needed
 	g, ok := a.scratch.MakeSegment(l)
 	if !ok {
 		g, ok = a.general.MakeSegment(l)
@@ -121,6 +141,7 @@ func (a *Allocator) AllocTemp(l int) *Data {
 
 // Alloc returns a Data object with a single segment of at least `l` bytes.
 func (a *Allocator) Alloc(l int) *Data {
+	a.CheckOptimize()
 	a.stats.updateState(l, reqGeneral)
 	g := a.general.ForceSegment(l)
 
@@ -130,15 +151,17 @@ func (a *Allocator) Alloc(l int) *Data {
 // AllocWithProfile returns a Data object matching the size profile `s`;
 // in other words, the Data object will have len(`s`.p) segments, each with
 // at least `s`.p[i] bytes of capacity.
-func (a *Allocator) AllocWithProfile(p SizeProfile) *Data {
-	firstP := int(p.p[0])
+func (a *Allocator) AllocWithProfile(p []uint64) *Data {
+	a.CheckOptimize()
+
+	firstP := int(p[0])
 	a.stats.updateState(firstP, reqGeneral)
 
 	g := a.general.ForceSegment(firstP)
 	d := MakeDataFromSingleSegment(g)
 
-	for i := 1; i < len(p.p); i++ {
-		l := int(p.p[i])
+	for i := 1; i < len(p); i++ {
+		l := int(p[i])
 		a.stats.updateState(l, reqGeneral)
 
 		g = a.general.ForceSegment(l)
@@ -152,10 +175,12 @@ func (a *Allocator) AllocWithProfile(p SizeProfile) *Data {
 // in other words, the Data object will have len(`s`.p) segments, each with
 // at least `s`.p[i] bytes of capacity; implied that the object is
 // temporary and will be freed shortly.
-func (a *Allocator) AllocTempWithProfile(p SizeProfile) *Data {
-	segs := make([]*Segment, len(p.p))
+func (a *Allocator) AllocTempWithProfile(p []uint64) *Data {
+	a.CheckOptimize()
 
-	for i, l := range p.p {
+	segs := make([]*Segment, len(p))
+
+	for i, l := range p {
 		length := int(l)
 		a.stats.updateState(length, reqScratch)
 
