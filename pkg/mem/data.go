@@ -265,9 +265,9 @@ func (d *Data) RechunkCopy(dst *Data) {
 	dst.segments[0].seg.SetLength(int(d.length))
 
 	on := 0
-	target := dst.segments[0].seg.AsBytes(int(dst.length))
+	target := dst.segments[0].seg.AsBytes()
 	for _, v := range d.segments {
-		source := v.Seg().AsBytes(int(v.seg.length))
+		source := v.Seg().AsBytes()
 		x := copy(target[on:], source)
 		on += x
 	}
@@ -278,7 +278,7 @@ func (d *Data) RechunkCopy(dst *Data) {
 // or applying an offset, call MemSetU8 on that segment.
 func (d *Data) MemSetU8(x uint8) {
 	for _, v := range d.segments {
-		v.seg.MemSetU8(x, v.seg.length, 0)
+		v.seg.MemSetU8(x)
 	}
 }
 
@@ -287,7 +287,7 @@ func (d *Data) MemSetU8(x uint8) {
 // or applying an offset, call MemSetU32 on that segment.
 func (d *Data) MemSetU32(x uint32) {
 	for _, v := range d.segments {
-		v.seg.MemSetU32(x, v.seg.length, 0)
+		v.seg.MemSetU32(x)
 	}
 }
 
@@ -296,6 +296,6 @@ func (d *Data) MemSetU32(x uint32) {
 // or applying an offset, call MemSetU64 on that segment.
 func (d *Data) MemSetU64(x uint64) {
 	for _, v := range d.segments {
-		v.seg.MemSetU64(x, v.seg.length, 0)
+		v.seg.MemSetU64(x)
 	}
 }
