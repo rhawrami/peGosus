@@ -20,7 +20,7 @@ func (s *Segment) String() string {
 		"%p Segm[%dB, %.0f%% used] {%d}",
 		s,
 		s.capacity,
-		float64(s.length)/float64(s.length)*100,
+		float64(s.length)/float64(s.capacity)*100,
 		s.refCount.Load(),
 	)
 }
