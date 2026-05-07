@@ -61,30 +61,30 @@ func isAligned(addr *byte, a int) bool {
 	return uintptr(unsafe.Pointer(addr))&uintptr(a-1) == 0
 }
 
-func asBT(ptr *byte, length int) []byte {
+func asBT(ptr *byte, length uint64) []byte {
 	return unsafe.Slice(ptr, length)
 }
 
-func asI64T(ptr *byte, length int) []int64 {
+func asI64T(ptr *byte, length uint64) []int64 {
 	return unsafe.Slice((*int64)(unsafe.Pointer(ptr)), length)
 }
 
-func asI32T(ptr *byte, length int) []int32 {
+func asI32T(ptr *byte, length uint64) []int32 {
 	return unsafe.Slice((*int32)(unsafe.Pointer(ptr)), length)
 }
 
-func asF64T(ptr *byte, length int) []float64 {
+func asF64T(ptr *byte, length uint64) []float64 {
 	return unsafe.Slice((*float64)(unsafe.Pointer(ptr)), length)
 }
 
-func asF32T(ptr *byte, length int) []float32 {
+func asF32T(ptr *byte, length uint64) []float32 {
 	return unsafe.Slice((*float32)(unsafe.Pointer(ptr)), length)
 }
 
-func asU64T(ptr *byte, length int) []uint64 {
+func asU64T(ptr *byte, length uint64) []uint64 {
 	return unsafe.Slice((*uint64)(unsafe.Pointer(ptr)), length)
 }
 
-func asU32T(ptr *byte, length int) []uint32 {
+func asU32T(ptr *byte, length uint64) []uint32 {
 	return unsafe.Slice((*uint32)(unsafe.Pointer(ptr)), length)
 }
