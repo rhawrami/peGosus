@@ -13,7 +13,7 @@ func (d *DataSegment) Seg() *Segment { return d.seg }
 func (d *DataSegment) ID() uint64 { return d.offID }
 
 // MakeData takes in a slice of segments, copies those segments to
-// its own slice, and returns a Data object.
+// their own slice, and returns a Data object.
 func MakeData(s []*Segment) *Data {
 	segments := make([]*DataSegment, len(s))
 	var length, capacity uint64
@@ -42,15 +42,6 @@ func MakeDataFromSingleSegment(g *Segment) *Data {
 	}
 }
 
-// SizeProfile represents either a set of data segment
-// lengths or capacities.
-type SizeProfile struct {
-	p []uint64
-}
-
-// AsSlice returns the profile as a slice.
-func (sp SizeProfile) AsSlice() []uint64 { return sp.p }
-
 // Data represents a set of segments.
 type Data struct {
 	length   uint64         // length in bytes
@@ -70,25 +61,25 @@ func (d *Data) updateOffsetIDs() {
 }
 
 // LenProfile returns the length profile of `d`.
-func (d *Data) LenProfile() SizeProfile {
+func (d *Data) LenProfile() []uint64 {
 	sp := make([]uint64, len(d.segments))
 	for i := 0; i < len(sp); i++ {
 		sp[i] = d.segments[i].seg.length
 	}
-	return SizeProfile{p: sp}
+	return sp
 }
 
-// CapProfile returns the length profile of `d`.
-func (d *Data) CapProfile() SizeProfile {
+// CapProfile returns the capacity profile of `d`.
+func (d *Data) CapProfile() []uint64 {
 	sp := make([]uint64, len(d.segments))
 	for i := 0; i < len(sp); i++ {
 		sp[i] = d.segments[i].seg.capacity
 	}
-	return SizeProfile{p: sp}
+	return sp
 }
 
 // LenAndCapProfile returns (LenProfile, CapProfile) of `d`.
-func (d *Data) LenAndCapProfile() (SizeProfile, SizeProfile) {
+func (d *Data) LenAndCapProfile() ([]uint64, []uint64) {
 	l := len(d.segments)
 	lp := make([]uint64, l)
 	cp := make([]uint64, l)
@@ -96,12 +87,13 @@ func (d *Data) LenAndCapProfile() (SizeProfile, SizeProfile) {
 		lp[i] = d.segments[i].seg.length
 		cp[i] = d.segments[i].seg.capacity
 	}
-	return SizeProfile{p: lp}, SizeProfile{p: cp}
+	return lp, cp
 }
 
-// AddSegment adds a segment to `d`; if inc is true, increments by one.
+// AddSegment adds a segment to `d`; if inc is true, increments the added
+// segment by one.
 func (d *Data) AddSegment(s *Segment, inc bool) {
-	var incBy int64 = 0
+	incBy := int64(0)
 	if inc {
 		incBy = 1
 	}
@@ -134,10 +126,10 @@ func (d *Data) DropSegment(o uint64, dec bool) {
 	g.refCount.Add(decBy)
 }
 
-// IncAll increments the reference count on all segments.
+// IncAll increments the reference count for each segment.
 func (d *Data) IncAll() {
-	for i := 0; i < len(d.segments); i++ {
-		d.segments[i].seg.Inc()
+	for _, v := range d.segments {
+		v.seg.Inc()
 	}
 }
 
@@ -169,9 +161,11 @@ func (d *Data) DecAll() bool {
 	for i := 0; i < l; i++ {
 		v := d.segments[i]
 
+		oldLen := v.seg.length
+		oldCap := v.seg.capacity
 		if safe := v.seg.Dec(); !safe {
-			d.length -= v.seg.length
-			d.capacity -= v.seg.capacity
+			d.length -= oldLen
+			d.capacity -= oldCap
 
 			if i < (l - 1) {
 				for j := i; j < l-1; j++ {
@@ -179,7 +173,7 @@ func (d *Data) DecAll() bool {
 				}
 			}
 
-			d.segments = d.segments[:len(d.segments)-1]
+			d.segments = d.segments[:l-1]
 			l -= 1
 			yay = false
 		}
@@ -190,14 +184,16 @@ func (d *Data) DecAll() bool {
 }
 
 // Dec decrements the reference count of the segment at
-// offset `o`; returns false if the reference count of that
-// segment hits zero.
+// offset `o`; if the reference count of the segment hits zero,
+// the segment is dropped, and returns false.
 func (d *Data) Dec(o uint64) bool {
 	var yay bool = true
 
+	oldLen := d.segments[o].seg.length
+	oldCap := d.segments[o].seg.capacity
 	if !d.segments[o].seg.Dec() {
-		d.length -= d.segments[o].seg.length
-		d.capacity -= d.segments[o].seg.capacity
+		d.length -= oldLen
+		d.capacity -= oldCap
 
 		if int(o) < len(d.segments)-1 {
 			for i := int(o); i < len(d.segments)-1; i++ {
@@ -213,19 +209,21 @@ func (d *Data) Dec(o uint64) bool {
 	return yay
 }
 
-// AddLength adds `l` bytes of length to segment `o`.
+// AddLength adds at most `l` bytes of length to segment `o`.
 func (d *Data) AddLength(l, o uint64) {
+	d.length -= d.segments[o].seg.length
 	d.segments[o].seg.AddLength(int(l))
-	d.length += l
+	d.length += d.segments[o].seg.length
 }
 
-// SubLength subtracts `l` bytes of length to segment `o`.
+// SubLength subtracts at most `l` bytes of length to segment `o`.
 func (d *Data) SubLength(l, o uint64) {
+	d.length -= d.segments[o].seg.length
 	d.segments[o].seg.SubLength(int(l))
-	d.length -= l
+	d.length += d.segments[o].seg.length
 }
 
-// SetLength sets segment `o` to `l` bytes of length.
+// SetLength sets segment `o` to at most `l` bytes of length.
 func (d *Data) SetLength(l, o uint64) {
 	d.length -= d.segments[o].seg.length
 	d.segments[o].seg.SetLength(int(l))
@@ -251,7 +249,7 @@ func (d *Data) Merge(x *Data, inc bool) {
 
 // RechunkCopy copies all underlying data (up to each segment length) from
 // `d` to `dst`, where `dst` is data with only one underlying segment;
-// panics if `dst` has more than one segment; panics if `dst` does not
+// panics if `dst` does not have one segment; panics if `dst` does not
 // have enough capacity.
 func (d *Data) RechunkCopy(dst *Data) {
 	if d.length > dst.capacity {
@@ -262,10 +260,9 @@ func (d *Data) RechunkCopy(dst *Data) {
 	}
 
 	dst.SetLength(d.length, 0)
-	dst.segments[0].seg.SetLength(int(d.length))
 
 	on := 0
-	target := dst.segments[0].seg.AsBytes()
+	target := dst.SegmentAt(0).AsBytes()
 	for _, v := range d.segments {
 		source := v.Seg().AsBytes()
 		x := copy(target[on:], source)
@@ -275,7 +272,7 @@ func (d *Data) RechunkCopy(dst *Data) {
 
 // MemSetU8 sets every byte, for each segment, with `x`,
 // up to the segment's length; for setting one segment only,
-// or applying an offset, call MemSetU8 on that segment.
+// or applying an offset, call MemSetU8/MemSetU8Detailed on that segment.
 func (d *Data) MemSetU8(x uint8) {
 	for _, v := range d.segments {
 		v.seg.MemSetU8(x)
@@ -284,7 +281,7 @@ func (d *Data) MemSetU8(x uint8) {
 
 // MemSetU32 sets every four bytes, for each segment, with `x`,
 // up to the segment's length; for setting one segment only,
-// or applying an offset, call MemSetU32 on that segment.
+// or applying an offset, call MemSetU32/MemSetU32Detailed on that segment.
 func (d *Data) MemSetU32(x uint32) {
 	for _, v := range d.segments {
 		v.seg.MemSetU32(x)
@@ -293,7 +290,7 @@ func (d *Data) MemSetU32(x uint32) {
 
 // MemSetU64 sets every eight bytes, for each segment, with `x`,
 // up to the segment's length; for setting one segment only,
-// or applying an offset, call MemSetU64 on that segment.
+// or applying an offset, call MemSetU64/MemSetU64Detailed on that segment.
 func (d *Data) MemSetU64(x uint64) {
 	for _, v := range d.segments {
 		v.seg.MemSetU64(x)
