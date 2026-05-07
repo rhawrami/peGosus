@@ -94,62 +94,125 @@ func (s *Segment) SetLength(l int) {
 	s.length = length
 }
 
-// MemSetU8 sets every byte, from [base address + `o`] to `l` bytes,
-// with the value `v`; panics if base not aligned to 64 bytes.
-func (s *Segment) MemSetU8(v uint8, l, o uint64) {
+// SetLengthToCap sets the length to the capacity.
+func (s *Segment) SetLengthToCap() { s.length = s.capacity }
+
+// MemSetU8 sets every byte, from the base address to the current set
+// length, with value `v`.
+func (s *Segment) MemSetU8(v uint8) {
+	setU8(s.base, s.length, v)
+}
+
+// MemSetU32 sets every four bytes, from the base address to the current set
+// length, with value `v`; panics if s.length isn't divisible by four.
+func (s *Segment) MemSetU32(v uint32) {
+	if s.length&3 != 0 {
+		panic("MemSetU32: segment length not divisible by 4")
+	}
+	setU32(s.base, s.length>>2, v)
+}
+
+// MemSetU64 sets every eight bytes, from the base address to the current set
+// length, with value `v`; panics if s.length isn't divisible by eight.
+func (s *Segment) MemSetU64(v uint64) {
+	if s.length&7 != 0 {
+		panic("MemSetU64: segment length not divisible by 8")
+	}
+	setU64(s.base, s.length>>3, v)
+}
+
+// MemSetU8Detailed sets every byte, from [base address + `o`] to `l` bytes,
+// with the value `v`; panics if offsetted length is greater than base length.
+func (s *Segment) MemSetU8Detailed(v uint8, l, o uint64) {
 	if s.length < (o+l) || s.length < o {
-		panic("MemSetU8: offseted length greated than segment length")
+		panic("MemSetU8Detailed: offseted length greated than segment length")
 	}
 	addr := incPtr(s.base, int(o))
 	setU8(addr, l, v)
 }
 
-// MemSetU32 sets every four bytes, from [base address + `o`] to `l` bytes,
-// with the value `v`; panics if base not aligned to 64 bytes, or if length is
-// not divisible by four.
-func (s *Segment) MemSetU32(v uint32, l, o uint64) {
+// MemSetU32Detailed sets every four bytes, from [base address + `o`] to `l` bytes,
+// with the value `v`; panics if offsetted length is greater than base length, or
+// if length is not divisible by four.
+func (s *Segment) MemSetU32Detailed(v uint32, l, o uint64) {
 	if s.length < (o+l) || s.length < o {
-		panic("MemSetU32: offseted length greated than segment length")
+		panic("MemSetU32Detailed: offseted length greated than segment length")
 	}
 	addr := incPtr(s.base, int(o))
-	if l%4 != 0 {
-		panic("MemSetU32: address not divisible by 4")
+	if l&3 != 0 {
+		panic("MemSetU32Detailed: address not divisible by 4")
 	}
 
-	setU32(addr, l/4, v)
+	setU32(addr, l>>2, v)
 }
 
-// MemSetU64 sets every eight bytes, from [base address + `o`] to `l` bytes,
-// with the value `v`; panics if base not aligned to 64 bytes, or if length is
-// not divisible by eight.
-func (s *Segment) MemSetU64(v, l, o uint64) {
+// MemSetU64Detailed sets every eight bytes, from [base address + `o`] to `l` bytes,
+// with the value `v`; panics if offsetted length is greater than base length,
+// or if length is not divisible by eight.
+func (s *Segment) MemSetU64Detailed(v, l, o uint64) {
 	if s.length < (o+l) || s.length < o {
-		panic("MemSetU64: offseted length greated than segment length")
+		panic("MemSetU64Detailed: offseted length greated than segment length")
 	}
 	addr := incPtr(s.base, int(o))
-	if l%8 != 0 {
-		panic("MemSetU64: length not divisible by 8")
+	if l&7 != 0 {
+		panic("MemSetU64Detailed: length not divisible by 8")
 	}
-	setU64(addr, l/8, v)
+	setU64(addr, l>>3, v)
 }
 
-// AsBytes casts `s` as a slice of bytes with length `l`.
-func (s *Segment) AsBytes(l int) []byte { return asBT(s.base, l) }
+// AsBytes casts `s` as a slice of bytes with length equal to the segment length.
+func (s *Segment) AsBytes() []byte { return asBT(s.base, s.length) }
 
-// AsI64T casts `s` as a slice of 64-bit signed integers with length `l`.
-func (s *Segment) AsI64T(l int) []int64 { return asI64T(s.base, l) }
+// AsI64T casts `s` as a slice of 64-bit signed integers with length equal to the
+// segment length divided by eight; panics if s.length is not divisible by eight
+func (s *Segment) AsI64T() []int64 {
+	if s.length&7 != 0 {
+		panic("AsI64T: segment length not divisibly by 8")
+	}
+	return asI64T(s.base, s.length>>3)
+}
 
-// AsI32T casts `s` as a slice of 32-bit signed integers with length `l`.
-func (s *Segment) AsI32T(l int) []int32 { return asI32T(s.base, l) }
+// AsI32T casts `s` as a slice of 32-bit signed integers with length equal to the
+// segment length divided by four; panics if s.length is not divisible by four.
+func (s *Segment) AsI32T() []int32 {
+	if s.length&3 != 0 {
+		panic("AsI32T: segment length not divisibly by 4")
+	}
+	return asI32T(s.base, s.length>>2)
+}
 
-// AsF64T casts `s` as a slice of 64-bit floating point values with length `l`.
-func (s *Segment) AsF64T(l int) []float64 { return asF64T(s.base, l) }
+// AsF64T casts `s` as a slice of 64-bit floating point values with length equal to the
+// segment length divided by eight; panics if s.length is not divisible by eight.
+func (s *Segment) AsF64T() []float64 {
+	if s.length&7 != 0 {
+		panic("AsF64T: segment length not divisibly by 8")
+	}
+	return asF64T(s.base, s.length>>3)
+}
 
-// AsF32T casts `s` as a slice of 32-bit floating point values with length `l`.
-func (s *Segment) AsF32T(l int) []float32 { return asF32T(s.base, l) }
+// AsF32T casts `s` as a slice of 32-bit floating point values with length equal to the
+// segment length divided by four; panics if s.length is not divisible by four.
+func (s *Segment) AsF32T() []float32 {
+	if s.length&3 != 0 {
+		panic("AsF32T: segment length not divisibly by 4")
+	}
+	return asF32T(s.base, s.length>>2)
+}
 
-// AsU64T casts `s` as a slice of 64-bit unsigned integers with length `l`.
-func (s *Segment) AsU64T(l int) []uint64 { return asU64T(s.base, l) }
+// AsU64T casts `s` as a slice of 64-bit unsigned integers with length equal to the
+// segment length divided by eight; panics if s.length is not divisible by eight.
+func (s *Segment) AsU64T() []uint64 {
+	if s.length&7 != 0 {
+		panic("AsU64T: segment length not divisibly by 8")
+	}
+	return asU64T(s.base, s.length>>3)
+}
 
-// AsU32T casts `s` as a slice of 32-bit unsigned integers with length `l`.
-func (s *Segment) AsU32T(l int) []uint32 { return asU32T(s.base, l) }
+// AsU32T casts `s` as a slice of 32-bit unsigned integers with length equal to the
+// segment length divided by four; panics if s.length is not divisible by four.
+func (s *Segment) AsU32T() []uint32 {
+	if s.length&3 != 0 {
+		panic("AsU32T: segment length not divisibly by 4")
+	}
+	return asU32T(s.base, s.length>>2)
+}
