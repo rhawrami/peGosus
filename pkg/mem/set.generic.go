@@ -11,7 +11,7 @@ var (
 // setU8Generic sets every byte, starting at `a` and going on for
 // `n` iterations, with the value `v`.
 func setU8Generic(a *byte, n uint64, v uint8) {
-	s := asBT(a, int(n))
+	s := asBT(a, n)
 	for i := 0; i < int(n); i++ {
 		s[i] = v
 	}
@@ -20,7 +20,7 @@ func setU8Generic(a *byte, n uint64, v uint8) {
 // setU32Generic sets every four bytes, starting at `a` and going on for
 // `n` iterations, with the value `v`.
 func setU32Generic(a *byte, n uint64, v uint32) {
-	s := asU32T(a, int(n))
+	s := asU32T(a, n)
 	for i := 0; i < int(n); i++ {
 		s[i] = v
 	}
@@ -29,7 +29,7 @@ func setU32Generic(a *byte, n uint64, v uint32) {
 // setU64Generic sets every eight bytes, starting at `a` and going on for
 // `n` iterations, with the value `v`.
 func setU64Generic(a *byte, n uint64, v uint64) {
-	s := asU64T(a, int(n))
+	s := asU64T(a, n)
 	for i := 0; i < int(n); i++ {
 		s[i] = v
 	}

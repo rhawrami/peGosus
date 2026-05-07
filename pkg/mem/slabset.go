@@ -57,6 +57,7 @@ func (s *SlabSet) GrowWithSize(l int) {
 	b := MakeSlab(l)
 	s.capacity += b.capacity
 	s.slabs = append(s.slabs, b)
+	s.on = len(s.slabs) - 1
 }
 
 // Optimize runs a FullCoalesce on all slabs, and updates on to the

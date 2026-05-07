@@ -49,6 +49,12 @@ type Data struct {
 	segments []*DataSegment // set of data segments
 }
 
+// Len returns the total length of `d`.
+func (d *Data) Len() uint64 { return d.length }
+
+// Cap returns the total capacity of `d`.
+func (d *Data) Cap() uint64 { return d.capacity }
+
 // SegmentAt returns the segment at offset `o`.
 func (d *Data) SegmentAt(o uint64) *Segment { return d.segments[o].seg }
 
