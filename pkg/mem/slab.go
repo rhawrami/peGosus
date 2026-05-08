@@ -68,6 +68,14 @@ func (s *Slab) String() string {
 	return string(b)
 }
 
+func (s *Slab) PrintEdge() {
+	fmt.Printf("edge: length: %d, cap: %d, base: %p\n",
+		s.segments[len(s.segments)-1].length,
+		s.segments[len(s.segments)-1].capacity,
+		s.segments[len(s.segments)-1].base,
+	)
+}
+
 // Clear gives `s` a fresh slate; should be called knowing that all related
 // segments will now be undefined.
 func (s *Slab) Clear() {
@@ -237,7 +245,7 @@ func (s *Slab) FullCoalesce() bool {
 		s.segments[i].capacity = c
 
 		// drop non-leftmost segments, shift everything over
-		for j := i; j < len(s.segments)-diff; j++ {
+		for j := i + 1; j < len(s.segments)-diff; j++ {
 			s.segments[j] = s.segments[j+diff]
 		}
 		s.segments = s.segments[:len(s.segments)-diff]
@@ -322,8 +330,8 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 	// if earlier segment can't be used, check at the end
 	if oldCap := s.segments[len(s.segments)-1].capacity; l <= oldCap {
 		seg := s.segments[len(s.segments)-1]
-		seg.length = uint64(l)
-		seg.capacity = uint64(l)
+		seg.length = l
+		seg.capacity = l
 		seg.refCount.Store(1)
 
 		s.update(l, oldCap)
