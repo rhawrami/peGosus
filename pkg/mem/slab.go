@@ -274,13 +274,15 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 				// if we only need 50% or less of the capacity, bisect into
 				// two parts (not necessarily equal parts though)
 				if l*2 <= v.capacity {
-					// append blank segment, shift segments over by one
-					s.segments = append(s.segments, &Segment{})
+					// append segment, shift segments over by one,
+					// use first segment since we're just going to write over it
+					s.segments = append(s.segments, s.segments[0])
 					for j := len(s.segments) - 2; j > i; j-- {
 						s.segments[j+1] = s.segments[j]
 					}
 
 					// keep right side free
+					s.segments[i+1] = &Segment{}
 					right := s.segments[i+1]
 					right.base = incPtr(v.base, int(l))
 					right.length = 0
