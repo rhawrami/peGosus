@@ -128,7 +128,7 @@ func (s *Slab) setUp() {
 	s.segments = s.segments[:0]
 	seg := &Segment{
 		base:     s.base,
-		length:   s.capacity,
+		length:   0,
 		capacity: s.capacity,
 		refCount: atomic.Int64{},
 		slab:     s,
@@ -297,9 +297,8 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 				// if we only need 50% or less of the capacity, bisect into
 				// two parts (not necessarily equal parts though)
 				if l*2 <= v.capacity {
-					// append segment, shift segments over by one,
-					// use first segment since we're just going to write over it
-					s.segments = append(s.segments, s.segments[0])
+					// append segment, shift segments over by one.
+					s.segments = append(s.segments, nil)
 					for j := len(s.segments) - 2; j > i; j-- {
 						s.segments[j+1] = s.segments[j]
 					}
@@ -317,7 +316,7 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 					v.capacity = l
 				}
 
-				v.length = l
+				v.length = uint64(length)
 				v.refCount.Store(1)
 
 				s.used += v.capacity
