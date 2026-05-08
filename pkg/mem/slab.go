@@ -212,6 +212,11 @@ func (s *Slab) FullCoalesce() bool {
 		}
 	}
 
+	// in case of every segment being a hole
+	if start != stop {
+		pos[start] = stop
+	}
+
 	// second pass: plug the holes
 	i := 0
 	l := len(s.segments) - 1
@@ -226,7 +231,7 @@ func (s *Slab) FullCoalesce() bool {
 
 		// get new capacity
 		c := s.segments[i].capacity
-		for j := i; j < pI+1; j++ {
+		for j := i + 1; j < pI+1; j++ {
 			c += s.segments[j].capacity
 		}
 		s.segments[i].capacity = c
@@ -247,6 +252,16 @@ func (s *Slab) FullCoalesce() bool {
 
 		yay = true
 		i += 1
+	}
+
+	// final check: check if penultimate seg can be merged with edge;
+	// same logic used in TakeSegment below
+	if g := s.segments[len(s.segments)-2]; g.IsFree() {
+		edge := s.segments[len(s.segments)-1]
+		g.capacity += edge.capacity
+		s.on = g.base
+		s.segments = s.segments[:len(s.segments)-1]
+		s.holes -= 1
 	}
 
 	return yay
