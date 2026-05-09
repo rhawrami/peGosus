@@ -344,13 +344,256 @@ func TestSimpleCoalesce(t *testing.T) {
 
 }
 
-func TestFullCoalesce(t *testing.T) {}
+func TestFullCoalesce(t *testing.T) {
+	size := 10_000
+	s := MakeSlab(size)
+
+	// make 4 segments, put back first 3
+	gReq := 1_000
+	g1, _ := s.MakeSegment(gReq)
+	g2, _ := s.MakeSegment(gReq)
+	g3, _ := s.MakeSegment(gReq)
+	_, _ = s.MakeSegment(gReq)
+
+	g1.Put()
+	g2.Put()
+	g3.Put()
+
+	if ok := s.FullCoalesce(); !ok {
+		t.Errorf("FullCoalesce (simple): didn't work")
+	}
+	// FullCoalesce should:
+	// 1. make segment length 3
+	// 2. make hole count 1
+	// 3. make segment 0 have capacity 1024 * 3
+	// 4. make segment 0 keep base as slab base
+	if len(s.segments) != 3 {
+		t.Errorf("FullCoalesce (simple): got seg length %d, expected 3", len(s.segments))
+	}
+	if s.holes != 1 {
+		t.Errorf("FullCoalesce (simple): got %d holes , expected 1", s.holes)
+	}
+	if s.segments[0].capacity != (1024 * 3) {
+		t.Errorf("FullCoalesce (simple): got seg 0 cap %d , expected %d", s.segments[0].capacity, (1024 * 3))
+	}
+	if s.segments[0].base != s.base {
+		t.Errorf("FullCoalesce (simple): got seg 0 base %p, expected %p", s.segments[0].base, s.base)
+	}
+
+	s.Clear()
+	// Make more complex sequence
+	// 15 segments (+ 1 edge)
+	// free 10 segments:
+	// [u, f, u, f, f, f, f, u, f, f, u, f, f, f, u | f]
+	// after FullCoalesce (new length of 9, 4 holes)
+	// [u, f (merged 0), u, f (merged 4), u, f (merged 2), u, f (merged 3), u]
+	N := 15
+	reqSmall := 300
+	freeSegs := []int{1, 3, 4, 5, 6, 8, 9, 11, 12, 13}
+	segs := make([]*Segment, N)
+	for i := 0; i < N; i++ {
+		g, _ := s.MakeSegment(reqSmall)
+		segs[i] = g
+	}
+	for _, v := range freeSegs {
+		segs[v].Put()
+	}
+	if s.holes != 10 {
+		t.Errorf("FullCoalesce (complex): got %d holes, expected 10", s.holes)
+	}
+
+	ok := s.FullCoalesce()
+	if !ok {
+		t.Error("FullCoalesce (complex): full coalesce call did not work")
+	}
+	if len(s.segments) != 9 {
+		t.Errorf("FullCoalesce (complex): got seg length %d, expected 9", len(s.segments))
+	}
+	if s.holes != 4 {
+		t.Errorf("FullCoalesce (complex): got %d holes, expected 4", s.holes)
+	}
+
+}
 
 func TestMakeWithCoalesce(t *testing.T) {}
 
-func TestGrow(t *testing.T) {}
+func TestGrow(t *testing.T) {
+	size := 10_000
+	s := MakeSlab(size)
 
-func TestClear(t *testing.T) {}
+	// make two segments, memset each
+	// ensure that after TestGrow
+	// 1. data is still the same
+	// 2. offset from slab base is still the same
+	// 3. edge capacity is updated to new capacity
+	// 4. edge offset is correct
+	// 5. slab on address is updated
 
-func TestHoleReuse(t *testing.T) {}
-func TestBisect(t *testing.T)    {}
+	g1, _ := s.MakeSegment(2000)
+	g2, _ := s.MakeSegment(2000)
+
+	g1Set := byte(100)
+	g2Set := byte(200)
+	g1.MemSetU8(g1Set)
+	g2.MemSetU8(g2Set)
+
+	offsetG1 := calcOffset(s.base, g1.base)
+	offsetG2 := calcOffset(s.base, g2.base)
+	offsetEdge := calcOffset(s.base, s.segments[len(s.segments)-1].base)
+	offsetOn := calcOffset(s.base, s.on)
+
+	s.Grow(size * 2)
+
+	for i, v := range g1.AsBytes() {
+		if v != g1Set {
+			t.Errorf("g1 [%d]: got %d, expected %d", i, v, g1Set)
+		}
+	}
+	for i, v := range g2.AsBytes() {
+		if v != g2Set {
+			t.Errorf("g2 [%d]: got %d, expected %d", i, v, g2Set)
+		}
+	}
+
+	if newOG1 := calcOffset(s.base, g1.base); newOG1 != offsetG1 {
+		t.Errorf("g1: got offset %d, expected %d", newOG1, offsetG1)
+	}
+	if newOG2 := calcOffset(s.base, g2.base); newOG2 != offsetG2 {
+		t.Errorf("g2: got offset %d, expected %d", newOG2, offsetG2)
+	}
+	if newEdgeOff := calcOffset(s.base, s.segments[len(s.segments)-1].base); newEdgeOff != offsetEdge {
+		t.Errorf("edge: got offset %d, expected %d", newEdgeOff, offsetEdge)
+	}
+	if newOnOff := calcOffset(s.base, s.on); newOnOff != offsetOn {
+		t.Errorf("slab on: got offset %d, expected %d", newOnOff, offsetOn)
+	}
+
+	if got, expected := s.segments[len(s.segments)-1].capacity, s.capacity-(g1.capacity+g2.capacity); got != expected {
+		t.Errorf("edge cap: got %d, expected %d", got, expected)
+	}
+}
+
+func TestClear(t *testing.T) {
+	size := 10_000
+	s := MakeSlab(size)
+
+	reqSize := 1_000
+	_, _ = s.MakeSegment(reqSize)
+	_, _ = s.MakeSegment(reqSize)
+	g, _ := s.MakeSegment(reqSize)
+	_, _ = s.MakeSegment(reqSize)
+	_, _ = s.MakeSegment(reqSize)
+	g.Put()
+
+	s.Clear()
+	// ensure after clear that:
+	// 1. used == 0
+	// 2. N segments == 1
+	// 3. on == base
+	// 4. edge base == on
+	// 5. edge capacity == slab capacity
+	if s.used != 0 {
+		t.Errorf("slab used: got %d, expected 0", s.used)
+	}
+	if len(s.segments) != 1 {
+		t.Errorf("N segs: got %d, expected 1", len(s.segments))
+	}
+	if s.on != s.base {
+		t.Errorf("slab on: got %p, expected %p", s.on, s.base)
+	}
+	edge := s.segments[len(s.segments)-1]
+	if edge.base != s.on || edge.base != s.base {
+		t.Errorf("edge base: got %p, expected %p", edge.base, s.on)
+	}
+	if edge.capacity != s.capacity {
+		t.Errorf("edge cap: got %d, expected %d", edge.capacity, s.capacity)
+	}
+}
+
+func TestHoleReuse(t *testing.T) {
+	size := 10_000
+	s := MakeSlab(size)
+
+	// make three segs, each with size 1_024, free the second one
+	_, _ = s.MakeSegment(1024)
+	g2, _ := s.MakeSegment(1024)
+	_, _ = s.MakeSegment(1024)
+	g2.Put()
+
+	// when we request g4, it should be the same as g2, as MakeSegment should've
+	// found the hole, and been able to use it.
+	g4, _ := s.MakeSegment(1024)
+	if g2 != g4 {
+		t.Errorf("g4 %p != g2 %p", g4, g2)
+	}
+	if g2.capacity != g4.capacity {
+		t.Errorf("g4 cap %d != g2 cap %d", g4.capacity, g2.capacity)
+	}
+	if g2.base != g4.base {
+		t.Errorf("g4 base %p != g2 base %p", g4.base, g2.base)
+	}
+	// quick check that slab used is updated
+	if s.used != 1024*3 {
+		t.Errorf("slab used: got %d, expected %d", s.used, 1024*3)
+	}
+	// also decrease holes to 0
+	if s.holes != 0 {
+		t.Errorf("slab holes: got %d, expected 0", s.holes)
+	}
+
+	g4.Put()
+
+	// when we request g5 with 1025 bytes, we CANNOT reuse g4, as g4 can't support 1024 bytes
+	g5, _ := s.MakeSegment(1025)
+
+	if g5 == g4 || g5.base == g4.base {
+		t.Error("g5 == g4")
+	}
+	if s.holes != 1 {
+		t.Errorf("slab holes (second): got %d, expected 1", s.holes)
+	}
+
+}
+func TestBisect(t *testing.T) {
+	size := 10_000
+	s := MakeSlab(size)
+
+	// make three segs, each with size 1_024, free the second one
+	g1, _ := s.MakeSegment(1024)
+	g2, _ := s.MakeSegment(1024)
+	g3, _ := s.MakeSegment(1024)
+	g2.Put()
+
+	// requesting 128 bytes should reuse g2 and cause a bisection of g2,
+	// with 128 bytes on the left and 896 on the right.
+	g4, _ := s.MakeSegment(128)
+	if s.holes != 1 {
+		t.Errorf("didnt bisect holes: got %d, expected 1", s.holes)
+	}
+	if g4 != g2 {
+		t.Errorf("didnt reuse g2")
+	}
+	if g4.capacity != 128 {
+		t.Errorf("didnt bisect g2: cap = %d", g4.capacity)
+	}
+	if len(s.segments) != 5 {
+		t.Errorf("didnt bisect g2: N segs = %d", len(s.segments))
+	}
+
+	left, right := g4, s.segments[2]
+	if right.capacity != 896 {
+		t.Errorf("right cap: got %d, expected 896", right.capacity)
+	}
+	if right.base != incPtr(left.base, int(left.capacity)) {
+		t.Errorf("right base: got %p, got %p", right.base, incPtr(left.base, int(left.capacity)))
+	}
+
+	// ensure g1 is still g1, and g3 is still g3 (with new index)
+	if g1 != s.segments[0] {
+		t.Errorf("g1 got moved: got %p, expected %p", s.segments[0], g1)
+	}
+	if g3 != s.segments[3] {
+		t.Errorf("g3 got moved: got %p, expected %p", s.segments[3], g3)
+	}
+
+}
