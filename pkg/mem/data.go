@@ -173,11 +173,7 @@ func (d *Data) DecAll() bool {
 			d.length -= oldLen
 			d.capacity -= oldCap
 
-			if i < (l - 1) {
-				for j := i; j < l-1; j++ {
-					d.segments[j] = d.segments[j+1]
-				}
-			}
+			copy(d.segments[i:], d.segments[i+1:])
 
 			d.segments = d.segments[:l-1]
 			l -= 1
@@ -202,9 +198,7 @@ func (d *Data) Dec(o uint64) bool {
 		d.capacity -= oldCap
 
 		if int(o) < len(d.segments)-1 {
-			for i := int(o); i < len(d.segments)-1; i++ {
-				d.segments[i] = d.segments[i+1]
-			}
+			copy(d.segments[o:], d.segments[o+1:])
 		}
 
 		d.segments = d.segments[:len(d.segments)-1]

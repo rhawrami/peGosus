@@ -68,14 +68,6 @@ func (s *Slab) String() string {
 	return string(b)
 }
 
-func (s *Slab) PrintEdge() {
-	fmt.Printf("edge: length: %d, cap: %d, base: %p\n",
-		s.segments[len(s.segments)-1].length,
-		s.segments[len(s.segments)-1].capacity,
-		s.segments[len(s.segments)-1].base,
-	)
-}
-
 // Clear gives `s` a fresh slate; should be called knowing that all related
 // segments will now be undefined.
 func (s *Slab) Clear() {
@@ -110,10 +102,15 @@ func (s *Slab) Grow(l int) {
 		v.base = incPtr(newBase, calcOffset(oldBase, v.base))
 	}
 
+	// add excess capacity to edge
+	capDiff := uint64(len(newB)) - s.capacity
+	s.segments[len(s.segments)-1].capacity += capDiff
+
 	s.buff = newB
 	s.base = newBase
+	s.on = incPtr(newBase, calcOffset(oldBase, s.on))
 	s.capacity = uint64(len(newB))
-	s.segments[len(s.segments)-1].capacity = s.capacity - s.used
+
 }
 
 // FreeSpaceAtEnd returns the byte capacity of the final segment
@@ -165,16 +162,14 @@ func (s *Slab) coalesce() bool {
 	// # segments can change during loop
 	l := len(s.segments) - 1
 	for i := 0; i < l; i++ {
-		if len(s.segments) <= 2 {
+		if len(s.segments) < 3 {
 			break
 		}
 		if left := s.segments[i]; left.refCount.Load() == 0 {
 			if right := s.segments[i+1]; right.refCount.Load() == 0 {
 				left.capacity += right.capacity
 				// shift down by one, except final segment
-				for j := i + 1; j < len(s.segments)-1; j++ {
-					s.segments[j] = s.segments[j+1]
-				}
+				copy(s.segments[i+1:], s.segments[i+2:])
 				s.segments = s.segments[:len(s.segments)-1]
 				s.holes -= 1
 				l -= 1
@@ -251,12 +246,9 @@ func (s *Slab) FullCoalesce() bool {
 		s.segments = s.segments[:len(s.segments)-diff]
 		l -= pI
 
-		// if more than two adjacent, hole count reduced by diff-1
-		if diff > 1 {
-			s.holes -= uint64(diff - 1)
-		} else {
-			s.holes -= 1
-		}
+		// update hole count; with how diff is defined, for 2+ adjacent holes,
+		// it will update holes as -(nAdjacentHoles-1)
+		s.holes -= uint64(diff)
 
 		yay = true
 		i += 1
@@ -299,9 +291,7 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 				if l*2 <= v.capacity {
 					// append segment, shift segments over by one.
 					s.segments = append(s.segments, nil)
-					for j := len(s.segments) - 2; j > i; j-- {
-						s.segments[j+1] = s.segments[j]
-					}
+					copy(s.segments[i+2:], s.segments[i+1:])
 
 					// keep right side free
 					s.segments[i+1] = &Segment{}
@@ -329,7 +319,7 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 	// if earlier segment can't be used, check at the end
 	if oldCap := s.segments[len(s.segments)-1].capacity; l <= oldCap {
 		seg := s.segments[len(s.segments)-1]
-		seg.length = l
+		seg.length = uint64(length)
 		seg.capacity = l
 		seg.refCount.Store(1)
 
