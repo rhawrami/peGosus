@@ -31,6 +31,9 @@ func (s *Segment) Len() uint64 { return s.length }
 // Cap returns the segment's maximum byte capacity.
 func (s *Segment) Cap() uint64 { return s.capacity }
 
+// RefCount returns the reference count of `s`.
+func (s *Segment) RefCount() int64 { return s.refCount.Load() }
+
 // IsFree returns true if the reference count is 0.
 func (s *Segment) IsFree() bool { return s.refCount.Load() == 0 }
 
