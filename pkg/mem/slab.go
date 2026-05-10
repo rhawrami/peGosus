@@ -183,88 +183,71 @@ func (s *Slab) coalesce() bool {
 // FullCoalesce attempts to coalesce all adjacent free segments;
 // returns true if at least one coalesce attempt was successful.
 func (s *Slab) FullCoalesce() bool {
-	var yay bool
-	// guaranteed to concat edge segment and penultimate segment
-	// (see TakeSegment), so need at least 4 segments to coalesce.
-	if s.holes < 2 || len(s.segments) < 4 {
-		return yay
+	fmt.Println("start:", s)
+	if s.holes == 0 {
+		return false
+	}
+	// if N holes == N segments - 1 (e.g, all holes) -> just clear
+	// this is also safe in the case of N segments == 1 (e.g., just edge)
+	if s.holes == uint64(len(s.segments)-1) {
+		s.Clear()
+		return true
 	}
 
-	// take two passes
-	// first pass: find set of adjacent free segments
+	pos := make([]int, 0, s.holes)
+	var start, stop, adjust int
 	var startCtr bool
-	var start, stop int
-	// if pos[i] != 0, then there is a set of adjacent free segs starting
-	// at i and ending at (inclusive) i+pos[i]
-	pos := make([]int, len(s.segments)-1)
-
-	for i := 0; i < len(s.segments)-1; i++ {
-		if s.segments[i].IsFree() {
+	// pass 1: find hole postions and "widths"
+	for i, v := range s.segments {
+		if v.IsFree() {
 			if !startCtr {
 				startCtr = true
 				start = i
-				stop = i
-			} else {
-				stop = i
 			}
+			stop = i
 		} else {
-			if startCtr && stop > start {
-				pos[start] = stop
-				startCtr = false
+			startCtr = false
+			if start != stop {
+				// append start AND stop pairs
+				pos = append(pos, start-adjust, stop-adjust)
+				// set adjust for next set of adjacent pairs
+				adjust += (stop - start)
 			}
 		}
 	}
-
-	// in case of every segment being a hole
+	// if adjacent pairs at end of group
 	if start != stop {
-		pos[start] = stop
+		pos = append(pos, start-adjust, stop-adjust)
 	}
 
-	// second pass: plug the holes
-	i := 0
-	l := len(s.segments) - 1
+	if len(pos) == 0 {
+		return false
+	}
+	fmt.Println("pos: ", pos)
 
-	for i < l {
-		pI := pos[i]
-		diff := pI - i
-		if pI == 0 {
-			i += 1
-			continue
+	// pass 2: merge segments
+	var on int
+	for on < len(pos) {
+		start, stop := pos[on], pos[on+1]
+		diff := stop - start
+		// get new cap
+		var c uint64
+		for i := start; i < stop+1; i++ {
+			c += s.segments[i].capacity
 		}
-
-		// get new capacity
-		c := s.segments[i].capacity
-		for j := i + 1; j < pI+1; j++ {
-			c += s.segments[j].capacity
-		}
-		s.segments[i].capacity = c
-
-		// drop non-leftmost segments, shift everything over
-		for j := i + 1; j < len(s.segments)-diff; j++ {
-			s.segments[j] = s.segments[j+diff]
-		}
+		s.segments[start].capacity = c
+		// shift segments over, set new len
+		copy(s.segments[start+1:], s.segments[stop+1:])
 		s.segments = s.segments[:len(s.segments)-diff]
-		l -= pI
-
-		// update hole count; with how diff is defined, for 2+ adjacent holes,
-		// it will update holes as -(nAdjacentHoles-1)
+		// update hole count
 		s.holes -= uint64(diff)
 
-		yay = true
-		i += 1
+		on += 2
 	}
 
-	// final check: check if penultimate seg can be merged with edge;
-	// same logic used in TakeSegment below
-	if g := s.segments[len(s.segments)-2]; g.IsFree() {
-		edge := s.segments[len(s.segments)-1]
-		g.capacity += edge.capacity
-		s.on = g.base
-		s.segments = s.segments[:len(s.segments)-1]
-		s.holes -= 1
-	}
+	fmt.Println("stop: ", s)
 
-	return yay
+	return true
 }
 
 // MakeSegment returns a Segment with at least `length` bytes; returns
