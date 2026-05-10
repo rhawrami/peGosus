@@ -44,7 +44,7 @@ func (s *SlabSet) Nuke() {
 	s.slabs = nil
 }
 
-// Grow adds a slab with byte capacity equal to the first slab.
+// Grow adds a slab with byte capacity equal to the first slab
 // in the set.
 func (s *SlabSet) Grow() {
 	b := MakeSlab(int(s.slabs[0].capacity))
@@ -52,7 +52,8 @@ func (s *SlabSet) Grow() {
 	s.slabs = append(s.slabs, b)
 }
 
-// GrowWithSize adds a slab with at least `l` bytes of capacity.
+// GrowWithSize adds a slab with at least `l` bytes of capacity; also sets
+// on to the new slab.
 func (s *SlabSet) GrowWithSize(l int) {
 	b := MakeSlab(l)
 	s.capacity += b.capacity
@@ -81,7 +82,7 @@ func (s *SlabSet) Optimize() {
 func (s *SlabSet) Accept(b *Slab) {
 	s.capacity += b.capacity
 	s.slabs = append(s.slabs, b)
-	if (s.slabs[s.on].capacity - s.slabs[s.on].used) > (b.capacity - b.used) {
+	if (s.slabs[s.on].capacity - s.slabs[s.on].used) < (b.capacity - b.used) {
 		s.on = len(s.slabs) - 1
 	}
 }
@@ -89,20 +90,10 @@ func (s *SlabSet) Accept(b *Slab) {
 // Remove removes the slab at offset `o`, also updating `on`.
 func (s *SlabSet) Remove(o int) {
 	s.capacity -= s.slabs[o].capacity
-
-	var newOn int
-	var r uint64
-	for i := o; i < len(s.slabs)-1; i++ {
-		v := s.slabs[i+1]
-		if rem := v.capacity - v.used; rem > r {
-			r = rem
-			newOn = i
-		}
-		s.slabs[i] = v
-	}
-
+	copy(s.slabs[o:], s.slabs[o+1:])
 	s.slabs = s.slabs[:len(s.slabs)-1]
-	s.on = newOn
+
+	s.SetOn()
 }
 
 // SetOn sets on to the slab with the greatest unused capacity.
@@ -161,7 +152,7 @@ func (s *SlabSet) GrowAndMakeSegment(l int) *Segment {
 
 // transferSlab takes the first open slab (e.g., used = 0) from `src`,
 // and transfers it to `dst`; does nothing if `src` has no open slabs.
-func transferSlab(dst, src *SlabSet) {
+func TransferSlab(dst, src *SlabSet) {
 	var a *Slab
 	var ok bool
 
@@ -181,7 +172,7 @@ func transferSlab(dst, src *SlabSet) {
 
 // transferSlabWithOffset takes the slab at offset `o` in `src`, and transfers
 // it to `dst`; does nothing if slab at `o` isn't open.
-func transferSlabWithOffset(dst, src *SlabSet, o int) {
+func TransferSlabWithOffset(dst, src *SlabSet, o int) {
 	a := src.slabs[o]
 	if a.used != 0 {
 		return
