@@ -275,7 +275,7 @@ func TestSimpleCoalesce(t *testing.T) {
 
 	// simple coalesce should be able to coalesce first 2 free segments
 	// and reduce hole count from 2 to 1
-	ok := s.coalesce()
+	ok := s.SimpleCoalesce()
 	if !ok || s.holes != 1 {
 		t.Errorf("attempt coalesce: got %v and %d holes, expected %v and %d holes",
 			ok, s.holes, true, 1)
@@ -308,7 +308,7 @@ func TestSimpleCoalesce(t *testing.T) {
 		}
 	}
 
-	if ok = s.coalesce(); !ok {
+	if ok = s.SimpleCoalesce(); !ok {
 		t.Error("simple coalesce did not work in complex test")
 	}
 	if s.holes != 4 {
@@ -385,8 +385,13 @@ func TestFullCoalesce(t *testing.T) {
 	// 15 segments (+ 1 edge)
 	// free 10 segments:
 	// [u, f, u, f, f, f, f, u, f, f, u, f, f, f, u | f]
-	// after FullCoalesce (new length of 9, 4 holes)
-	// [u, f (merged 0), u, f (merged 4), u, f (merged 2), u, f (merged 3), u]
+	// after FullCoalesce (new length of 10, 4 holes)
+	// [u, f (merged 0), u, f (merged 4), u, f (merged 2), u, f (merged 3), u | f]
+	// segment 1 should have capacity 320
+	// segment 3 should have capacity 320 * 4 => 1280
+	// segment 5 should have capacity 320 * 2 => 640
+	// segment 7 should have capacity 320 * 3 => 960
+	// edge segment should have the same capacity
 	N := 15
 	reqSmall := 300
 	freeSegs := []int{1, 3, 4, 5, 6, 8, 9, 11, 12, 13}
@@ -399,23 +404,81 @@ func TestFullCoalesce(t *testing.T) {
 		segs[v].Put()
 	}
 	if s.holes != 10 {
-		t.Errorf("FullCoalesce (complex): got %d holes, expected 10", s.holes)
+		t.Errorf("FullCoalesce (complex): after puts, got %d holes, expected 10", s.holes)
 	}
+
+	edgeCapBefore := s.segments[len(s.segments)-1].capacity
 
 	ok := s.FullCoalesce()
 	if !ok {
 		t.Error("FullCoalesce (complex): full coalesce call did not work")
 	}
-	if len(s.segments) != 9 {
-		t.Errorf("FullCoalesce (complex): got seg length %d, expected 9", len(s.segments))
+	if len(s.segments) != 10 {
+		t.Errorf("FullCoalesce (complex): got seg length %d, expected 10", len(s.segments))
 	}
 	if s.holes != 4 {
 		t.Errorf("FullCoalesce (complex): got %d holes, expected 4", s.holes)
 	}
+	if g1 := s.segments[1]; g1.capacity != 320 {
+		t.Errorf("FullCoalesce (complex): seg 1, got cap %d, expected %d", g1.capacity, 320)
+	}
+	if g3 := s.segments[3]; g3.capacity != 1280 {
+		t.Errorf("FullCoalesce (complex): seg 3, got cap %d, expected %d", g3.capacity, 1280)
+	}
+	if g5 := s.segments[5]; g5.capacity != 640 {
+		t.Errorf("FullCoalesce (complex): seg 5, got cap %d, expected %d", g1.capacity, 640)
+	}
+	if g7 := s.segments[7]; g7.capacity != 960 {
+		t.Errorf("FullCoalesce (complex): seg 7, got cap %d, expected %d", g1.capacity, 960)
+	}
+	if newEdgeCap := s.segments[len(s.segments)-1].capacity; newEdgeCap != edgeCapBefore {
+		t.Errorf("FullCoalesce (complex): edge cap got %d, expected %d", newEdgeCap, edgeCapBefore)
+	}
 
 }
 
-func TestMakeWithCoalesce(t *testing.T) {}
+func TestMakeWithCoalesce(t *testing.T) {
+	size := 10_000
+	s := MakeSlab(size)
+
+	g1, _ := s.MakeSegment(2_000)
+	g2, _ := s.MakeSegment(4_000)
+	_, _ = s.MakeSegment(3_000)
+
+	g1Cap, g2Cap := g1.capacity, g2.capacity
+
+	// this should fail
+	g5, ok := s.MakeSegment(5_000)
+	if ok || g5 != nil {
+		t.Errorf("requested 5k bytes, shouldve failed, got back a segment")
+	}
+
+	g1.Put()
+	g2.Put()
+	// should still fail, as g1 and g2 each don't have enough space
+	g5, ok = s.MakeSegment(5_000)
+	if ok || g5 != nil {
+		t.Errorf("requested 5k bytes (after puts), shouldve failed, got back a segment")
+	}
+
+	// make with coalesce will work, as g1 and g2 should be merged
+	g5, ok = s.MakeSegmentWithCoalesce(5_000)
+	if !ok || g5 == nil {
+		t.Errorf("requested 5k bytes using MakeWithCoalesce, shouldve worked, but failed")
+	}
+	// g5 should have the same base as g1
+	if g5.base != g1.base {
+		t.Errorf("g5 base, got %p, expected %p", g5.base, g1.base)
+	}
+	// g5 cap should equal g1 + g2 cap
+	if g5.capacity != g1Cap+g2Cap {
+		t.Errorf("g5 cap: got %d, expected %d", g5.capacity, g1Cap+g2Cap)
+	}
+	// there should be zero holes now
+	if s.holes != 0 {
+		t.Errorf("got %d holes, expected 0", s.holes)
+	}
+}
 
 func TestGrow(t *testing.T) {
 	size := 10_000

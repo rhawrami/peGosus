@@ -150,10 +150,10 @@ func (s *Slab) update(l, p uint64) {
 	s.segments = append(s.segments, seg)
 }
 
-// coalesce attempts to coalesce free adjacent segments
+// SimpleCoalesce attempts to coalesce free adjacent segments
 // into one; returns true if at least one coalescence succeeded;
 // only two contiguous segments can be coalesced.
-func (s *Slab) coalesce() bool {
+func (s *Slab) SimpleCoalesce() bool {
 	var yay bool
 	if s.holes < 2 {
 		return yay
@@ -183,7 +183,6 @@ func (s *Slab) coalesce() bool {
 // FullCoalesce attempts to coalesce all adjacent free segments;
 // returns true if at least one coalesce attempt was successful.
 func (s *Slab) FullCoalesce() bool {
-	fmt.Println("start:", s)
 	if s.holes == 0 {
 		return false
 	}
@@ -223,7 +222,6 @@ func (s *Slab) FullCoalesce() bool {
 	if len(pos) == 0 {
 		return false
 	}
-	fmt.Println("pos: ", pos)
 
 	// pass 2: merge segments
 	var on int
@@ -244,8 +242,6 @@ func (s *Slab) FullCoalesce() bool {
 
 		on += 2
 	}
-
-	fmt.Println("stop: ", s)
 
 	return true
 }
@@ -317,7 +313,7 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 // to coalesce adjacent free segments.
 func (s *Slab) MakeSegmentWithCoalesce(length int) (*Segment, bool) {
 	if s.holes > 1 {
-		_ = s.coalesce()
+		_ = s.FullCoalesce()
 	}
 	return s.MakeSegment(length)
 }
