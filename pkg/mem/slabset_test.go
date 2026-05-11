@@ -110,10 +110,9 @@ func TestSlabSetAccept(t *testing.T) {
 	b := MakeSlab(10_000)
 
 	oldCap := ss.capacity
-	oldOn := ss.on
 	oldLen := len(ss.slabs)
 	// this slab does not have the largest (cap - used), so "on"
-	// should stay the same
+	// should update to the penultimate slab
 	ss.Accept(b)
 	if ss.capacity != oldCap+b.capacity {
 		t.Errorf("op 1: got cap %d, expected %d", ss.capacity, oldCap+b.capacity)
@@ -121,8 +120,8 @@ func TestSlabSetAccept(t *testing.T) {
 	if len(ss.slabs) != oldLen+1 {
 		t.Errorf("op 1: got N slabs %d, expected %d", len(ss.slabs), oldLen+1)
 	}
-	if ss.on != oldOn {
-		t.Errorf("op 1: got on %d, expected %d", ss.on, oldOn)
+	if ss.on != 3 {
+		t.Errorf("op 1: got on %d, expected %d", ss.on, 3)
 	}
 	if ss.slabs[len(ss.slabs)-1] != b {
 		t.Errorf("op 1: got app slab %p, expected %p", ss.slabs[len(ss.slabs)-1], b)
@@ -343,8 +342,179 @@ func TestSlabSetGrowAndMakeSegment(t *testing.T) {
 	}
 }
 
-func TestSlabSetOptimize(t *testing.T) {}
+func TestTransferSlab(t *testing.T) {
+	s := uint64(10_000)
+	sizeProfileA := []uint64{s, s, s, s}
+	sizeProfileB := []uint64{s * 2, s * 2, s * 2, s * 2}
+	ssA := MakeSlabSet(sizeProfileA)
+	ssB := MakeSlabSet(sizeProfileB)
 
-func TestTransferSlab(t *testing.T) {}
+	// fill up ssA
+	var ok bool = true
+	for ok {
+		_, ok = ssA.MakeSegment(int(s))
+	}
 
-func TestTransferSlabWithOffset(t *testing.T) {}
+	onSSA, lenSSA, capSSA := ssA.on, len(ssA.slabs), ssA.capacity
+	onSSB, lenSSB, capSSB := ssB.on, len(ssB.slabs), ssB.capacity
+	// this should do nothing, as ssA has no open slabs
+	TransferSlab(ssB, ssA)
+	if ssA.on != onSSA || len(ssA.slabs) != lenSSA || ssA.capacity != capSSA {
+		t.Errorf("call 1 (ssA): on/len/cap %d/%d/%d != %d/%d/%d",
+			ssA.on, onSSA, len(ssA.slabs), lenSSA, ssA.capacity, capSSA,
+		)
+	}
+	if ssB.on != onSSB || len(ssB.slabs) != lenSSB || ssB.capacity != capSSB {
+		t.Errorf("call 1 (ssB): on/len/cap %d/%d/%d != %d/%d/%d",
+			ssB.on, onSSB, len(ssB.slabs), lenSSB, ssB.capacity, capSSB,
+		)
+	}
+
+	// if we transfer B to A
+	// 1. the first slab in B should be transferred to A
+	// 2. B.on should update to the second slab (e.g., stay at 0)
+	// 3. A.on should update to the final slab
+	// 4. A|B caps should appropriately update
+	slab0 := ssB.slabs[0]
+
+	TransferSlab(ssA, ssB)
+	if ssA.slabs[len(ssA.slabs)-1] != slab0 {
+		t.Errorf("call 2: got final slab %p, expected %p", ssA.slabs[len(ssA.slabs)-1], slab0)
+	}
+	if ssB.slabs[0] == slab0 {
+		t.Errorf("call 2: ssB transferred slab 0, but stayed in set")
+	}
+	if ssA.on != len(ssA.slabs)-1 {
+		t.Errorf("call 2: got ssA on %d, expected %d", ssA.on, len(ssA.slabs)-1)
+	}
+	if ssB.on != 0 {
+		t.Errorf("call 2: got ssB on %d, expected %d", ssB.on, 0)
+	}
+	if ssA.capacity != capSSA+slab0.capacity || ssB.capacity != capSSB-slab0.capacity {
+		t.Errorf("call 2: got ssA cap %d expected %d; got ssB cap %d expected %d",
+			ssA.capacity, capSSA+slab0.capacity, ssB.capacity, capSSB-slab0.capacity,
+		)
+	}
+}
+
+func TestTransferSlabWithOffset(t *testing.T) {
+	s := uint64(10_000)
+	sizeProfileA := []uint64{s, s, s, s}
+	sizeProfileB := []uint64{s * 2, s * 2, s * 2, s * 2}
+	ssA := MakeSlabSet(sizeProfileA)
+	ssB := MakeSlabSet(sizeProfileB)
+
+	// fill up ssA, except at 1
+	_, _ = ssA.MakeSegment(int(s))
+	_, _ = ssA.MakeSegment(int(s))
+	_, _ = ssA.MakeSegment(int(s))
+	_, _ = ssA.MakeSegment(int(s))
+	ssA.slabs[1].Clear()
+
+	onSSA, lenSSA, capSSA := ssA.on, len(ssA.slabs), ssA.capacity
+	onSSB, lenSSB, capSSB := ssB.on, len(ssB.slabs), ssB.capacity
+	// this should do nothing, as ssA at 2 is not open
+	TransferSlabWithOffset(ssB, ssA, 2)
+	if ssA.on != onSSA || len(ssA.slabs) != lenSSA || ssA.capacity != capSSA {
+		t.Errorf("call 1 (ssA): on/len/cap %d/%d/%d != %d/%d/%d",
+			ssA.on, onSSA, len(ssA.slabs), lenSSA, ssA.capacity, capSSA,
+		)
+	}
+	if ssB.on != onSSB || len(ssB.slabs) != lenSSB || ssB.capacity != capSSB {
+		t.Errorf("call 1 (ssB): on/len/cap %d/%d/%d != %d/%d/%d",
+			ssB.on, onSSB, len(ssB.slabs), lenSSB, ssB.capacity, capSSB,
+		)
+	}
+
+	// fill up ssB, except at 2 and 3
+	_, _ = ssB.MakeSegment(int(s))
+	_, _ = ssB.MakeSegment(int(s))
+	_, _ = ssB.MakeSegment(int(s))
+	_, _ = ssB.MakeSegment(int(s))
+	ssB.slabs[2].Clear()
+	ssB.slabs[3].Clear()
+
+	// if we transfer B to A at 2
+	// 1. the third slab in B should be transferred to A
+	// 2. B.on should update to the final slab
+	// 3. A.on should update to the final slab
+	// 4. A|B caps should appropriately update
+	slab2 := ssB.slabs[2]
+
+	TransferSlabWithOffset(ssA, ssB, 2)
+	if ssA.slabs[len(ssA.slabs)-1] != slab2 {
+		t.Errorf("call 2: got final slab %p, expected %p", ssA.slabs[len(ssA.slabs)-1], slab2)
+	}
+	if ssB.slabs[0] == slab2 {
+		t.Errorf("call 2: ssB transferred slab 0, but stayed in set")
+	}
+	if ssA.on != len(ssA.slabs)-1 {
+		t.Errorf("call 2: got ssA on %d, expected %d", ssA.on, len(ssA.slabs)-1)
+	}
+	if ssB.on != len(ssB.slabs)-1 {
+		t.Errorf("call 2: got ssB on %d, expected %d", ssB.on, len(ssB.slabs)-1)
+	}
+	if ssA.capacity != capSSA+slab2.capacity || ssB.capacity != capSSB-slab2.capacity {
+		t.Errorf("call 2: got ssA cap %d expected %d; got ssB cap %d expected %d",
+			ssA.capacity, capSSA+slab2.capacity, ssB.capacity, capSSB-slab2.capacity,
+		)
+	}
+}
+
+func TestSlabSetOptimize(t *testing.T) {
+	s := uint64(10_000)
+	sizeProfile := []uint64{s, s, s}
+	ss := MakeSlabSet(sizeProfile)
+
+	a, b, c := ss.slabs[0], ss.slabs[1], ss.slabs[2]
+
+	req := 500
+
+	// take up some space in a
+	g1, _ := a.MakeSegment(req)
+	g2, _ := a.MakeSegment(req)
+	g3, _ := a.MakeSegment(req)
+	_, _ = a.MakeSegment(req)
+
+	// take up some space in b
+	_, _ = b.MakeSegment(req)
+	_, _ = b.MakeSegment(req)
+
+	// take up some space in c
+	_, _ = c.MakeSegment(req)
+	_, _ = c.MakeSegment(req)
+	_, _ = c.MakeSegment(req)
+
+	// after optimization, on should be set to b
+	ss.Optimize()
+	if ss.on != 1 || ss.slabs[ss.on] != b {
+		t.Errorf("call 1: got on %d, expected %d, got slab %p, expected %p",
+			ss.on, 1, ss.slabs[ss.on], b,
+		)
+	}
+
+	// free 3 adjacent segments in a
+	g1.Put()
+	g2.Put()
+	g3.Put()
+
+	// afte optimization
+	// 1. on should be set to a
+	// 2. holes in a should be reduced by 2
+	// 3. a's first segment should have triple the prior size
+	h := a.holes
+	capOld := a.segments[0].capacity
+	ss.Optimize()
+	if ss.on != 0 || ss.slabs[ss.on] != a {
+		t.Errorf("call 2: got on %d, expected %d, got slab %p, expected %p",
+			ss.on, 0, ss.slabs[ss.on], a,
+		)
+	}
+	if a.holes != h-2 {
+		t.Errorf("call 2: in a, got %d holes, expected %d", a.holes, h-2)
+	}
+	if a.segments[0].capacity != capOld*3 {
+		t.Errorf("call 2: got seg 0 cap %d, expected %d", a.segments[0].capacity, capOld*3)
+	}
+
+}

@@ -82,9 +82,8 @@ func (s *SlabSet) Optimize() {
 func (s *SlabSet) Accept(b *Slab) {
 	s.capacity += b.capacity
 	s.slabs = append(s.slabs, b)
-	if (s.slabs[s.on].capacity - s.slabs[s.on].used) < (b.capacity - b.used) {
-		s.on = len(s.slabs) - 1
-	}
+
+	s.SetOn()
 }
 
 // Remove removes the slab at offset `o`, also updating `on`.
@@ -150,7 +149,7 @@ func (s *SlabSet) GrowAndMakeSegment(l int) *Segment {
 	return g
 }
 
-// transferSlab takes the first open slab (e.g., used = 0) from `src`,
+// TransferSlab takes the first open slab (e.g., used = 0) from `src`,
 // and transfers it to `dst`; does nothing if `src` has no open slabs.
 func TransferSlab(dst, src *SlabSet) {
 	var a *Slab
@@ -170,7 +169,7 @@ func TransferSlab(dst, src *SlabSet) {
 	}
 }
 
-// transferSlabWithOffset takes the slab at offset `o` in `src`, and transfers
+// TransferSlabWithOffset takes the slab at offset `o` in `src`, and transfers
 // it to `dst`; does nothing if slab at `o` isn't open.
 func TransferSlabWithOffset(dst, src *SlabSet, o int) {
 	a := src.slabs[o]
