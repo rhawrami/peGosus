@@ -1,25 +1,13 @@
 package mem
 
-// DataSegment wraps Segment, adding an offset ID.
-type DataSegment struct {
-	seg   *Segment
-	offID uint64
-}
-
-// Seg returns the underlying segment.
-func (d *DataSegment) Seg() *Segment { return d.seg }
-
-// ID returns the segment's offset ID.
-func (d *DataSegment) ID() uint64 { return d.offID }
-
 // MakeData takes in a slice of segments, copies those segments to
 // their own slice, and returns a Data object.
 func MakeData(s []*Segment) *Data {
-	segments := make([]*DataSegment, len(s))
+	segments := make([]*Segment, len(s))
 	var length, capacity uint64
 
 	for i := 0; i < len(s); i++ {
-		segments[i] = &DataSegment{seg: s[i], offID: uint64(i)}
+		segments[i] = s[i]
 		length += s[i].length
 		capacity += s[i].capacity
 	}
@@ -36,17 +24,15 @@ func MakeDataFromSingleSegment(g *Segment) *Data {
 	return &Data{
 		length:   g.length,
 		capacity: g.capacity,
-		segments: []*DataSegment{
-			{seg: g, offID: 0},
-		},
+		segments: []*Segment{g},
 	}
 }
 
 // Data represents a set of segments.
 type Data struct {
-	length   uint64         // length in bytes
-	capacity uint64         // max byte capacity
-	segments []*DataSegment // set of data segments
+	length   uint64     // length in bytes
+	capacity uint64     // max byte capacity
+	segments []*Segment // set of segments
 }
 
 // Len returns the total length of `d`.
@@ -56,21 +42,13 @@ func (d *Data) Len() uint64 { return d.length }
 func (d *Data) Cap() uint64 { return d.capacity }
 
 // SegmentAt returns the segment at offset `o`.
-func (d *Data) SegmentAt(o uint64) *Segment { return d.segments[o].seg }
-
-// updateOffsetIDs updates the offset ID of each segment, ensuring
-// IDs correspond to slice positions.
-func (d *Data) updateOffsetIDs() {
-	for i, v := range d.segments {
-		v.offID = uint64(i)
-	}
-}
+func (d *Data) SegmentAt(o int) *Segment { return d.segments[o] }
 
 // LenProfile returns the length profile of `d`.
 func (d *Data) LenProfile() []uint64 {
 	sp := make([]uint64, len(d.segments))
 	for i := 0; i < len(sp); i++ {
-		sp[i] = d.segments[i].seg.length
+		sp[i] = d.segments[i].Len()
 	}
 	return sp
 }
@@ -79,7 +57,7 @@ func (d *Data) LenProfile() []uint64 {
 func (d *Data) CapProfile() []uint64 {
 	sp := make([]uint64, len(d.segments))
 	for i := 0; i < len(sp); i++ {
-		sp[i] = d.segments[i].seg.capacity
+		sp[i] = d.segments[i].Cap()
 	}
 	return sp
 }
@@ -90,8 +68,8 @@ func (d *Data) LenAndCapProfile() ([]uint64, []uint64) {
 	lp := make([]uint64, l)
 	cp := make([]uint64, l)
 	for i := 0; i < l; i++ {
-		lp[i] = d.segments[i].seg.length
-		cp[i] = d.segments[i].seg.capacity
+		lp[i] = d.segments[i].Len()
+		cp[i] = d.segments[i].Cap()
 	}
 	return lp, cp
 }
@@ -99,57 +77,52 @@ func (d *Data) LenAndCapProfile() ([]uint64, []uint64) {
 // AddSegment adds a segment to `d`; if inc is true, increments the added
 // segment by one.
 func (d *Data) AddSegment(s *Segment, inc bool) {
-	incBy := int64(0)
-	if inc {
-		incBy = 1
-	}
-	s.refCount.Add(incBy)
-
-	ds := &DataSegment{seg: s, offID: uint64(len(d.segments))}
-
 	d.length += s.length
 	d.capacity += s.capacity
-	d.segments = append(d.segments, ds)
+	d.segments = append(d.segments, s)
+
+	if inc {
+		s.Inc()
+	}
 }
 
 // DropSegment drops the segment at position `o` from
-// `d`; if dec is true, decrements by one.
-func (d *Data) DropSegment(o uint64, dec bool) {
-	var decBy int64 = 0
-	if dec {
-		decBy = -1
-	}
-	g := d.segments[o].seg
+// `d`; if dec is true, decrements by one; returns false if
+// reference count hit zero.
+func (d *Data) DropSegment(o int, dec bool) bool {
+	g := d.segments[o]
 	d.length -= g.length
 	d.capacity -= g.capacity
 
-	for i := int(o); i < len(d.segments)-1; i++ {
-		d.segments[i] = d.segments[i+1]
-		d.segments[i].offID -= 1
+	if o != len(d.segments)-1 {
+		copy(d.segments[o:], d.segments[o+1:])
 	}
-
 	d.segments = d.segments[:len(d.segments)-1]
-	g.refCount.Add(decBy)
+
+	if dec {
+		return g.Dec()
+	}
+	return true
 }
 
 // IncAll increments the reference count for each segment.
 func (d *Data) IncAll() {
 	for _, v := range d.segments {
-		v.seg.Inc()
+		v.Inc()
 	}
 }
 
 // Inc increments the reference count of the segment at
 // offset `o`.
-func (d *Data) Inc(o uint64) {
-	d.segments[o].seg.Inc()
+func (d *Data) Inc(o int) {
+	d.segments[o].Inc()
 }
 
 // PutAll returns all segments to their corresponding slabs, also resetting
 // `d`'s state.
 func (d *Data) PutAll() {
 	for i := 0; i < len(d.segments); i++ {
-		d.segments[i].seg.Put()
+		d.segments[i].Put()
 	}
 
 	d.capacity = 0
@@ -163,25 +136,24 @@ func (d *Data) PutAll() {
 func (d *Data) DecAll() bool {
 	var yay bool = true
 
-	l := len(d.segments)
-	for i := 0; i < l; i++ {
+	for i := 0; i < len(d.segments); i++ {
 		v := d.segments[i]
 
-		oldLen := v.seg.length
-		oldCap := v.seg.capacity
-		if safe := v.seg.Dec(); !safe {
+		oldLen := v.length
+		oldCap := v.capacity
+		if safe := v.Dec(); !safe {
 			d.length -= oldLen
 			d.capacity -= oldCap
 
-			copy(d.segments[i:], d.segments[i+1:])
+			if i != len(d.segments)-1 {
+				copy(d.segments[i:], d.segments[i+1:])
+			}
 
-			d.segments = d.segments[:l-1]
-			l -= 1
+			d.segments = d.segments[:len(d.segments)-1]
 			yay = false
 		}
 	}
 
-	d.updateOffsetIDs()
 	return yay
 }
 
@@ -191,9 +163,9 @@ func (d *Data) DecAll() bool {
 func (d *Data) Dec(o uint64) bool {
 	var yay bool = true
 
-	oldLen := d.segments[o].seg.length
-	oldCap := d.segments[o].seg.capacity
-	if !d.segments[o].seg.Dec() {
+	oldLen := d.segments[o].length
+	oldCap := d.segments[o].capacity
+	if !d.segments[o].Dec() {
 		d.length -= oldLen
 		d.capacity -= oldCap
 
@@ -205,29 +177,28 @@ func (d *Data) Dec(o uint64) bool {
 		yay = false
 	}
 
-	d.updateOffsetIDs()
 	return yay
 }
 
 // AddLength adds at most `l` bytes of length to segment `o`.
 func (d *Data) AddLength(l, o uint64) {
-	d.length -= d.segments[o].seg.length
-	d.segments[o].seg.AddLength(int(l))
-	d.length += d.segments[o].seg.length
+	d.length -= d.segments[o].length
+	d.segments[o].AddLength(int(l))
+	d.length += d.segments[o].length
 }
 
 // SubLength subtracts at most `l` bytes of length to segment `o`.
 func (d *Data) SubLength(l, o uint64) {
-	d.length -= d.segments[o].seg.length
-	d.segments[o].seg.SubLength(int(l))
-	d.length += d.segments[o].seg.length
+	d.length -= d.segments[o].length
+	d.segments[o].SubLength(int(l))
+	d.length += d.segments[o].length
 }
 
 // SetLength sets segment `o` to at most `l` bytes of length.
 func (d *Data) SetLength(l, o uint64) {
-	d.length -= d.segments[o].seg.length
-	d.segments[o].seg.SetLength(int(l))
-	d.length += d.segments[o].seg.length
+	d.length -= d.segments[o].length
+	d.segments[o].SetLength(int(l))
+	d.length += d.segments[o].length
 }
 
 // Merge merges `x` to `d`; if inc is true, all segments
@@ -240,11 +211,9 @@ func (d *Data) Merge(x *Data, inc bool) {
 	d.length += x.length
 	d.capacity += x.capacity
 	for _, v := range x.segments {
-		v.seg.refCount.Add(a)
+		v.refCount.Add(a)
 		d.segments = append(d.segments, v)
 	}
-
-	d.updateOffsetIDs()
 }
 
 // RechunkCopy copies all underlying data (up to each segment length) from
@@ -264,7 +233,7 @@ func (d *Data) RechunkCopy(dst *Data) {
 	on := 0
 	target := dst.SegmentAt(0).AsBytes()
 	for _, v := range d.segments {
-		source := v.Seg().AsBytes()
+		source := v.AsBytes()
 		x := copy(target[on:], source)
 		on += x
 	}
@@ -275,7 +244,7 @@ func (d *Data) RechunkCopy(dst *Data) {
 // or applying an offset, call MemSetU8/MemSetU8Detailed on that segment.
 func (d *Data) MemSetU8(x uint8) {
 	for _, v := range d.segments {
-		v.seg.MemSetU8(x)
+		v.MemSetU8(x)
 	}
 }
 
@@ -284,7 +253,7 @@ func (d *Data) MemSetU8(x uint8) {
 // or applying an offset, call MemSetU32/MemSetU32Detailed on that segment.
 func (d *Data) MemSetU32(x uint32) {
 	for _, v := range d.segments {
-		v.seg.MemSetU32(x)
+		v.MemSetU32(x)
 	}
 }
 
@@ -293,6 +262,6 @@ func (d *Data) MemSetU32(x uint32) {
 // or applying an offset, call MemSetU64/MemSetU64Detailed on that segment.
 func (d *Data) MemSetU64(x uint64) {
 	for _, v := range d.segments {
-		v.seg.MemSetU64(x)
+		v.MemSetU64(x)
 	}
 }
