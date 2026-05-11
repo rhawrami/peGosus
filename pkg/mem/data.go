@@ -35,6 +35,15 @@ type Data struct {
 	segments []*Segment // set of segments
 }
 
+// Clear sets `d`'s length and capacity to zero, and clears
+// the underlying segment set; does not decrement or return
+// the segments to their slabs (use PutAll or DecAll for those purposes).
+func (d *Data) Clear() {
+	d.length = 0
+	d.capacity = 0
+	d.segments = d.segments[:0]
+}
+
 // Len returns the total length of `d`.
 func (d *Data) Len() uint64 { return d.length }
 
@@ -134,25 +143,36 @@ func (d *Data) PutAll() {
 // at least one segment now has reference count 0; drops all segments with
 // reference count of 0.
 func (d *Data) DecAll() bool {
-	var yay bool = true
+	yay := true
 
-	for i := 0; i < len(d.segments); i++ {
-		v := d.segments[i]
+	l := len(d.segments)
+	i := 0
+	j := 0
+	r := 0
 
+	for j < l {
+		incIBy := 1
+		incJBy := 1
+
+		v := d.segments[j]
 		oldLen := v.length
 		oldCap := v.capacity
+
 		if safe := v.Dec(); !safe {
 			d.length -= oldLen
 			d.capacity -= oldCap
-
-			if i != len(d.segments)-1 {
-				copy(d.segments[i:], d.segments[i+1:])
-			}
-
-			d.segments = d.segments[:len(d.segments)-1]
+			incIBy = 0
+			r += 1
 			yay = false
+
 		}
+		d.segments[i] = v
+		i += incIBy
+		j += incJBy
+
 	}
+
+	d.segments = d.segments[:len(d.segments)-r]
 
 	return yay
 }
