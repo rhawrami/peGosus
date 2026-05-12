@@ -64,7 +64,7 @@ const (
 type AllocStats struct {
 	cycle         uint64    // max number of allocations before next optimization must be ran
 	lastOptimized uint64    // number of allocations since last optimization
-	avgReq        uint64    // rounded average allocation request size
+	avgReq        uint64    // rounded rolling average allocation request size
 	nLocs         [2]uint64 // number of allocations per general/scratch (since last optimization)
 }
 
@@ -125,10 +125,11 @@ func (a *Allocator) ClearDataCache() {
 	a.dataCache = a.dataCache[:0]
 }
 
-// Clear clears all underlying slabs.
+// Clear clears all underlying slabs, and the data cache.
 func (a *Allocator) Clear() {
 	a.ClearGeneral()
 	a.ClearScratch()
+	a.ClearDataCache()
 }
 
 // GrowGeneral adds another slab with at least `l` bytes to the
