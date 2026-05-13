@@ -211,6 +211,8 @@ func (s *Slab) FullCoalesce() bool {
 				pos = append(pos, start-adjust, stop-adjust)
 				// set adjust for next set of adjacent pairs
 				adjust += (stop - start)
+				// reset range
+				start, stop = i, i
 			}
 		}
 	}
