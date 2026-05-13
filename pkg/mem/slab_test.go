@@ -20,7 +20,7 @@ func TestMakeSlab(t *testing.T) {
 			s := MakeSlab(l)
 
 			// ensure capacity == slice length
-			if s.capacity != uint64(len(s.buff)) {
+			if s.capacity != len(s.buff) {
 				t.Errorf("capacity %d != slice length %d", s.capacity, len(s.buff))
 			}
 			// ensure underlying buffer is aligned
@@ -35,12 +35,12 @@ func TestMakeSlab(t *testing.T) {
 			}
 
 			// ensure capacity is divisible by alignSize
-			if s.capacity%uint64(alignSize) != 0 {
+			if s.capacity%alignSize != 0 {
 				t.Errorf("capacity %d not divisible by %d", s.capacity, alignSize)
 			}
 
 			// ensure capacity >= alignSize && capacity >= length request
-			if s.capacity < uint64(alignSize) || s.capacity < uint64(l) {
+			if s.capacity < alignSize || s.capacity < l {
 				t.Errorf("capacity %d not >= %d and request %d", s.capacity, alignSize, l)
 			}
 		})
@@ -65,7 +65,7 @@ func TestMakeOneSegment(t *testing.T) {
 	}
 
 	// ensure capacity is at least size of request
-	if g.Cap() < uint64(req) {
+	if g.Cap() < req {
 		t.Errorf("segment cap %d < req %d", g.Cap(), req)
 	}
 
@@ -75,7 +75,7 @@ func TestMakeOneSegment(t *testing.T) {
 	}
 
 	// ensure segment length == request length
-	if g.length != uint64(req) {
+	if g.length != req {
 		t.Errorf("starting segment length %d != request length %d", g.length, req)
 	}
 
@@ -160,7 +160,7 @@ func TestMakeMultiSegment(t *testing.T) {
 
 	// after 9 requests, bytes used => 9 * 1_024
 	expectedUsed := expected * 1_024
-	if s.used != uint64(expectedUsed) {
+	if s.used != expectedUsed {
 		t.Errorf("bytes used: got %d, expected %d", s.used, expectedUsed)
 	}
 

@@ -18,10 +18,10 @@ func TestMakeSegment(t *testing.T) {
 	if g1.base != s.base {
 		t.Errorf("seg 0 base %p != slab base %p", g1.base, s.base)
 	}
-	if g1.length != uint64(segSizeReq) {
+	if g1.length != int(segSizeReq) {
 		t.Errorf("requested %d, got len of %d", g1.length, segSizeReq)
 	}
-	if g1.capacity < uint64(segSizeReq) {
+	if g1.capacity < int(segSizeReq) {
 		t.Errorf("seg cap %d < req %d", g1.capacity, segSizeReq)
 	}
 	if g1.refCount.Load() != 1 {
@@ -196,8 +196,8 @@ func TestMemSetU8(t *testing.T) {
 	g1.MemSetU8(0)
 	setTo = uint8(rand.Uint32N(256))
 	// add 10 byte offset, and set 100 bytes
-	o := uint64(10)
-	setOnly := uint64(100)
+	o := int(10)
+	setOnly := int(100)
 	g1.MemSetU8Detailed(setTo, setOnly, o)
 
 	for i, v := range g1.AsBytes() {
@@ -232,7 +232,7 @@ func TestMemSetU32(t *testing.T) {
 	}
 
 	// safety check to make sure slab buff also has value set
-	overlap := asU32T(s.base, uint64(N))
+	overlap := asU32T(s.base, int(N))
 	for i, v := range overlap {
 		if v != setTo {
 			t.Errorf("slab base: on %d: got %d, expected %d", i, v, setTo)
@@ -242,8 +242,8 @@ func TestMemSetU32(t *testing.T) {
 	g1.MemSetU32(0)
 	setTo = rand.Uint32()
 	// add 40 byte offset (10 elements), and set 200 bytes (50)
-	o := uint64(40)
-	setOnly := uint64(200)
+	o := int(40)
+	setOnly := int(200)
 	g1.MemSetU32Detailed(setTo, setOnly, o)
 
 	for i, v := range g1.AsU32T() {
@@ -278,7 +278,7 @@ func TestMemSetU64(t *testing.T) {
 	}
 
 	// safety check to make sure slab buff also has value set
-	overlap := asU64T(s.base, uint64(N))
+	overlap := asU64T(s.base, int(N))
 	for i, v := range overlap {
 		if v != setTo {
 			t.Errorf("slab base: on %d: got %d, expected %d", i, v, setTo)
@@ -288,8 +288,8 @@ func TestMemSetU64(t *testing.T) {
 	g1.MemSetU64(0)
 	setTo = rand.Uint64()
 	// add 400 byte offset (50 elements), and set 200 bytes (25)
-	o := uint64(400)
-	setOnly := uint64(200)
+	o := int(400)
+	setOnly := int(200)
 	g1.MemSetU64Detailed(setTo, setOnly, o)
 
 	for i, v := range g1.AsU64T() {

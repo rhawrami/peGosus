@@ -40,14 +40,14 @@ tradLoop:                                                  \
 exitFn:                                                    \
     RET
 
-// func setU8UnalignedAVX2(a *byte, n uint64, v uint8)
+// func setU8UnalignedAVX2(a *byte, n int, v uint8)
 TEXT ·setU8UnalignedAVX2(SB),NOSPLIT,$0-17
     vSet(R9, VPBROADCASTB, VMOVDQU, MOVB, $1, $128)
 
-// func setU32UnalignedAVX2(a *byte, n uint64, v uint32)
+// func setU32UnalignedAVX2(a *byte, n int, v uint32)
 TEXT ·setU32UnalignedAVX2(SB),NOSPLIT,$0-20
     vSet(R9, VPBROADCASTD, VMOVDQU, MOVL, $4, $32)
 
-// func setU64UnalignedAVX2(a *byte, n uint64, v uint64)
+// func setU64UnalignedAVX2(a *byte, n int, v uint64)
 TEXT ·setU64UnalignedAVX2(SB),NOSPLIT,$0-24
     vSet(R9, VPBROADCASTQ, VMOVDQU, MOVQ, $8, $16)

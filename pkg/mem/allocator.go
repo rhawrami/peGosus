@@ -1,12 +1,12 @@
 package mem
 
 const (
-	dataCacheSizeDefault uint64 = 4
-	optCycleDefault      uint64 = 10
+	dataCacheSizeDefault int = 4
+	optCycleDefault      int = 10
 )
 
 // MakeAllocConfig returns an AllocConfig object.
-func MakeAllocConfig(generalProfile, scratchProfile []uint64, cycleN, cacheN uint64) AllocConfig {
+func MakeAllocConfig(generalProfile, scratchProfile []int, cycleN, cacheN int) AllocConfig {
 	return AllocConfig{
 		generalProfile: generalProfile,
 		scratchProfile: scratchProfile,
@@ -17,10 +17,10 @@ func MakeAllocConfig(generalProfile, scratchProfile []uint64, cycleN, cacheN uin
 
 // AllocConfig configures an Allocator.
 type AllocConfig struct {
-	generalProfile []uint64 // byte capacity per general slab
-	scratchProfile []uint64 // byte capacity per scratch slab
-	cycleN         uint64   // cycle threshold
-	cacheN         uint64   // max data in cache
+	generalProfile []int // byte capacity per general slab
+	scratchProfile []int // byte capacity per scratch slab
+	cycleN         int   // cycle threshold
+	cacheN         int   // max data in cache
 }
 
 // MakeAllocatorWithConfig returns an Allocator based on `cfg`.
@@ -39,7 +39,7 @@ func MakeAllocatorWithConfig(cfg AllocConfig) *Allocator {
 
 // MakeAllocatorWithProfiles returns an Allocator, with a general and scratch slab set
 // based on the respective profiles; uses default valus for cycle threshold and cache limit.
-func MakeAllocatorWithProfiles(generalProfile, scratchProfile []uint64) *Allocator {
+func MakeAllocatorWithProfiles(generalProfile, scratchProfile []int) *Allocator {
 	general := MakeSlabSet(generalProfile)
 	scratch := MakeSlabSet(scratchProfile)
 	cache := make([]*Data, 0, dataCacheSizeDefault)
@@ -62,15 +62,15 @@ const (
 
 // AllocStats tracks allocation statistics; will be used later.
 type AllocStats struct {
-	cycle         uint64    // max number of allocations before next optimization must be ran
-	lastOptimized uint64    // number of allocations since last optimization
-	avgReq        uint64    // rounded rolling average allocation request size
-	nLocs         [2]uint64 // number of allocations per general/scratch (since last optimization)
+	cycle         int    // max number of allocations before next optimization must be ran
+	lastOptimized int    // number of allocations since last optimization
+	avgReq        int    // rounded rolling average allocation request size
+	nLocs         [2]int // number of allocations per general/scratch (since last optimization)
 }
 
 // updateAvgReq updates the average request size.
 func (a *AllocStats) updateAvgReq(l int) {
-	r := uint64(l)
+	r := l
 	// if user requests zero bytes, this function interprets it
 	// as start of sequence; will change later.
 	if a.avgReq != 0 {
@@ -214,13 +214,13 @@ func (a *Allocator) Alloc(l int) *Data {
 // AllocWithProfile returns a Data object matching the size profile `s`;
 // in other words, the Data object will have len(`s`.p) segments, each with
 // at least `s`.p[i] bytes of capacity.
-func (a *Allocator) AllocWithProfile(p []uint64) *Data {
+func (a *Allocator) AllocWithProfile(p []int) *Data {
 	a.checkOptimize()
 
 	d := a.makeData(len(p))
 
 	for i := 0; i < len(p); i++ {
-		l := int(p[i])
+		l := p[i]
 		a.stats.updateState(l, reqGeneral)
 
 		g := a.general.ForceSegment(l)
@@ -234,21 +234,20 @@ func (a *Allocator) AllocWithProfile(p []uint64) *Data {
 // in other words, the Data object will have len(`s`.p) segments, each with
 // at least `s`.p[i] bytes of capacity; implied that the object is
 // temporary and will be freed shortly.
-func (a *Allocator) AllocTempWithProfile(p []uint64) *Data {
+func (a *Allocator) AllocTempWithProfile(p []int) *Data {
 	a.checkOptimize()
 
 	d := a.makeData(len(p))
 
 	for _, l := range p {
-		length := int(l)
-		a.stats.updateState(length, reqScratch)
+		a.stats.updateState(l, reqScratch)
 
-		g, ok := a.scratch.MakeSegment(length)
+		g, ok := a.scratch.MakeSegment(l)
 		if !ok {
-			g, ok = a.general.MakeSegment(length)
+			g, ok = a.general.MakeSegment(l)
 		}
 		if !ok {
-			g = a.scratch.GrowAndMakeSegment(length)
+			g = a.scratch.GrowAndMakeSegment(l)
 		}
 
 		d.AddSegment(g, false)

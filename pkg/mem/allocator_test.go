@@ -6,14 +6,14 @@ import (
 )
 
 func TestAllocStats(t *testing.T) {
-	cycle := uint64(10)
+	cycle := int(10)
 	a := AllocStats{cycle: cycle}
 
 	// request 100 bytes, from general
 	r1 := 100
 	f1 := reqGeneral
 	a.updateState(r1, f1)
-	if a.avgReq != uint64(r1) {
+	if a.avgReq != int(r1) {
 		t.Errorf("req 1 (avgReq): got %d, expected %d", a.avgReq, r1)
 	}
 	if a.nLocs[reqGeneral] != 1 {
@@ -24,8 +24,8 @@ func TestAllocStats(t *testing.T) {
 	r2 := 200
 	f2 := reqScratch
 	a.updateState(r2, f2)
-	if a.avgReq != uint64((r2+r1)/2) {
-		t.Errorf("req 2 (avgReq): got %d, expected %d", a.avgReq, uint64((r2+r1)/2))
+	if a.avgReq != int((r2+r1)/2) {
+		t.Errorf("req 2 (avgReq): got %d, expected %d", a.avgReq, int((r2+r1)/2))
 	}
 	if a.nLocs[reqScratch] != 1 {
 		t.Errorf("req 2 (nLocs): got %d, expected %d", a.nLocs[reqScratch], 1)
@@ -35,8 +35,8 @@ func TestAllocStats(t *testing.T) {
 	r3 := 500
 	f3 := reqGeneral
 	a.updateState(r3, f3)
-	if a.avgReq != uint64((r2+r1)/2+r3)/2 {
-		t.Errorf("req 3 (avgReq): got %d, expected %d", a.avgReq, uint64((r3+r2+r1)/3))
+	if a.avgReq != int((r2+r1)/2+r3)/2 {
+		t.Errorf("req 3 (avgReq): got %d, expected %d", a.avgReq, int((r3+r2+r1)/3))
 	}
 	if a.nLocs[reqGeneral] != 2 {
 		t.Errorf("req 3 (nLocs): got %d, expected %d", a.nLocs[reqGeneral], 2)
@@ -51,16 +51,16 @@ func TestAllocStats(t *testing.T) {
 
 func TestMakeAllocatorWithConfig(t *testing.T) {
 	nGP, nSP := 10, 5
-	gp, sp := make([]uint64, nGP), make([]uint64, nSP)
+	gp, sp := make([]int, nGP), make([]int, nSP)
 	for i := range gp {
-		gp[i] = rand.Uint64N(50_000)
+		gp[i] = rand.IntN(50_000)
 	}
 	for i := range sp {
-		sp[i] = rand.Uint64N(25_000)
+		sp[i] = rand.IntN(25_000)
 	}
 
-	cacheN := rand.Uint64N(10)
-	cycleN := rand.Uint64N(10)
+	cacheN := rand.IntN(10)
+	cycleN := rand.IntN(10)
 
 	cfg := MakeAllocConfig(gp, sp, cycleN, cacheN)
 
@@ -90,12 +90,12 @@ func TestMakeAllocatorWithConfig(t *testing.T) {
 
 func TestMakeAllocatorWithProfiles(t *testing.T) {
 	nGP, nSP := 10, 5
-	gp, sp := make([]uint64, nGP), make([]uint64, nSP)
+	gp, sp := make([]int, nGP), make([]int, nSP)
 	for i := range gp {
-		gp[i] = rand.Uint64N(50_000)
+		gp[i] = rand.IntN(50_000)
 	}
 	for i := range sp {
-		sp[i] = rand.Uint64N(25_000)
+		sp[i] = rand.IntN(25_000)
 	}
 
 	a := MakeAllocatorWithProfiles(gp, sp)
@@ -124,12 +124,12 @@ func TestMakeAllocatorWithProfiles(t *testing.T) {
 
 func TestAllocatorClear(t *testing.T) {
 	nGP, nSP := 10, 5
-	gp, sp := make([]uint64, nGP), make([]uint64, nSP)
+	gp, sp := make([]int, nGP), make([]int, nSP)
 	for i := range gp {
-		gp[i] = rand.Uint64N(50_000)
+		gp[i] = rand.IntN(50_000)
 	}
 	for i := range sp {
-		sp[i] = rand.Uint64N(25_000)
+		sp[i] = rand.IntN(25_000)
 	}
 
 	a := MakeAllocatorWithProfiles(gp, sp)
@@ -204,12 +204,12 @@ func TestAllocatorClear(t *testing.T) {
 
 func TestAllocatorGrow(t *testing.T) {
 	nGP, nSP := 10, 5
-	gp, sp := make([]uint64, nGP), make([]uint64, nSP)
+	gp, sp := make([]int, nGP), make([]int, nSP)
 	for i := range gp {
-		gp[i] = rand.Uint64N(50_000)
+		gp[i] = rand.IntN(50_000)
 	}
 	for i := range sp {
-		sp[i] = rand.Uint64N(25_000)
+		sp[i] = rand.IntN(25_000)
 	}
 
 	a := MakeAllocatorWithProfiles(gp, sp)
@@ -219,10 +219,10 @@ func TestAllocatorGrow(t *testing.T) {
 	nBefore := len(a.general.slabs)
 	cBefore := a.general.capacity
 	a.GrowGeneral(r1)
-	if c := a.general.capacity; c != cBefore+uint64(r1) {
-		t.Errorf("grew general: got tot cap %d, expected %d", c, cBefore+uint64(r1))
+	if c := a.general.capacity; c != cBefore+int(r1) {
+		t.Errorf("grew general: got tot cap %d, expected %d", c, cBefore+int(r1))
 	}
-	if c := a.general.slabs[len(a.general.slabs)-1].capacity; c != uint64(r1) {
+	if c := a.general.slabs[len(a.general.slabs)-1].capacity; c != int(r1) {
 		t.Errorf("grew general: got final slab cap %d, expected %d", c, r1)
 	}
 	if n := len(a.general.slabs); n != nBefore+1 {
@@ -234,10 +234,10 @@ func TestAllocatorGrow(t *testing.T) {
 	nBefore = len(a.scratch.slabs)
 	cBefore = a.scratch.capacity
 	a.GrowScratch(r1)
-	if c := a.scratch.capacity; c != cBefore+uint64(r1) {
-		t.Errorf("grew scratch: got tot cap %d, expected %d", c, cBefore+uint64(r1))
+	if c := a.scratch.capacity; c != cBefore+int(r1) {
+		t.Errorf("grew scratch: got tot cap %d, expected %d", c, cBefore+int(r1))
 	}
-	if c := a.scratch.slabs[len(a.scratch.slabs)-1].capacity; c != uint64(r1) {
+	if c := a.scratch.slabs[len(a.scratch.slabs)-1].capacity; c != int(r1) {
 		t.Errorf("grew scratch: got final slab cap %d, expected %d", c, r1)
 	}
 	if n := len(a.scratch.slabs); n != nBefore+1 {
@@ -247,12 +247,12 @@ func TestAllocatorGrow(t *testing.T) {
 
 func TestAllocatorDataCache(t *testing.T) {
 	nGP, nSP := 10, 5
-	gp, sp := make([]uint64, nGP), make([]uint64, nSP)
+	gp, sp := make([]int, nGP), make([]int, nSP)
 	for i := range gp {
-		gp[i] = rand.Uint64N(50_000)
+		gp[i] = rand.IntN(50_000)
 	}
 	for i := range sp {
-		sp[i] = rand.Uint64N(25_000)
+		sp[i] = rand.IntN(25_000)
 	}
 
 	a := MakeAllocatorWithProfiles(gp, sp)
@@ -289,12 +289,12 @@ func TestAllocatorDataCache(t *testing.T) {
 
 func TestAllocatorOptimize(t *testing.T) {
 	nGP, nSP := 10, 5
-	gp, sp := make([]uint64, nGP), make([]uint64, nSP)
+	gp, sp := make([]int, nGP), make([]int, nSP)
 	for i := range gp {
-		gp[i] = rand.Uint64N(50_000)
+		gp[i] = rand.IntN(50_000)
 	}
 	for i := range sp {
-		sp[i] = rand.Uint64N(25_000)
+		sp[i] = rand.IntN(25_000)
 	}
 
 	a := MakeAllocatorWithProfiles(gp, sp)
@@ -318,7 +318,7 @@ func TestAllocatorOptimize(t *testing.T) {
 	}
 
 	// total hole count should be reduced by some amount after optimizing
-	var h0 uint64
+	var h0 int
 	for _, v := range a.general.slabs {
 		h0 += v.holes
 	}
@@ -328,7 +328,7 @@ func TestAllocatorOptimize(t *testing.T) {
 
 	a.Optimize()
 
-	var h1 uint64
+	var h1 int
 	for _, v := range a.general.slabs {
 		h1 += v.holes
 	}
@@ -343,10 +343,10 @@ func TestAllocatorOptimize(t *testing.T) {
 }
 
 func TestAllocatorAllocTemp(t *testing.T) {
-	p := uint64(10_000)
+	p := int(10_000)
 	s := int(p * 2 / 3)
-	gp := []uint64{p}
-	sp := []uint64{p}
+	gp := []int{p}
+	sp := []int{p}
 
 	a := MakeAllocatorWithProfiles(gp, sp)
 
@@ -389,15 +389,15 @@ func TestAllocatorAllocTemp(t *testing.T) {
 }
 
 func TestAllocatorAllocTempWithProfile(t *testing.T) {
-	p := uint64(10_240)
+	p := int(10_240)
 	s := p / 10
-	gp := []uint64{p / 20}
-	sp := []uint64{p}
+	gp := []int{p / 20}
+	sp := []int{p}
 
 	a := MakeAllocatorWithProfiles(gp, sp)
 
 	// req 8 segments
-	reqP := []uint64{s, s, s, s, s, s, s, s}
+	reqP := []int{s, s, s, s, s, s, s, s}
 
 	d := a.AllocTempWithProfile(reqP)
 
@@ -406,15 +406,15 @@ func TestAllocatorAllocTempWithProfile(t *testing.T) {
 			t.Errorf("on %d: got seg %p, expected %p", i, d.segments[i], a.scratch.slabs[i].segments[i])
 		}
 	}
-	if a.scratch.slabs[0].used != s*uint64(len(reqP)) {
-		t.Errorf("got scratch 0 used %d, expected %d", a.scratch.slabs[0].used, s*uint64(len(reqP)))
+	if a.scratch.slabs[0].used != s*int(len(reqP)) {
+		t.Errorf("got scratch 0 used %d, expected %d", a.scratch.slabs[0].used, s*int(len(reqP)))
 	}
-	if a.stats.nLocs[reqScratch] != uint64(len(reqP)) {
+	if a.stats.nLocs[reqScratch] != int(len(reqP)) {
 		t.Errorf("requested from scratch %d times, got %d, expected %d", len(reqP), a.stats.nLocs[reqScratch], len(reqP))
 	}
 
 	// req 4 segments, first 2 should come from scratch 0, last 2 from scratch 1
-	reqP = []uint64{s, s}
+	reqP = []int{s, s}
 
 	d = a.AllocTempWithProfile(reqP)
 
@@ -433,10 +433,10 @@ func TestAllocatorAllocTempWithProfile(t *testing.T) {
 }
 
 func TestAllocatorAlloc(t *testing.T) {
-	p := uint64(10_000)
+	p := int(10_000)
 	s := int(p * 2 / 3)
-	gp := []uint64{p}
-	sp := []uint64{p}
+	gp := []int{p}
+	sp := []int{p}
 
 	a := MakeAllocatorWithProfiles(gp, sp)
 
@@ -466,15 +466,15 @@ func TestAllocatorAlloc(t *testing.T) {
 }
 
 func TestAllocatorAllocWithProfile(t *testing.T) {
-	p := uint64(10_240)
+	p := int(10_240)
 	s := p / 10
-	gp := []uint64{p}
-	sp := []uint64{p}
+	gp := []int{p}
+	sp := []int{p}
 
 	a := MakeAllocatorWithProfiles(gp, sp)
 
 	// req 8 segments
-	reqP := []uint64{s, s, s, s, s, s, s, s}
+	reqP := []int{s, s, s, s, s, s, s, s}
 
 	d := a.AllocWithProfile(reqP)
 
@@ -483,15 +483,15 @@ func TestAllocatorAllocWithProfile(t *testing.T) {
 			t.Errorf("on %d: got seg %p, expected %p", i, d.segments[i], a.general.slabs[i].segments[i])
 		}
 	}
-	if a.general.slabs[0].used != s*uint64(len(reqP)) {
-		t.Errorf("got scratch 0 used %d, expected %d", a.general.slabs[0].used, s*uint64(len(reqP)))
+	if a.general.slabs[0].used != s*int(len(reqP)) {
+		t.Errorf("got scratch 0 used %d, expected %d", a.general.slabs[0].used, s*int(len(reqP)))
 	}
-	if a.stats.nLocs[reqGeneral] != uint64(len(reqP)) {
+	if a.stats.nLocs[reqGeneral] != int(len(reqP)) {
 		t.Errorf("requested from general %d times, got %d, expected %d", len(reqP), a.stats.nLocs[reqGeneral], len(reqP))
 	}
 
 	// req 4 segments, first 2 should come from general 0, last 2 from general 1
-	reqP = []uint64{s, s}
+	reqP = []int{s, s}
 
 	d = a.AllocWithProfile(reqP)
 

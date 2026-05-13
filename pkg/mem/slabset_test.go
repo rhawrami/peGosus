@@ -7,7 +7,7 @@ import (
 )
 
 func TestMakeSlabSet(t *testing.T) {
-	sizeProfile := []uint64{10_000, 20_000, 30_000, 40_000, 50_000}
+	sizeProfile := []int{10_000, 20_000, 30_000, 40_000, 50_000}
 	ss := MakeSlabSet(sizeProfile)
 
 	if len(ss.slabs) != len(sizeProfile) {
@@ -18,7 +18,7 @@ func TestMakeSlabSet(t *testing.T) {
 		t.Errorf("got on %d, expected 0", ss.on)
 	}
 
-	var trueCap uint64
+	var trueCap int
 	for i, v := range ss.slabs {
 		if v.capacity < sizeProfile[i] {
 			t.Errorf("on %d, got %d cap < %d cap", i, v.capacity, sizeProfile[i])
@@ -32,7 +32,7 @@ func TestMakeSlabSet(t *testing.T) {
 }
 
 func TestSlabSetClear(t *testing.T) {
-	sizeProfile := []uint64{10_000, 20_000, 30_000, 40_000}
+	sizeProfile := []int{10_000, 20_000, 30_000, 40_000}
 	ss := MakeSlabSet(sizeProfile)
 
 	for _, v := range ss.slabs {
@@ -62,7 +62,7 @@ func TestSlabSetClear(t *testing.T) {
 }
 
 func TestSlabSetGrow(t *testing.T) {
-	sizeProfile := []uint64{10_000, 20_000, 30_000, 40_000}
+	sizeProfile := []int{10_000, 20_000, 30_000, 40_000}
 	ss := MakeSlabSet(sizeProfile)
 
 	oldCap := ss.capacity
@@ -82,12 +82,12 @@ func TestSlabSetGrow(t *testing.T) {
 }
 
 func TestSlabSetGrowWithSize(t *testing.T) {
-	sizeProfile := []uint64{10_000, 20_000, 30_000, 40_000}
+	sizeProfile := []int{10_000, 20_000, 30_000, 40_000}
 	ss := MakeSlabSet(sizeProfile)
 
 	oldCap := ss.capacity
 
-	s := uint64(49984)
+	s := int(49984)
 	ss.GrowWithSize(int(s))
 
 	if len(ss.slabs) != len(sizeProfile)+1 {
@@ -105,7 +105,7 @@ func TestSlabSetGrowWithSize(t *testing.T) {
 }
 
 func TestSlabSetAccept(t *testing.T) {
-	sizeProfile := []uint64{10_000, 20_000, 30_000, 40_000}
+	sizeProfile := []int{10_000, 20_000, 30_000, 40_000}
 	ss := MakeSlabSet(sizeProfile)
 	b := MakeSlab(10_000)
 
@@ -136,7 +136,7 @@ func TestSlabSetAccept(t *testing.T) {
 }
 
 func TestSlabSetRemove(t *testing.T) {
-	sizeProfile := []uint64{10_000, 20_000, 30_000, 40_000}
+	sizeProfile := []int{10_000, 20_000, 30_000, 40_000}
 	ss := MakeSlabSet(sizeProfile)
 
 	remO := 0
@@ -158,9 +158,9 @@ func TestSlabSetRemove(t *testing.T) {
 
 	// more complex test
 	N := 100
-	sizeProfile = make([]uint64, N)
+	sizeProfile = make([]int, N)
 	for i := range N {
-		s := rand.Uint64N(50_000)
+		s := rand.IntN(50_000)
 		sizeProfile[i] = s
 	}
 	ss = MakeSlabSet(sizeProfile)
@@ -171,10 +171,10 @@ func TestSlabSetRemove(t *testing.T) {
 	}
 
 	N2 := 25
-	remd := make([]uint64, 0, N2)
+	remd := make([]int, 0, N2)
 	for range N2 {
 		for {
-			r := rand.Uint64N(uint64(N - N2))
+			r := rand.IntN(int(N - N2))
 			if !slices.Contains(remd, r) {
 				remd = append(remd, r)
 
@@ -191,7 +191,7 @@ func TestSlabSetRemove(t *testing.T) {
 				}
 
 				o := 0
-				diff := uint64(0)
+				diff := int(0)
 				for i, v := range ss.slabs {
 					if d := v.capacity - v.used; d > diff {
 						o = i
@@ -211,7 +211,7 @@ func TestSlabSetRemove(t *testing.T) {
 }
 
 func TestSlabSetSetOn(t *testing.T) {
-	sizeProfile := []uint64{10_000, 20_000, 30_000, 40_000}
+	sizeProfile := []int{10_000, 20_000, 30_000, 40_000}
 	ss := MakeSlabSet(sizeProfile)
 
 	// should set to final slab
@@ -236,8 +236,8 @@ func TestSlabSetSetOn(t *testing.T) {
 }
 
 func TestSlabSetMakeSegment(t *testing.T) {
-	s := uint64(10_000)
-	sizeProfile := []uint64{s, s, s, s}
+	s := int(10_000)
+	sizeProfile := []int{s, s, s, s}
 	ss := MakeSlabSet(sizeProfile)
 
 	// should be able to make these segments, all from slab 0
@@ -285,8 +285,8 @@ func TestSlabSetMakeSegment(t *testing.T) {
 }
 
 func TestSlabSetForceSegment(t *testing.T) {
-	s := uint64(10_000)
-	sizeProfile := []uint64{s, s, s, s}
+	s := int(10_000)
+	sizeProfile := []int{s, s, s, s}
 	ss := MakeSlabSet(sizeProfile)
 
 	_ = ss.ForceSegment(int(s))
@@ -319,8 +319,8 @@ func TestSlabSetForceSegment(t *testing.T) {
 }
 
 func TestSlabSetGrowAndMakeSegment(t *testing.T) {
-	s := uint64(10_000)
-	sizeProfile := []uint64{s, s, s, s}
+	s := int(10_000)
+	sizeProfile := []int{s, s, s, s}
 	ss := MakeSlabSet(sizeProfile)
 
 	oldLen := len(ss.slabs)
@@ -343,9 +343,9 @@ func TestSlabSetGrowAndMakeSegment(t *testing.T) {
 }
 
 func TestTransferSlab(t *testing.T) {
-	s := uint64(10_000)
-	sizeProfileA := []uint64{s, s, s, s}
-	sizeProfileB := []uint64{s * 2, s * 2, s * 2, s * 2}
+	s := int(10_000)
+	sizeProfileA := []int{s, s, s, s}
+	sizeProfileB := []int{s * 2, s * 2, s * 2, s * 2}
 	ssA := MakeSlabSet(sizeProfileA)
 	ssB := MakeSlabSet(sizeProfileB)
 
@@ -398,9 +398,9 @@ func TestTransferSlab(t *testing.T) {
 }
 
 func TestTransferSlabWithOffset(t *testing.T) {
-	s := uint64(10_000)
-	sizeProfileA := []uint64{s, s, s, s}
-	sizeProfileB := []uint64{s * 2, s * 2, s * 2, s * 2}
+	s := int(10_000)
+	sizeProfileA := []int{s, s, s, s}
+	sizeProfileB := []int{s * 2, s * 2, s * 2, s * 2}
 	ssA := MakeSlabSet(sizeProfileA)
 	ssB := MakeSlabSet(sizeProfileB)
 
@@ -462,8 +462,8 @@ func TestTransferSlabWithOffset(t *testing.T) {
 }
 
 func TestSlabSetOptimize(t *testing.T) {
-	s := uint64(10_000)
-	sizeProfile := []uint64{s, s, s}
+	s := int(10_000)
+	sizeProfile := []int{s, s, s}
 	ss := MakeSlabSet(sizeProfile)
 
 	a, b, c := ss.slabs[0], ss.slabs[1], ss.slabs[2]

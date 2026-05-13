@@ -4,7 +4,7 @@ package mem
 // their own slice, and returns a Data object.
 func MakeData(s []*Segment) *Data {
 	segments := make([]*Segment, len(s))
-	var length, capacity uint64
+	var length, capacity int
 
 	for i := 0; i < len(s); i++ {
 		segments[i] = s[i]
@@ -30,8 +30,8 @@ func MakeDataFromSingleSegment(g *Segment) *Data {
 
 // Data represents a set of segments.
 type Data struct {
-	length   uint64     // length in bytes
-	capacity uint64     // max byte capacity
+	length   int        // length in bytes
+	capacity int        // max byte capacity
 	segments []*Segment // set of segments
 }
 
@@ -45,17 +45,20 @@ func (d *Data) Clear() {
 }
 
 // Len returns the total length of `d`.
-func (d *Data) Len() uint64 { return d.length }
+func (d *Data) Len() int { return d.length }
 
 // Cap returns the total capacity of `d`.
-func (d *Data) Cap() uint64 { return d.capacity }
+func (d *Data) Cap() int { return d.capacity }
 
 // SegmentAt returns the segment at offset `o`.
 func (d *Data) SegmentAt(o int) *Segment { return d.segments[o] }
 
+// NSegments returns the number of segments that `d` holds.
+func (d *Data) NSegments() int { return len(d.segments) }
+
 // LenProfile returns the length profile of `d`.
-func (d *Data) LenProfile() []uint64 {
-	sp := make([]uint64, len(d.segments))
+func (d *Data) LenProfile() []int {
+	sp := make([]int, len(d.segments))
 	for i := 0; i < len(sp); i++ {
 		sp[i] = d.segments[i].Len()
 	}
@@ -63,8 +66,8 @@ func (d *Data) LenProfile() []uint64 {
 }
 
 // CapProfile returns the capacity profile of `d`.
-func (d *Data) CapProfile() []uint64 {
-	sp := make([]uint64, len(d.segments))
+func (d *Data) CapProfile() []int {
+	sp := make([]int, len(d.segments))
 	for i := 0; i < len(sp); i++ {
 		sp[i] = d.segments[i].Cap()
 	}
@@ -72,10 +75,10 @@ func (d *Data) CapProfile() []uint64 {
 }
 
 // LenAndCapProfile returns (LenProfile, CapProfile) of `d`.
-func (d *Data) LenAndCapProfile() ([]uint64, []uint64) {
+func (d *Data) LenAndCapProfile() ([]int, []int) {
 	l := len(d.segments)
-	lp := make([]uint64, l)
-	cp := make([]uint64, l)
+	lp := make([]int, l)
+	cp := make([]int, l)
 	for i := 0; i < l; i++ {
 		lp[i] = d.segments[i].Len()
 		cp[i] = d.segments[i].Cap()
@@ -180,7 +183,7 @@ func (d *Data) DecAll() bool {
 // Dec decrements the reference count of the segment at
 // offset `o`; if the reference count of the segment hits zero,
 // the segment is dropped, and returns false.
-func (d *Data) Dec(o uint64) bool {
+func (d *Data) Dec(o int) bool {
 	var yay bool = true
 
 	oldLen := d.segments[o].length
@@ -189,7 +192,7 @@ func (d *Data) Dec(o uint64) bool {
 		d.length -= oldLen
 		d.capacity -= oldCap
 
-		if int(o) < len(d.segments)-1 {
+		if o < len(d.segments)-1 {
 			copy(d.segments[o:], d.segments[o+1:])
 		}
 
@@ -201,23 +204,23 @@ func (d *Data) Dec(o uint64) bool {
 }
 
 // AddLength adds at most `l` bytes of length to segment `o`.
-func (d *Data) AddLength(l, o uint64) {
+func (d *Data) AddLength(l, o int) {
 	d.length -= d.segments[o].length
-	d.segments[o].AddLength(int(l))
+	d.segments[o].AddLength(l)
 	d.length += d.segments[o].length
 }
 
 // SubLength subtracts at most `l` bytes of length to segment `o`.
-func (d *Data) SubLength(l, o uint64) {
+func (d *Data) SubLength(l, o int) {
 	d.length -= d.segments[o].length
-	d.segments[o].SubLength(int(l))
+	d.segments[o].SubLength(l)
 	d.length += d.segments[o].length
 }
 
 // SetLength sets segment `o` to at most `l` bytes of length.
-func (d *Data) SetLength(l, o uint64) {
+func (d *Data) SetLength(l, o int) {
 	d.length -= d.segments[o].length
-	d.segments[o].SetLength(int(l))
+	d.segments[o].SetLength(l)
 	d.length += d.segments[o].length
 }
 

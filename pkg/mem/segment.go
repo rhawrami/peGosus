@@ -8,8 +8,8 @@ import (
 // Segment represents one piece of a slab.
 type Segment struct {
 	base     *byte        // base address
-	length   uint64       // byte length
-	capacity uint64       // maximum byte capacity
+	length   int          // byte length
+	capacity int          // maximum byte capacity
 	refCount atomic.Int64 // reference count
 	slab     *Slab        // slab that segment belongs to
 }
@@ -26,10 +26,10 @@ func (s *Segment) String() string {
 }
 
 // Len returns the segment's current byte length.
-func (s *Segment) Len() uint64 { return s.length }
+func (s *Segment) Len() int { return s.length }
 
 // Cap returns the segment's maximum byte capacity.
-func (s *Segment) Cap() uint64 { return s.capacity }
+func (s *Segment) Cap() int { return s.capacity }
 
 // RefCount returns the reference count of `s`.
 func (s *Segment) RefCount() int64 { return s.refCount.Load() }
@@ -39,7 +39,7 @@ func (s *Segment) IsFree() bool { return s.refCount.Load() == 0 }
 
 // CanSupport returns true if `s` has space for `l` elements, each of size `t`.
 func (s *Segment) CanSupport(l, t int) bool {
-	return s.capacity >= uint64(l*t)
+	return s.capacity >= l*t
 }
 
 // Put returns `s` to its slab.
@@ -70,27 +70,27 @@ func (s *Segment) Inc() {
 // AddLength increases the length by `l`; sets length to the max
 // length if `l` + current length > capacity.
 func (s *Segment) AddLength(l int) {
-	if uint64(l)+s.length > s.capacity {
+	if l+s.length > s.capacity {
 		s.length = s.capacity
 	} else {
-		s.length += uint64(l)
+		s.length += l
 	}
 }
 
 // SubLength decreases the length by `l`; sets length to 0
 // if `l` > current length.
 func (s *Segment) SubLength(l int) {
-	if uint64(l) > s.length {
+	if l > s.length {
 		s.length = 0
 	} else {
-		s.length -= uint64(l)
+		s.length -= l
 	}
 }
 
 // SetLength sets the length to `l` bytes; sets length to capacity
 // if `l` > capacity.
 func (s *Segment) SetLength(l int) {
-	length := uint64(l)
+	length := l
 	if length > s.capacity {
 		length = s.capacity
 	}
@@ -126,22 +126,22 @@ func (s *Segment) MemSetU64(v uint64) {
 
 // MemSetU8Detailed sets every byte, from [base address + `o`] to `l` bytes,
 // with the value `v`; panics if offsetted length is greater than base length.
-func (s *Segment) MemSetU8Detailed(v uint8, l, o uint64) {
+func (s *Segment) MemSetU8Detailed(v uint8, l, o int) {
 	if s.length < (o+l) || s.length < o {
 		panic("MemSetU8Detailed: offseted length greated than segment length")
 	}
-	addr := incPtr(s.base, int(o))
+	addr := incPtr(s.base, o)
 	setU8(addr, l, v)
 }
 
 // MemSetU32Detailed sets every four bytes, from [base address + `o`] to `l` bytes,
 // with the value `v`; panics if offsetted length is greater than base length, or
 // if length is not divisible by four.
-func (s *Segment) MemSetU32Detailed(v uint32, l, o uint64) {
+func (s *Segment) MemSetU32Detailed(v uint32, l, o int) {
 	if s.length < (o+l) || s.length < o {
 		panic("MemSetU32Detailed: offseted length greated than segment length")
 	}
-	addr := incPtr(s.base, int(o))
+	addr := incPtr(s.base, o)
 	if l&3 != 0 {
 		panic("MemSetU32Detailed: address not divisible by 4")
 	}
@@ -152,11 +152,11 @@ func (s *Segment) MemSetU32Detailed(v uint32, l, o uint64) {
 // MemSetU64Detailed sets every eight bytes, from [base address + `o`] to `l` bytes,
 // with the value `v`; panics if offsetted length is greater than base length,
 // or if length is not divisible by eight.
-func (s *Segment) MemSetU64Detailed(v, l, o uint64) {
+func (s *Segment) MemSetU64Detailed(v uint64, l, o int) {
 	if s.length < (o+l) || s.length < o {
 		panic("MemSetU64Detailed: offseted length greated than segment length")
 	}
-	addr := incPtr(s.base, int(o))
+	addr := incPtr(s.base, o)
 	if l&7 != 0 {
 		panic("MemSetU64Detailed: length not divisible by 8")
 	}

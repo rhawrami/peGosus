@@ -1,12 +1,12 @@
 package mem
 
 // MakeSlabSet returns a SlabSet, given a size profile.
-func MakeSlabSet(p []uint64) *SlabSet {
-	var capacity uint64
+func MakeSlabSet(p []int) *SlabSet {
+	var capacity int
 	slabs := make([]*Slab, len(p))
 
 	for i, v := range p {
-		b := MakeSlab(int(v))
+		b := MakeSlab(v)
 		capacity += b.capacity
 		slabs[i] = b
 	}
@@ -20,13 +20,13 @@ func MakeSlabSet(p []uint64) *SlabSet {
 
 // SlabSet is a set of slabs.
 type SlabSet struct {
-	capacity uint64  // total byte capacity
+	capacity int     // total byte capacity
 	on       int     // offset into current slab to pull from
 	slabs    []*Slab // set of slabs
 }
 
 // Cap returns the total byte capacity of `s`.
-func (s *SlabSet) Cap() uint64 { return s.capacity }
+func (s *SlabSet) Cap() int { return s.capacity }
 
 // Clear clears all slabs.
 func (s *SlabSet) Clear() {
@@ -47,7 +47,7 @@ func (s *SlabSet) Nuke() {
 // Grow adds a slab with byte capacity equal to the first slab
 // in the set.
 func (s *SlabSet) Grow() {
-	b := MakeSlab(int(s.slabs[0].capacity))
+	b := MakeSlab(s.slabs[0].capacity)
 	s.capacity += b.capacity
 	s.slabs = append(s.slabs, b)
 }
@@ -98,7 +98,7 @@ func (s *SlabSet) Remove(o int) {
 // SetOn sets on to the slab with the greatest unused capacity.
 func (s *SlabSet) SetOn() {
 	var o int
-	var r uint64
+	var r int
 	for i, v := range s.slabs {
 		if rem := v.capacity - v.used; rem > r {
 			o = i
@@ -140,7 +140,7 @@ func (s *SlabSet) ForceSegment(l int) *Segment {
 // returns a segment from that slab.
 func (s *SlabSet) GrowAndMakeSegment(l int) *Segment {
 	// if l > first slab cap, grow slab by 1.5`l`
-	sL := int(s.slabs[0].capacity)
+	sL := s.slabs[0].capacity
 	if sL < l {
 		sL = l + (l >> 1)
 	}

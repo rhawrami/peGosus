@@ -16,7 +16,7 @@ func TestMakeData(t *testing.T) {
 	g5, _ := s.MakeSegment(slabSize / 10)
 	segs := []*Segment{g1, g2, g3, g4, g5}
 
-	var c, l uint64
+	var c, l int
 	for _, v := range segs {
 		l += v.length
 		c += v.capacity
@@ -415,7 +415,7 @@ func TestDataLength(t *testing.T) {
 	d := MakeData([]*Segment{g1, g2, g3})
 
 	// decrease first segment length by 100
-	sub := uint64(10)
+	sub := 10
 	lBefore := d.Len()
 	glBefore := d.SegmentAt(0).Len()
 	d.SubLength(sub, 0)
@@ -429,7 +429,7 @@ func TestDataLength(t *testing.T) {
 	}
 
 	// increase first segment length by 50
-	add := uint64(50)
+	add := 50
 	lBefore = d.Len()
 	glBefore = d.SegmentAt(0).Len()
 	d.AddLength(add, 0)
@@ -443,7 +443,7 @@ func TestDataLength(t *testing.T) {
 	}
 
 	// set second segment length to 250
-	setTo := uint64(250)
+	setTo := 250
 	lBefore = d.Len()
 	glBefore = d.SegmentAt(1).Len()
 	d.SetLength(setTo, 1)
@@ -476,7 +476,7 @@ func TestDataMerge(t *testing.T) {
 	// merge d2 to d1, dont increment
 	d1.Merge(d2, false)
 
-	var expectedLen, expectedCap uint64 = 0, 0
+	var expectedLen, expectedCap int = 0, 0
 	for _, v := range d1.segments {
 		expectedLen += v.Len()
 		expectedCap += v.Cap()
@@ -525,7 +525,7 @@ func TestRechunkCopy(t *testing.T) {
 
 	src.RechunkCopy(dst)
 
-	on := uint64(0)
+	on := 0
 	for i, v := range src.segments {
 		bSrc := v.AsBytes()
 		bDst := dst.SegmentAt(0).AsBytes()[on : on+v.Len()]

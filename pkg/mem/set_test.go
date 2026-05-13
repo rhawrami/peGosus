@@ -18,7 +18,7 @@ func TestSetU8(t *testing.T) {
 	for _, v := range values {
 		t.Run(fmt.Sprintf("Value %d", v), func(t *testing.T) {
 			s := make([]uint8, l)
-			setU8(&s[0], uint64(l), v)
+			setU8(&s[0], l, v)
 
 			for i, v2 := range s {
 				if v2 != v {
@@ -40,7 +40,7 @@ func TestSetU32(t *testing.T) {
 	for _, v := range values {
 		t.Run(fmt.Sprintf("Value %d", v), func(t *testing.T) {
 			s := make([]uint32, l)
-			setU32((*byte)(unsafe.Pointer(&s[0])), uint64(l), v)
+			setU32((*byte)(unsafe.Pointer(&s[0])), l, v)
 
 			for i, v2 := range s {
 				if v2 != v {
@@ -62,7 +62,7 @@ func TestSetU64(t *testing.T) {
 	for _, v := range values {
 		t.Run(fmt.Sprintf("Value %d", v), func(t *testing.T) {
 			s := make([]uint64, l)
-			setU64((*byte)(unsafe.Pointer(&s[0])), uint64(l), v)
+			setU64((*byte)(unsafe.Pointer(&s[0])), l, v)
 
 			for i, v2 := range s {
 				if v2 != v {
