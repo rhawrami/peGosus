@@ -5,14 +5,19 @@ import (
 	"sync/atomic"
 )
 
-// sets the default capacity for a slab's segment set.
-const defaultSegL int = 10
+const (
+	// sets the default capacity for a slab's segment set.
+	segmentsSetSizeDefault int = 8
+	// sets the default capacity for a slab's segment cache.
+	segmentsCacheSizeDefault int = 8
+)
 
 // MakeSlab generates a new Slab object with at least `l` bytes.
 func MakeSlab(l int) *Slab {
 	buff := makeAlignedSlice(l)
 	base := &buff[0]
-	segments := make([]*Segment, 0, defaultSegL)
+	segments := make([]*Segment, 0, segmentsSetSizeDefault)
+	segCache := make([]*Segment, 0, segmentsCacheSizeDefault)
 
 	s := &Slab{
 		buff:     buff,
@@ -21,6 +26,7 @@ func MakeSlab(l int) *Slab {
 		used:     0,
 		capacity: len(buff),
 		segments: segments,
+		segCache: segCache,
 		holes:    0,
 	}
 
@@ -38,7 +44,27 @@ type Slab struct {
 	used     int        // currently used byte length
 	capacity int        // maximum byte capacity
 	segments []*Segment // set of segments
+	segCache []*Segment // cache of segments
 	holes    int        // number of holes present
+}
+
+// takeSeg attempts to place `x` in the segment cache.
+func (s *Slab) takeSeg(x *Segment) {
+	if len(s.segCache) < cap(s.segCache) {
+		s.segCache = append(s.segCache, x)
+	}
+}
+
+// makeSeg returns a segment, either from the cache if available,
+// or from a new allocation.
+func (s *Slab) makeSeg() *Segment {
+	if len(s.segCache) > 0 {
+		g := s.segCache[len(s.segCache)-1]
+		s.segCache = s.segCache[:len(s.segCache)-1]
+		return g
+	}
+	return &Segment{}
+
 }
 
 func (s *Slab) String() string {
@@ -74,6 +100,16 @@ func (s *Slab) Clear() {
 	s.on = s.base
 	s.used = 0
 	s.holes = 0
+
+	// return segments to cache if possible
+	N := cap(s.segCache) - len(s.segCache)
+	if len(s.segments) < N {
+		N = len(s.segments)
+	}
+	for i := range N {
+		s.takeSeg(s.segments[i])
+	}
+
 	s.segments = s.segments[:0]
 	s.setUp()
 }
@@ -123,14 +159,14 @@ func (s *Slab) FreeSpaceAtEnd() int {
 // equal to the capacity of `s`.
 func (s *Slab) setUp() {
 	s.segments = s.segments[:0]
-	seg := &Segment{
-		base:     s.base,
-		length:   0,
-		capacity: s.capacity,
-		refCount: atomic.Int64{},
-		slab:     s,
-	}
-	s.segments = append(s.segments, seg)
+	g := s.makeSeg()
+	g.base = s.base
+	g.length = 0
+	g.capacity = s.capacity
+	g.refCount = atomic.Int64{}
+	g.slab = s
+
+	s.segments = append(s.segments, g)
 }
 
 // update updates `s`'s metadata, given another `l` bytes being used, and a
@@ -139,15 +175,14 @@ func (s *Slab) update(l, p int) {
 	s.on = incPtr(s.on, l)
 	s.used += l
 
-	seg := &Segment{
-		base:     s.on,
-		length:   0,
-		capacity: p - l,
-		refCount: atomic.Int64{},
-		slab:     s,
-	}
+	g := s.makeSeg()
+	g.base = s.on
+	g.length = 0
+	g.capacity = p - l
+	g.refCount = atomic.Int64{}
+	g.slab = s
 
-	s.segments = append(s.segments, seg)
+	s.segments = append(s.segments, g)
 }
 
 // SimpleCoalesce attempts to coalesce free adjacent segments
@@ -275,13 +310,13 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 					copy(s.segments[i+2:], s.segments[i+1:])
 
 					// keep right side free
-					s.segments[i+1] = &Segment{}
-					right := s.segments[i+1]
+					right := s.makeSeg()
 					right.base = incPtr(v.base, l)
 					right.length = 0
 					right.capacity = v.capacity - l
 					right.refCount = atomic.Int64{}
 					right.slab = s
+					s.segments[i+1] = right
 
 					s.holes += 1
 					v.capacity = l

@@ -1,8 +1,8 @@
 package mem
 
 const (
-	dataCacheSizeDefault int = 4
-	optCycleDefault      int = 10
+	dataCacheSizeDefault int = 8
+	optCycleDefault      int = 16
 )
 
 // MakeAllocConfig returns an AllocConfig object.
