@@ -193,7 +193,7 @@ func (s *Slab) FullCoalesce() bool {
 		return true
 	}
 
-	pos := make([]int, 0, s.holes)
+	pos := make([]int, 0, s.holes>>1)
 	var start, stop, adjust int
 	var startCtr bool
 	// pass 1: find hole postions and "widths"
