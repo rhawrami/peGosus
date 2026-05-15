@@ -139,7 +139,7 @@ func TestAllocatorClear(t *testing.T) {
 	// all Alloc calls go to general
 	for range N {
 		r := rand.IntN(5_000)
-		_ = a.Alloc(r)
+		_ = a.AllocData(r)
 	}
 	a.ClearGeneral()
 	for i, v := range a.general.slabs {
@@ -151,7 +151,7 @@ func TestAllocatorClear(t *testing.T) {
 	// most AllocTemp calls go to scratch
 	for range N {
 		r := rand.IntN(1_000)
-		_ = a.AllocTemp(r)
+		_ = a.AllocDataTemp(r)
 	}
 	a.ClearScratch()
 	for i, v := range a.scratch.slabs {
@@ -162,7 +162,7 @@ func TestAllocatorClear(t *testing.T) {
 
 	d := make([]*Data, dataCacheSizeDefault)
 	for i := range dataCacheSizeDefault {
-		d[i] = a.Alloc(100)
+		d[i] = a.AllocData(100)
 	}
 	for _, v := range d {
 		a.TakeData(v)
@@ -175,8 +175,8 @@ func TestAllocatorClear(t *testing.T) {
 
 	d = d[:0]
 	for range N {
-		_ = a.Alloc(100)
-		b := a.AllocTemp(100)
+		_ = a.AllocData(100)
+		b := a.AllocDataTemp(100)
 		if len(d) != cap(d) {
 			d = append(d, b)
 		}
@@ -259,7 +259,7 @@ func TestAllocatorDataCache(t *testing.T) {
 
 	d := make([]*Data, dataCacheSizeDefault+1)
 	for i := range d {
-		d[i] = a.Alloc(1_000)
+		d[i] = a.AllocData(1_000)
 	}
 
 	// fill up cache
@@ -277,7 +277,7 @@ func TestAllocatorDataCache(t *testing.T) {
 
 	// make segments, should deplete cache
 	for i := range dataCacheSizeDefault {
-		v := a.Alloc(100)
+		v := a.AllocData(100)
 		if v != d[dataCacheSizeDefault-i-1] {
 			t.Errorf("on %d, expected %p, got %p", i, v, d[i])
 		}
@@ -304,9 +304,9 @@ func TestAllocatorOptimize(t *testing.T) {
 	d := make([]*Data, N)
 	for i := range N {
 		if i%5 == 0 {
-			d[i] = a.AllocTemp(1_000)
+			d[i] = a.AllocDataTemp(1_000)
 		} else {
-			d[i] = a.Alloc(5_000)
+			d[i] = a.AllocData(5_000)
 		}
 	}
 
@@ -351,7 +351,7 @@ func TestAllocatorAllocTemp(t *testing.T) {
 	a := MakeAllocatorWithProfiles(gp, sp)
 
 	// first alloc temp should come from scratch
-	d := a.AllocTemp(s)
+	d := a.AllocDataTemp(s)
 	if d.segments[0].slab != a.scratch.slabs[0] {
 		t.Errorf("a1: expected alloc from scratch, but got parent slab %p, expected %p", d.segments[0].slab, a.scratch.slabs[0])
 	}
@@ -363,7 +363,7 @@ func TestAllocatorAllocTemp(t *testing.T) {
 	}
 
 	// second alloc temp should come from general
-	d = a.AllocTemp(s)
+	d = a.AllocDataTemp(s)
 	if d.segments[0].slab != a.general.slabs[0] {
 		t.Errorf("a2: expected alloc from general, but got parent slab %p, expected %p", d.segments[0].slab, a.general.slabs[0])
 	}
@@ -375,7 +375,7 @@ func TestAllocatorAllocTemp(t *testing.T) {
 	}
 
 	// third alloc temp should cause scratch to grow, and come from scratch
-	d = a.AllocTemp(s)
+	d = a.AllocDataTemp(s)
 	if d.segments[0].slab != a.scratch.slabs[1] {
 		t.Errorf("a3: expected alloc from scratch, but got parent slab %p, expected %p", d.segments[0].slab, a.scratch.slabs[1])
 	}
@@ -399,7 +399,7 @@ func TestAllocatorAllocTempWithProfile(t *testing.T) {
 	// req 8 segments
 	reqP := []int{s, s, s, s, s, s, s, s}
 
-	d := a.AllocTempWithProfile(reqP)
+	d := a.AllocDataTempWithProfile(reqP)
 
 	for i := range d.segments {
 		if d.segments[i] != a.scratch.slabs[0].segments[i] {
@@ -416,7 +416,7 @@ func TestAllocatorAllocTempWithProfile(t *testing.T) {
 	// req 4 segments, first 2 should come from scratch 0, last 2 from scratch 1
 	reqP = []int{s, s}
 
-	d = a.AllocTempWithProfile(reqP)
+	d = a.AllocDataTempWithProfile(reqP)
 
 	for i := range d.segments {
 		if i < 2 {
@@ -441,7 +441,7 @@ func TestAllocatorAlloc(t *testing.T) {
 	a := MakeAllocatorWithProfiles(gp, sp)
 
 	// alloc 1 should come from general 0
-	d := a.Alloc(s)
+	d := a.AllocData(s)
 	if a.general.slabs[0].used == 0 {
 		t.Error("alloc 1: got slab used of 0")
 	}
@@ -453,7 +453,7 @@ func TestAllocatorAlloc(t *testing.T) {
 	}
 
 	// alloc 2 should come from general 1
-	d = a.Alloc(s)
+	d = a.AllocData(s)
 	if a.general.slabs[1].used == 0 {
 		t.Error("alloc 2: got slab used of 0")
 	}
@@ -476,7 +476,7 @@ func TestAllocatorAllocWithProfile(t *testing.T) {
 	// req 8 segments
 	reqP := []int{s, s, s, s, s, s, s, s}
 
-	d := a.AllocWithProfile(reqP)
+	d := a.AllocDataWithProfile(reqP)
 
 	for i := range d.segments {
 		if d.segments[i] != a.general.slabs[0].segments[i] {
@@ -493,7 +493,7 @@ func TestAllocatorAllocWithProfile(t *testing.T) {
 	// req 4 segments, first 2 should come from general 0, last 2 from general 1
 	reqP = []int{s, s}
 
-	d = a.AllocWithProfile(reqP)
+	d = a.AllocDataWithProfile(reqP)
 
 	for i := range d.segments {
 		if i < 2 {

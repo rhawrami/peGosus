@@ -181,9 +181,42 @@ func (a *Allocator) checkOptimize() {
 	}
 }
 
-// AllocTemp returns a Data object with a single segment, with the
+// AllocSegTemp allocates a segment, with the implication that
+// the object is temporary and will be freed shortly.
+func (a *Allocator) AllocSegTemp(l int) *Segment {
+	a.checkOptimize()
+	a.stats.updateState(l, reqScratch)
+	// check scratch, then general, then grow scratch if needed
+	g, ok := a.scratch.MakeSegment(l)
+	if !ok {
+		g, ok = a.general.MakeSegment(l)
+	}
+	if !ok {
+		g = a.scratch.GrowAndMakeSegment(l)
+	}
+
+	return g
+}
+
+// AllocSeg allocates a segment.
+func (a *Allocator) AllocSeg(l int) *Segment {
+	a.checkOptimize()
+	a.stats.updateState(l, reqScratch)
+	// check scratch, then general, then grow scratch if needed
+	g, ok := a.scratch.MakeSegment(l)
+	if !ok {
+		g, ok = a.general.MakeSegment(l)
+	}
+	if !ok {
+		g = a.scratch.GrowAndMakeSegment(l)
+	}
+
+	return g
+}
+
+// AllocDataTemp returns a Data object with a single segment, with the
 // implication that the object is temporary and will be freed shortly.
-func (a *Allocator) AllocTemp(l int) *Data {
+func (a *Allocator) AllocDataTemp(l int) *Data {
 	a.checkOptimize()
 	a.stats.updateState(l, reqScratch)
 	// check scratch, then general, then grow scratch if needed
@@ -200,8 +233,8 @@ func (a *Allocator) AllocTemp(l int) *Data {
 	return d
 }
 
-// Alloc returns a Data object with a single segment of at least `l` bytes.
-func (a *Allocator) Alloc(l int) *Data {
+// AllocData returns a Data object with a single segment of at least `l` bytes.
+func (a *Allocator) AllocData(l int) *Data {
 	a.checkOptimize()
 	a.stats.updateState(l, reqGeneral)
 
@@ -211,10 +244,10 @@ func (a *Allocator) Alloc(l int) *Data {
 	return d
 }
 
-// AllocWithProfile returns a Data object matching the size profile `s`;
+// AllocDataWithProfile returns a Data object matching the size profile `s`;
 // in other words, the Data object will have len(`s`.p) segments, each with
 // at least `s`.p[i] bytes of capacity.
-func (a *Allocator) AllocWithProfile(p []int) *Data {
+func (a *Allocator) AllocDataWithProfile(p []int) *Data {
 	a.checkOptimize()
 
 	d := a.makeData(len(p))
@@ -230,11 +263,11 @@ func (a *Allocator) AllocWithProfile(p []int) *Data {
 	return d
 }
 
-// AllocTempWithProfile returns a Data object matching the size profile `s`;
+// AllocDataTempWithProfile returns a Data object matching the size profile `s`;
 // in other words, the Data object will have len(`s`.p) segments, each with
 // at least `s`.p[i] bytes of capacity; implied that the object is
 // temporary and will be freed shortly.
-func (a *Allocator) AllocTempWithProfile(p []int) *Data {
+func (a *Allocator) AllocDataTempWithProfile(p []int) *Data {
 	a.checkOptimize()
 
 	d := a.makeData(len(p))

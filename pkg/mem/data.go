@@ -53,6 +53,9 @@ func (d *Data) Cap() int { return d.capacity }
 // SegmentAt returns the segment at offset `o`.
 func (d *Data) SegmentAt(o int) *Segment { return d.segments[o] }
 
+// Segments returns the segment set.
+func (d *Data) Segments() []*Segment { return d.segments }
+
 // NSegments returns the number of segments that `d` holds.
 func (d *Data) NSegments() int { return len(d.segments) }
 
