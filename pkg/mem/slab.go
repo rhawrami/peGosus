@@ -48,25 +48,6 @@ type Slab struct {
 	holes    int        // number of holes present
 }
 
-// takeSeg attempts to place `x` in the segment cache.
-func (s *Slab) takeSeg(x *Segment) {
-	if len(s.segCache) < cap(s.segCache) {
-		s.segCache = append(s.segCache, x)
-	}
-}
-
-// makeSeg returns a segment, either from the cache if available,
-// or from a new allocation.
-func (s *Slab) makeSeg() *Segment {
-	if len(s.segCache) > 0 {
-		g := s.segCache[len(s.segCache)-1]
-		s.segCache = s.segCache[:len(s.segCache)-1]
-		return g
-	}
-	return &Segment{}
-
-}
-
 func (s *Slab) String() string {
 	share := float64(s.used) / float64(s.capacity) * 100
 	size := (14 + // address
@@ -93,6 +74,31 @@ func (s *Slab) String() string {
 
 	return string(b)
 }
+
+// takeSeg attempts to place `x` in the segment cache.
+func (s *Slab) takeSeg(x *Segment) {
+	if len(s.segCache) < cap(s.segCache) {
+		s.segCache = append(s.segCache, x)
+	}
+}
+
+// makeSeg returns a segment, either from the cache if available,
+// or from a new allocation.
+func (s *Slab) makeSeg() *Segment {
+	if len(s.segCache) > 0 {
+		g := s.segCache[len(s.segCache)-1]
+		s.segCache = s.segCache[:len(s.segCache)-1]
+		return g
+	}
+	return &Segment{}
+
+}
+
+// Cap returns the capacity of the slab.
+func (s *Slab) Cap() int { return s.capacity }
+
+// Used returns the number of bytes used.
+func (s *Slab) Used() int { return s.used }
 
 // Clear gives `s` a fresh slate; should be called knowing that all related
 // segments will now be undefined.
