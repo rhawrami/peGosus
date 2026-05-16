@@ -3,6 +3,9 @@ package dtype
 // TID signifies a data type ID
 type TID int
 
+// variable-length element offsets are unsigned 32 bit integers.
+const VariableOffsetByteSize = 4
+
 const (
 	// 32-bit signed integer
 	INT32T TID = iota
@@ -24,6 +27,8 @@ const (
 
 // Type represents a supported data type.
 type Type interface {
+	// implement Stringer.
+	String() string
 	// ID returns a type's TID.
 	ID() TID
 	// Size1 returns the bit count for storing one element;
