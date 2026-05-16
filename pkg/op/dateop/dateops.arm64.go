@@ -27,7 +27,7 @@ var dateScalarConstants = []float32{
 
 // ExtYear extracts the year from each date in `src`, and places the
 // result in `dst`.
-func ExYear(src, dst []int32) {
+func ExtYear(src, dst []int32) {
 	extractYear(src, dst, dateScalarConstants)
 }
 
