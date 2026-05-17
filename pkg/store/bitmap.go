@@ -15,6 +15,16 @@ type BitMap struct {
 	data   *mem.Segment // data
 }
 
+// Len returns the bitmap's element length.
+func (m *BitMap) Len() int { return m.length }
+
+// Put returns the underlying data, making the bitmap undefined.
+func (m *BitMap) Put() {
+	m.length = 0
+	m.nin = 0
+	m.data.Put()
+}
+
 // ViN returns the bitmap's "valids-in-number."
 func (m *BitMap) ViN() int { return m.length - m.nin }
 
@@ -40,14 +50,14 @@ func (m *BitMap) RangeNiN(start, stop int) int {
 	return m.length - rangePCFromBM(start, stop, m.data)
 }
 
-// ClearAll sets all bits to zero, also updating "valids-in-number"
+// ClearAll sets all bits to zero, also updating "nulls-in-number."
 // to zero.
 func (m *BitMap) ClearAll() {
 	m.data.MemSetU8(0)
 	m.nin = m.length
 }
 
-// SetAll sets all bits to one, also updating "valids-in-number"
+// SetAll sets all bits to one, also updating "nulls-in-number."
 // to be equal to length.
 func (m *BitMap) SetAll() {
 	m.data.MemSetU8(1)
@@ -80,7 +90,7 @@ func (m *BitMap) ANDInPlaceViN(x *BitMap) int {
 // result in `m`, and returns the new "valids-in-number".
 func (m *BitMap) ORInPlaceViN(x *BitMap) int {
 	// all nulls in both
-	if (m.nin == 0) && (x.nin == 0) {
+	if (m.nin == m.length) && (x.nin == m.length) {
 		return 0
 	}
 	// alias dst
@@ -89,10 +99,23 @@ func (m *BitMap) ORInPlaceViN(x *BitMap) int {
 	return pc
 }
 
+// XORInPlaceViN takes the bitwise XOR of `m` and `x`, placing the
+// result in `m`, and returns the new "valids-in-number".
+func (m *BitMap) XORInPlaceViN(x *BitMap) int {
+	// all nulls in both
+	if (m.nin == 0) && (x.nin == 0) {
+		return 0
+	}
+	// alias dst
+	pc := int(bitop.BitWiseXorWithPopCount(m.data.AsBytes(), x.data.AsBytes(), m.data.AsBytes()))
+	m.nin = m.length - pc
+	return pc
+}
+
 // ANDNInPlaceViN takes the bitwise ANDN of `m` and `x`, placing the
 // result in `m`, and returns the new "valids-in-number".
 func (m *BitMap) ANDNInPlace(x *BitMap) int {
-	// all nulls in m or all valids in n
+	// all nulls in m
 	if m.nin == 0 {
 		return 0
 	}
@@ -105,6 +128,81 @@ func (m *BitMap) ANDNInPlace(x *BitMap) int {
 	pc := int(bitop.BitWiseAndNWithPopCount(m.data.AsBytes(), x.data.AsBytes(), m.data.AsBytes()))
 	m.nin = m.length - pc
 	return pc
+}
+
+// AndViNFromBMs performs a bitwise AND on `x` and `y`, places the
+// result in `z`, updates `z`'s state, and returns the "valids-in-number".
+func AndViNFromBMs(x, y, z *BitMap) int {
+	// all nulls
+	if (x.nin == x.length) || (y.nin == y.length) {
+		z.ClearAll()
+		return 0
+	}
+	pc := bitop.BitWiseAndWithPopCount(
+		x.data.AsBytes(), y.data.AsBytes(), z.data.AsBytes(),
+	)
+	z.nin = z.length - int(pc)
+	return int(pc)
+}
+
+// OrViNFromBMs performs a bitwise ORR on `x` and `y`, places the
+// result in `z`, updates `z`'s state, and returns the "valids-in-number".
+func OrViNFromBMs(x, y, z *BitMap) int {
+	// all nulls
+	if (x.nin == x.length) && (y.nin == y.length) {
+		z.ClearAll()
+		return 0
+	}
+	// all valids
+	if (x.nin == 0) || (y.nin == 0) {
+		z.SetAll()
+		return z.length
+	}
+	pc := bitop.BitWiseOrWithPopCount(
+		x.data.AsBytes(), y.data.AsBytes(), z.data.AsBytes(),
+	)
+	z.nin = z.length - int(pc)
+	return int(pc)
+}
+
+// XorViNFromBMs performs a bitwise XOR on `x` and `y`, places the
+// result in `z`, updates `z`'s state, and returns the "valids-in-number".
+func XorViNFromBMs(x, y, z *BitMap) int {
+	// all nulls
+	if (x.nin == x.length) && (y.nin == y.length) {
+		z.ClearAll()
+		return 0
+	}
+	// all valids
+	if (x.nin == 0) && (y.nin == 0) {
+		z.ClearAll()
+		return 0
+	}
+	pc := bitop.BitWiseOrWithPopCount(
+		x.data.AsBytes(), y.data.AsBytes(), z.data.AsBytes(),
+	)
+	z.nin = z.length - int(pc)
+	return int(pc)
+}
+
+// AndNViNFromBMs performs a bitwise AND NOT on `x` and `y`, places the
+// result in `z`, updates `z`'s state, and returns the "valids-in-number".
+func AndNViNFromBMs(x, y, z *BitMap) int {
+	// all nulls
+	if (x.nin == x.length) || (y.nin == 0) {
+		z.ClearAll()
+		return 0
+	}
+	// all valids
+	if (x.nin == 0) || (y.nin == y.length) {
+		z.SetAll()
+		return z.length
+	}
+	pc := bitop.BitWiseAndNWithPopCount(
+		x.data.AsBytes(), y.data.AsBytes(), z.data.AsBytes(),
+	)
+	z.nin = z.length - int(pc)
+	return int(pc)
 }
 
 // rangePCFromBM returns the population count over [start, stop) from
@@ -127,44 +225,4 @@ func rangePCFromBM(start, stop int, bm *mem.Segment) int {
 	}
 
 	return pc
-}
-
-// AndViNFromBMs performs a bitwise AND on `a` and `b`, places the
-// result in `c`, and returns the "valids-in-number".
-func AndViNFromBMs(a, b, c *mem.Segment) int {
-	return andBM(a, b, c)
-}
-
-// AndNiNFromBMs performs a bitwise AND on `a` and `b`, places the
-// result in `c`, and returns the "nulls-in-number".
-func AndNiNFromBMs(l int, a, b, c *mem.Segment) int {
-	return l - andBM(a, b, c)
-}
-
-// OrrViNFromBMs performs a bitwise ORR on `a` and `b`, places the
-// result in `c`, and returns the "valids-in-number".
-func OrrViNFromBMs(a, b, c *mem.Segment) int {
-	return orrBM(a, b, c)
-}
-
-// OrrNiNFromBMs performs a bitwise ORR on `a` and `b`, places the
-// result in `c`, and returns the "nulls-in-number".
-func OrrNiNFromBMs(l int, a, b, c *mem.Segment) int {
-	return l - orrBM(a, b, c)
-}
-
-// andBM performs a bitwise AND on `a` and `b`, places the result
-// in `c`, and returns the new population count.
-func andBM(a, b, c *mem.Segment) int {
-	return int(bitop.BitWiseAndWithPopCount(
-		a.AsBytes(), b.AsBytes(), c.AsBytes(),
-	))
-}
-
-// orrBM performs a bitwise ORR on `a` and `b`, places the result
-// in `c`, and returns the new population count.
-func orrBM(a, b, c *mem.Segment) int {
-	return int(bitop.BitWiseOrWithPopCount(
-		a.AsBytes(), b.AsBytes(), c.AsBytes(),
-	))
 }
