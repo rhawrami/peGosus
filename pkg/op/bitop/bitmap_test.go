@@ -34,6 +34,17 @@ func bitWiseOrWithPopCountFB(src1, src2, dst []byte) uint64 {
 	return pc
 }
 
+// fallback comparison for BitWiseAndNWithPopCount
+func bitWiseAndNWithPopCountFB(src1, src2, dst []byte) uint64 {
+	var pc uint64
+	for i := 0; i < len(src1); i++ {
+		res := src1[i] & ^src2[i]
+		pc += uint64(bits.OnesCount8(res))
+		dst[i] = res
+	}
+	return pc
+}
+
 // fallback comparison for PopCount
 func popCountFB(src []byte) uint64 {
 	var pc uint64
@@ -96,6 +107,31 @@ func TestBitWiseOrWithPopCount(t *testing.T) {
 				t.Errorf("POPCOUNT: got %d, expected %d", pc, pcFB)
 			}
 			// check bitwise AND result
+			for i := 0; i < s; i++ {
+				if dst[i] != dstFB[i] {
+					t.Errorf("On %d: src1: %08b, src2: %08b; expected %08b, got %08b", i, src1[i], src2[i], dst[i], dstFB[i])
+				}
+			}
+		})
+	}
+}
+
+func TestBitWiseAndNWithPopCount(t *testing.T) {
+	for _, s := range testLens4Bitmap {
+		t.Run(fmt.Sprintf("BitWiseAndNWithPopCount Size %d", s), func(t *testing.T) {
+			// get rand src, dst slices
+			src1 := genRandByteData(s)
+			src2 := genRandByteData(s)
+			dst := genByteSlice(s)
+			dstFB := genByteSlice(s)
+			// run
+			pc := BitWiseAndNWithPopCount(src1, src2, dst)
+			pcFB := bitWiseAndNWithPopCountFB(src1, src2, dstFB)
+			// check population count
+			if pc != pcFB {
+				t.Errorf("POPCOUNT: got %d, expected %d", pc, pcFB)
+			}
+			// check bitwise ANDN result
 			for i := 0; i < s; i++ {
 				if dst[i] != dstFB[i] {
 					t.Errorf("On %d: src1: %08b, src2: %08b; expected %08b, got %08b", i, src1[i], src2[i], dst[i], dstFB[i])
@@ -183,6 +219,39 @@ func BenchmarkBitWiseOrWithPopCount(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				pc := bitWiseOrWithPopCountFB(src1, src2, dst)
+				blackhole = pc
+			}
+		})
+	}
+}
+
+func BenchmarkBitWiseAndNWithPopCount(b *testing.B) {
+	// assembly
+	for _, s := range benchLens4Bitmap {
+		b.Run(fmt.Sprintf("ASM Size %d", s), func(b *testing.B) {
+			src1 := genRandByteData(s)
+			src2 := genRandByteData(s)
+			dst := genByteSlice(s)
+
+			b.ResetTimer()
+
+			for i := 0; i < b.N; i++ {
+				pc := BitWiseAndNWithPopCount(src1, src2, dst)
+				blackhole = pc
+			}
+		})
+	}
+	// fallback
+	for _, s := range benchLens4Bitmap {
+		b.Run(fmt.Sprintf("FB Size %d", s), func(b *testing.B) {
+			src1 := genRandByteData(s)
+			src2 := genRandByteData(s)
+			dst := genByteSlice(s)
+
+			b.ResetTimer()
+
+			for i := 0; i < b.N; i++ {
+				pc := bitWiseAndNWithPopCountFB(src1, src2, dst)
 				blackhole = pc
 			}
 		})

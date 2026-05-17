@@ -72,6 +72,68 @@ TEXT ·BitWiseAndWithPopCount(SB),NOSPLIT,$0-80
 TEXT ·BitWiseOrWithPopCount(SB),NOSPLIT,$0-80
     combineAndReturnSum(VORR)
 
+// func BitWiseAndNWithPopCount(src1, src2, dst []byte) uint64
+TEXT ·BitWiseAndNWithPopCount(SB),NOSPLIT,$0-32
+    MOVD src1Addr+0(FP), R0  
+    MOVD src2Addr+24(FP), R1  
+    MOVD dstAddr+48(FP), R2  
+    MOVD src1Len+8(FP), R3  
+    EOR R4, R4
+    SUB $64, R3, R5
+    EOR R6, R6
+    EOR R8, R8
+    VEOR V4.B16, V4.B16, V4.B16
+
+    CMP $0, R3
+    BEQ exitFn 
+
+    CMP $64, R3
+    BLE tradLoop
+
+vecLoop:
+    VLD1.P 64(R0), [V1.B16, V2.B16, V3.B16, V4.B16]
+    VLD1.P 64(R1), [V5.B16, V6.B16, V7.B16, V8.B16]
+
+    WORD $0x4e651c29           // 'bic.16b v9, v1, v5'
+    WORD $0x4e661c4a           // 'bic.16b	v10, v2, v6'
+    WORD $0x4e671c6b           // 'bic.16b v11, v3, v7'
+    WORD $0x4e681c8c           // 'bic.16b v12, v4, v8'
+
+    VCNT V9.B16, V13.B16
+    VCNT V10.B16, V14.B16
+    VCNT V11.B16, V15.B16
+    VCNT V12.B16, V16.B16
+
+    VADD V13.B16, V14.B16, V17.B16
+    VADD V15.B16, V16.B16, V18.B16
+    VADD V17.B16, V18.B16, V19.B16
+    VUADDLV V19.B16, V20
+    VMOV V20.D[0], R7
+    ADD R7, R6, R6
+
+    VST1.P [V9.B16, V10.B16, V11.B16, V12.B16], 64(R2)
+    ADD $64, R4
+    CMP R5, R4
+    BLT vecLoop
+
+tradLoop:
+    VLD1.P 1(R0), V1.B[0]
+    VLD1.P 1(R1), V2.B[0]
+
+    WORD $0x4e621c23           // 'bic.16b v3, v1, v2'
+    VCNT V3.B16, V4.B16
+    VMOV V4.B[0], R8
+    ADD R8, R6, R6
+
+    VST1.P V3.B[0], 1(R2)
+    ADD $1, R4
+    CMP R3, R4
+    BLT tradLoop
+
+exitFn:
+    MOVD R6, sum+72(FP)
+    RET
+
 // func PopCount(src []byte) uint64
 TEXT ·PopCount(SB),NOSPLIT,$0-32
     MOVD srcAddr+0(FP), R0
