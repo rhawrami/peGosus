@@ -68,6 +68,10 @@ TEXT ·bitWiseANDRetPopCount(SB),NOSPLIT,$0-80
 TEXT ·bitWiseORRetPopCount(SB),NOSPLIT,$0-80
     combineAndReturnSum(ORQ, ORW)
 
+// func bitWiseXorWithPopCount(src1, src2, dst []byte) uint64
+TEXT ·bitWiseORRetPopCount(SB),NOSPLIT,$0-80
+    combineAndReturnSum(XORQ, XORW)
+
 // func bitWiseAndNWithPopCount(src1, src2, dst []byte) uint64
 TEXT ·bitWiseAndNWithPopCount(SB),NOSPLIT,$0-80
     combineAndReturnSum(ANDNQ, ANDNW)

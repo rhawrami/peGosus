@@ -72,6 +72,10 @@ TEXT ·BitWiseAndWithPopCount(SB),NOSPLIT,$0-80
 TEXT ·BitWiseOrWithPopCount(SB),NOSPLIT,$0-80
     combineAndReturnSum(VORR)
 
+// func BitWiseXorWithPopCount(src1, src2, dst []byte) uint64
+TEXT ·BitWiseXorWithPopCount(SB),NOSPLIT,$0-80
+    combineAndReturnSum(VEOR)
+
 // func BitWiseAndNWithPopCount(src1, src2, dst []byte) uint64
 TEXT ·BitWiseAndNWithPopCount(SB),NOSPLIT,$0-32
     MOVD src1Addr+0(FP), R0  
