@@ -5,7 +5,6 @@ import (
 
 	"github.com/rhawrami/peGosus/pkg/dtype"
 	"github.com/rhawrami/peGosus/pkg/mem"
-	"github.com/rhawrami/peGosus/pkg/op/bitop"
 )
 
 // FSVecConfig configures the creation of a fixed-size vector.
@@ -24,16 +23,18 @@ type FSVecConfig struct {
 
 // MakeFixedSizeVec returns a fixed-size vector based on a fixed-size vector config.
 func MakeFixedSizeVec(cfg FSVecConfig) *FixedSizeVec {
-	var data, vbm *mem.Segment
+	var data *mem.Segment
+	var vbm *BitMap
 
 	// use bit-size to accomodate boolean type.
 	l := (cfg.Length*cfg.Type.Size1() + 7) >> 3
 	data = cfg.A.AllocSeg(l)
 	if cfg.MakeValidity {
-		vbm = cfg.A.AllocSeg((cfg.Length + 7) >> 3)
+		b := cfg.A.AllocSeg((cfg.Length + 7) >> 3)
 		if cfg.SetZero {
-			vbm.MemSetU8(0)
+			b.MemSetU8(0)
 		}
+		vbm = MakeBitMapWithKnownNiN(l, 0, b)
 	}
 	if cfg.SetZero {
 		data.MemSetU8(0)
@@ -60,7 +61,7 @@ type FixedSizeVec struct {
 	length int          // element length
 	nin    int          // null count
 	data   *mem.Segment // main data
-	vbm    *mem.Segment // validity bitmap
+	vbm    *BitMap      // validity bitmap
 }
 
 // String returns the string representation of the vector.
@@ -86,7 +87,7 @@ func (v *FixedSizeVec) RecalcNiN() int {
 		v.nin = 0
 		return 0
 	}
-	nin := v.length - int(bitop.PopCount(v.vbm.AsBytes()))
+	nin := v.vbm.RecalcNiN()
 	v.nin = nin
 	return nin
 }
@@ -96,25 +97,8 @@ func (v *FixedSizeVec) Data(id SegTypeID) *mem.Segment {
 	switch id {
 	case ELEMENTS:
 		return v.data
-	case VALIDITY:
-		return v.vbm
 	default:
 		return nil
-	}
-}
-
-// TODO
-func (v *FixedSizeVec) TakeIn(x *mem.Segment, t SegTypeID)
-
-// MakeVBM makes a validity bitmap, and can also zero out the bytes;
-// does nothing if vbm already present.
-func (v *FixedSizeVec) MakeVBM(a *mem.Allocator, setZero bool) {
-	if v.vbm != nil {
-		return
-	}
-	v.vbm = a.AllocSeg((v.length + 7) >> 3)
-	if setZero {
-		v.vbm.MemSetU8(0)
 	}
 }
 

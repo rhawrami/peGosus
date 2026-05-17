@@ -7,6 +7,20 @@ import (
 	"github.com/rhawrami/peGosus/pkg/op/bitop"
 )
 
+// MakeBitMapWithKnownNiN returns a bitmap with length `l`, a
+// "nulls-in-number" of count `nin`, and data object of `data`.
+func MakeBitMapWithKnownNiN(l, nin int, data *mem.Segment) *BitMap {
+	return &BitMap{length: l, nin: nin, data: data}
+}
+
+// MakeBitMapWithUnknownNiN returns a bitmap with length `l`, and a
+// "nulls-in-number" count based on `data`.
+func MakeBitMapWithUnknownNiN(l int, data *mem.Segment) *BitMap {
+	bm := &BitMap{length: l, data: data}
+	_ = bm.RecalcNiN()
+	return bm
+}
+
 // BitMap represents a byte array, with each bit representing
 // a single element.
 type BitMap struct {

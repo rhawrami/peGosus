@@ -14,8 +14,6 @@ const (
 	ELEMENTS SegTypeID = iota
 	// offsets (defined on variable size data)
 	OFFSETS
-	// validity (defined on vectors with nulls)
-	VALIDITY
 )
 
 // Vec represents an array of same-type data.
@@ -36,12 +34,6 @@ type Vec interface {
 	// Data returns data with the type `id`; returns
 	// nil if undefined on type, or not available.
 	Data(id SegTypeID) *mem.Segment
-	// TakeIn takes in a segment, and places it at location `t`;
-	// does nothing if `t` is not defined on the vector.
-	TakeIn(x *mem.Segment, t SegTypeID)
-	// MakeVBM makes a validity bitmap for the vector, and sets all
-	// bits to zero if setZero; does nothing if there's already a vbm.
-	MakeVBM(a *mem.Allocator, setZero bool)
 	// Put returns all segments to their slabs, making
 	// the vector undefined.
 	Put()

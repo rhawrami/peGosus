@@ -5,7 +5,6 @@ import (
 
 	"github.com/rhawrami/peGosus/pkg/dtype"
 	"github.com/rhawrami/peGosus/pkg/mem"
-	"github.com/rhawrami/peGosus/pkg/op/bitop"
 )
 
 // VSVecConfig configures the creation of a variable-size vector.
@@ -26,15 +25,17 @@ type VSVecConfig struct {
 
 // MakeVariableSizeVec returns a variable-size vector based on a variable-size vector config.
 func MakeVariableSizeVec(cfg VSVecConfig) *VariableSizeVec {
-	var data, vbm, offsets *mem.Segment
+	var data, offsets *mem.Segment
+	var vbm *BitMap
 
 	data = cfg.A.AllocSeg(cfg.Length * cfg.BuffLength)
 	offsets = cfg.A.AllocSeg(cfg.Length * dtype.VariableOffsetByteSize)
 	if cfg.MakeValidity {
-		vbm = cfg.A.AllocSeg((cfg.Length + 7) >> 3)
+		b := cfg.A.AllocSeg((cfg.Length + 7) >> 3)
 		if cfg.SetZero {
-			vbm.MemSetU8(0)
+			b.MemSetU8(0)
 		}
+		vbm = MakeBitMapWithKnownNiN(cfg.Length, 0, b)
 	}
 	if cfg.SetZero {
 		data.MemSetU8(0)
@@ -64,7 +65,7 @@ type VariableSizeVec struct {
 	nin     int          // null count
 	data    *mem.Segment // main data
 	offsets *mem.Segment // offsets
-	vbm     *mem.Segment // validity bitmap
+	vbm     *BitMap      // validity bitmap
 }
 
 // String returns the string representation of the vector.
@@ -90,7 +91,7 @@ func (v *VariableSizeVec) RecalcNiN() int {
 		v.nin = 0
 		return 0
 	}
-	nin := v.length - int(bitop.PopCount(v.vbm.AsBytes()))
+	nin := v.vbm.RecalcNiN()
 	v.nin = nin
 	return nin
 }
@@ -102,25 +103,8 @@ func (v *VariableSizeVec) Data(id SegTypeID) *mem.Segment {
 		return v.data
 	case OFFSETS:
 		return v.offsets
-	case VALIDITY:
-		return v.vbm
 	default:
 		return nil
-	}
-}
-
-// TODO
-func (v *VariableSizeVec) TakeIn(x *mem.Segment, t SegTypeID)
-
-// MakeVBM makes a validity bitmap, and can also zero out the bytes;
-// does nothing if vbm already present.
-func (v *VariableSizeVec) MakeVBM(a *mem.Allocator, setZero bool) {
-	if v.vbm != nil {
-		return
-	}
-	v.vbm = a.AllocSeg((v.length + 7) >> 3)
-	if setZero {
-		v.vbm.MemSetU8(0)
 	}
 }
 
