@@ -1,4 +1,4 @@
 # peGosus
-An attempt at building a high-performance OLAP database library in Go.
+An attempt at vectorized query engine in Go.
 
 <img src="./img/pegBlue.png" width="200">
