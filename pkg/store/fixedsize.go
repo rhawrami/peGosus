@@ -115,5 +115,4 @@ func (v *FixedSizeVec) Put() {
 	}
 	v.length = 0
 	v.nin = 0
-	v.data = nil
 }

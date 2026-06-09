@@ -124,5 +124,4 @@ func (v *VariableSizeVec) Put() {
 	}
 	v.length = 0
 	v.nin = 0
-	v.dType = nil
 }
