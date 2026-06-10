@@ -67,14 +67,14 @@ func (m *BitMap) RangeNiN(start, stop int) int {
 // ClearAll sets all bits to zero, also updating "nulls-in-number."
 // to zero.
 func (m *BitMap) ClearAll() {
-	m.data.MemSetU8(0)
+	m.data.MemSetU8(0x00)
 	m.nin = m.length
 }
 
 // SetAll sets all bits to one, also updating "nulls-in-number."
 // to be equal to length.
 func (m *BitMap) SetAll() {
-	m.data.MemSetU8(1)
+	m.data.MemSetU8(0xFF)
 	// set excess bits to zero
 	if rem := m.length & 7; rem != 0 {
 		m.data.AsBytes()[m.data.Len()-1] &= (255 >> rem)
@@ -192,7 +192,7 @@ func XorViNFromBMs(x, y, z *BitMap) int {
 		z.ClearAll()
 		return 0
 	}
-	pc := bitop.BitWiseOrWithPopCount(
+	pc := bitop.BitWiseXorWithPopCount(
 		x.data.AsBytes(), y.data.AsBytes(), z.data.AsBytes(),
 	)
 	z.nin = z.length - int(pc)
