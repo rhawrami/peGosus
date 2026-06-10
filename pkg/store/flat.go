@@ -7,7 +7,7 @@ import (
 	"github.com/rhawrami/peGosus/pkg/mem"
 )
 
-// FSVecConfig configures the creation of a fixed-size vector.
+// FSVecConfig configures the creation of a flat vector.
 type FSVecConfig struct {
 	// element length
 	Length int
@@ -21,8 +21,8 @@ type FSVecConfig struct {
 	A *mem.Allocator
 }
 
-// MakeFixedSizeVec returns a fixed-size vector based on a fixed-size vector config.
-func MakeFixedSizeVec(cfg FSVecConfig) *FixedSizeVec {
+// MakeFlatVec returns a flat vector based on a flat vector config.
+func MakeFlatVec(cfg FSVecConfig) *FlatVec {
 	var data *mem.Segment
 	var vbm *BitMap
 
@@ -40,7 +40,7 @@ func MakeFixedSizeVec(cfg FSVecConfig) *FixedSizeVec {
 		data.MemSetU8(0)
 	}
 
-	return &FixedSizeVec{
+	return &FlatVec{
 		dType:  cfg.Type,
 		length: cfg.Length,
 		nin:    0,
@@ -49,14 +49,14 @@ func MakeFixedSizeVec(cfg FSVecConfig) *FixedSizeVec {
 	}
 }
 
-// MakeEmptyFixedSizeVec returns an empty fixed-size vector with
+// MakeEmptyFlatVec returns an empty flat vector with
 // type `t`.
-func MakeEmptyFixedSizeVec(t dtype.Type) *FixedSizeVec {
-	return &FixedSizeVec{dType: t}
+func MakeEmptyFlatVec(t dtype.Type) *FlatVec {
+	return &FlatVec{dType: t}
 }
 
-// FixedSizeVec represents a vector of fixed-size data.
-type FixedSizeVec struct {
+// FlatVec represents a vector of fixed-size data.
+type FlatVec struct {
 	dType  dtype.Type   // data type
 	length int          // element length
 	nin    int          // null count
@@ -65,24 +65,24 @@ type FixedSizeVec struct {
 }
 
 // String returns the string representation of the vector.
-func (v *FixedSizeVec) String() string {
+func (v *FlatVec) String() string {
 	return fmt.Sprintf("[%d]<%s>{}", v.length, v.dType.String())
 }
 
 // Type returns the vector's type.
-func (v *FixedSizeVec) Type() dtype.Type { return v.dType }
+func (v *FlatVec) Type() dtype.Type { return v.dType }
 
 // TypeID returns the vector's type ID.
-func (v *FixedSizeVec) TypeID() dtype.TID { return v.dType.ID() }
+func (v *FlatVec) TypeID() dtype.TID { return v.dType.ID() }
 
 // Len returns the vector's element length
-func (v *FixedSizeVec) Len() int { return v.length }
+func (v *FlatVec) Len() int { return v.length }
 
 // NiN returns the vector's "nulls-in-number."
-func (v *FixedSizeVec) NiN() int { return v.nin }
+func (v *FlatVec) NiN() int { return v.nin }
 
 // RecalcNiN updates the NiN of the vector, returning the new count.
-func (v *FixedSizeVec) RecalcNiN() int {
+func (v *FlatVec) RecalcNiN() int {
 	if v.vbm == nil {
 		v.nin = 0
 		return 0
@@ -93,7 +93,7 @@ func (v *FixedSizeVec) RecalcNiN() int {
 }
 
 // Data returns the segment with ID `id`, if defined; returns nil otherwise.
-func (v *FixedSizeVec) Data(id SegTypeID) *mem.Segment {
+func (v *FlatVec) Data(id SegTypeID) *mem.Segment {
 	switch id {
 	case ELEMENTS:
 		return v.data
@@ -104,7 +104,7 @@ func (v *FixedSizeVec) Data(id SegTypeID) *mem.Segment {
 
 // Put returns the data and vbm bitmap, if non-nil, to their slabs;
 // makes the vector undefined.
-func (v *FixedSizeVec) Put() {
+func (v *FlatVec) Put() {
 	if v.data != nil {
 		v.data.Put()
 		v.data = nil
