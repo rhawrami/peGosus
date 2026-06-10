@@ -27,7 +27,7 @@ const (
 	DATET
 	// 64-bit signed integer
 	TIMESTAMPTZT
-	// string (contig buff + offset buff)
+	// string ("German string" style)
 	STRT
 	// bitpacked
 	BOOLT
