@@ -21,11 +21,11 @@
     JEQ exitFn                                             \
                                                            \
     MOVQ min_ascii, R8                                     \
-    VPBROADCASTB, R8, Y0                                   \
+    VPBROADCASTB R8, Y0                                    \
     MOVQ max_ascii, R8                                     \
-    VPBROADCASTB, R8, Y1                                   \
+    VPBROADCASTB R8, Y1                                    \
     MOVQ ASCII_DIFF, R8                                    \
-    VPBROADCASTB, R8, Y2                                   \
+    VPBROADCASTB R8, Y2                                    \
                                                            \
     CMPQ CX, $64                                           \
     JLE tradLoopInit                                       \
@@ -56,13 +56,13 @@ tradLoopInit:                                              \
     VPXOR Y3, Y3, Y3                                       \                                                           
 tradLoop:                                                  \
     MOVB (AX), R8                                          \
-    VMOVD R8, Y3                                           \
-    VPMAXUB Y3, Y0, Y5                                     \
-    VPMINUB Y3, Y1, Y6                                     \
-    VPCMPEQB Y5, Y6, Y5                                    \
-    VPAND Y5, Y2, Y5                                       \
-    vDiffOp Y2, Y3, Y3                                     \
-    VMOVD Y3, R8                                           \
+    VMOVD R8, X3                                           \
+    VPMAXUB X3, X0, X5                                     \
+    VPMINUB X3, X1, X6                                     \
+    VPCMPEQB X5, X6, X5                                    \
+    VPAND X5, X2, X5                                       \
+    vDiffOp X2, X3, X3                                     \
+    VMOVD X3, R8                                           \
     MOVB R8, (BX)                                          \
     ADDQ $1, AX                                            \
     ADDQ $1, BX                                            \
