@@ -158,11 +158,9 @@ func genSumDataB(l int) []byte {
 }
 
 func checkIfCloseF64(x, y float64) bool {
-	acceptableDiff := float64(1 / math.Pow10(7))
-	if math.Abs(x-y) < acceptableDiff {
-		return true
-	}
-	return false
+	diff := math.Abs(x - y)
+	tolerance := 1e-12*math.Max(math.Abs(x), math.Abs(y)) + 1e-9
+	return diff <= tolerance
 }
 
 func TestSumI64(t *testing.T) {

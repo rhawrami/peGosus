@@ -1,53 +1,63 @@
-//go:build !arm64
-
 package numop
 
-// SqrtF64 takes the square root of elements in `src`, and places the result in `dst`.
-func SqrtF64(src, dst []float64) { sqrtF64Impl(src, dst) }
+import "math"
 
-func sqrtF64Fallback(src, dst []float64) {}
+func sqrtF64Fallback(src, dst []float64) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = math.Sqrt(src[i])
+	}
+}
 
-// SqF64 takes the square of elements in `src`, and places the result in `dst`.
-func SqF64(src, dst []float64) { sqF64Impl(src, dst) }
+func sqF64Fallback(src, dst []float64) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = src[i] * src[i]
+	}
+}
 
-func sqF64Fallback(src, dst []float64) {}
+func absF64Fallback(src, dst []float64) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = math.Float64frombits(math.Float64bits(src[i]) &^ uint64(1<<63))
+	}
+}
 
-// AbsF64 takes the absolute value of elements in `src`, and places the result in `dst`.
-func AbsF64(src, dst []float64) { absF64Impl(src, dst) }
+func negF64Fallback(src, dst []float64) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = math.Float64frombits(math.Float64bits(src[i]) ^ uint64(1<<63))
+	}
+}
 
-func absF64Fallback(src, dst []float64) {}
+func recipF64Fallback(src, dst []float64) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = 1 / src[i]
+	}
+}
 
-// NegF64 negates elements in `src`, and places the result in `dst`.
-func NegF64(src, dst []float64) { negF64Impl(src, dst) }
+func sqrtF32Fallback(src, dst []float32) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = float32(math.Sqrt(float64(src[i])))
+	}
+}
 
-func negF64Fallback(src, dst []float64) {}
+func sqF32Fallback(src, dst []float32) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = src[i] * src[i]
+	}
+}
 
-// RecipF64 takes the reciprocal elements in `src`, and places the result in `dst`.
-func RecipF64(src, dst []float64) { recipF64Impl(src, dst) }
+func absF32Fallback(src, dst []float32) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = math.Float32frombits(math.Float32bits(src[i]) &^ uint32(1<<31))
+	}
+}
 
-func recipF64Fallback(src, dst []float64) {}
+func negF32Fallback(src, dst []float32) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = math.Float32frombits(math.Float32bits(src[i]) ^ uint32(1<<31))
+	}
+}
 
-// SqrtF32 takes the square root of elements in `src`, and places the result in `dst`.
-func SqrtF32(src, dst []float32) { sqrtF32Impl(src, dst) }
-
-func sqrtF32Fallback(src, dst []float32) {}
-
-// SqF32 takes the square of elements in `src`, and places the result in `dst`.
-func SqF32(src, dst []float32) { sqF32Impl(src, dst) }
-
-func sqF32Fallback(src, dst []float32) {}
-
-// AbsF32 takes the absolute value of elements in `src`, and places the result in `dst`.
-func AbsF32(src, dst []float32) { absF32Impl(src, dst) }
-
-func absF32Fallback(src, dst []float32) {}
-
-// NegF32 negates elements in `src`, and places the result in `dst`.
-func NegF32(src, dst []float32) { negF32Impl(src, dst) }
-
-func negF32Fallback(src, dst []float32) {}
-
-// RecipF32 takes the reciprocal elements in `src`, and places the result in `dst`.
-func RecipF32(src, dst []float32) { recipF32Impl(src, dst) }
-
-func recipF32Fallback(src, dst []float32) {}
+func recipF32Fallback(src, dst []float32) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = 1 / src[i]
+	}
+}

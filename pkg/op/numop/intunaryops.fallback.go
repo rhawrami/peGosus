@@ -1,53 +1,71 @@
-//go:build !arm64
-
 package numop
 
-// SqrtI64 takes the square root of elements in `src`, and places the result in `dst`.
-func SqrtI64(src []int64, dst []float64) { sqrtI64Impl(src, dst) }
+import "math"
 
-func sqrtI64Fallback(src []int64, dst []float64) {}
+func sqrtI64Fallback(src []int64, dst []float64) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = math.Sqrt(float64(src[i]))
+	}
+}
 
-// SqI64 takes the square of elements in `src`, and places the result in `dst`.
-func SqI64(src, dst []int64) { sqI64Impl(src, dst) }
+func sqI64Fallback(src, dst []int64) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = src[i] * src[i]
+	}
+}
 
-func sqI64Fallback(src, dst []int64) {}
+func absI64Fallback(src, dst []int64) {
+	for i := 0; i < len(src); i++ {
+		if src[i] < 0 {
+			dst[i] = -src[i]
+		} else {
+			dst[i] = src[i]
+		}
+	}
+}
 
-// AbsI64 takes the absolute value of elements in `src`, and places the result in `dst`.
-func AbsI64(src, dst []int64) { absI64Impl(src, dst) }
+func negI64Fallback(src, dst []int64) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = -src[i]
+	}
+}
 
-func absI64Fallback(src, dst []int64) {}
+func recipI64Fallback(src []int64, dst []float64) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = 1 / float64(src[i])
+	}
+}
 
-// NegI64 negates elements in `src`, and places the result in `dst`.
-func NegI64(src, dst []int64) { negI64Impl(src, dst) }
+func sqrtI32Fallback(src []int32, dst []float32) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = float32(math.Sqrt(float64(src[i])))
+	}
+}
 
-func negI64Fallback(src, dst []int64) {}
+func sqI32Fallback(src, dst []int32) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = src[i] * src[i]
+	}
+}
 
-// RecipI64 takes the reciprocal elements in `src`, and places the result in `dst`.
-func RecipI64(src []int64, dst []float64) { recipI64Impl(src, dst) }
+func absI32Fallback(src, dst []int32) {
+	for i := 0; i < len(src); i++ {
+		if src[i] < 0 {
+			dst[i] = -src[i]
+		} else {
+			dst[i] = src[i]
+		}
+	}
+}
 
-func recipI64Fallback(src []int64, dst []float64) {}
+func negI32Fallback(src, dst []int32) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = -src[i]
+	}
+}
 
-// SqrtI32 takes the square root of elements in `src`, and places the result in `dst`.
-func SqrtI32(src []int32, dst []float32) { sqrtI32Impl(src, dst) }
-
-func sqrtI32Fallback(src []int32, dst []float32) {}
-
-// SqI32 takes the square of elements in `src`, and places the result in `dst`.
-func SqI32(src, dst []int32) { sqI32Impl(src, dst) }
-
-func sqI32Fallback(src, dst []int32) {}
-
-// AbsI32 takes the absolute value of elements in `src`, and places the result in `dst`.
-func AbsI32(src, dst []int32) { absI32Impl(src, dst) }
-
-func absI32Fallback(src, dst []int32) {}
-
-// NegI32 negates elements in `src`, and places the result in `dst`.
-func NegI32(src, dst []int32) { negI32Impl(src, dst) }
-
-func negI32Fallback(src, dst []int32) {}
-
-// RecipI32 takes the reciprocal elements in `src`, and places the result in `dst`.
-func RecipI32(src []int32, dst []float32) { recipI32Impl(src, dst) }
-
-func recipI32Fallback(src []int32, dst []float32) {}
+func recipI32Fallback(src []int32, dst []float32) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = 1 / float32(src[i])
+	}
+}

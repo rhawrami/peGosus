@@ -1,175 +1,309 @@
-//go:build !arm64
-
 package numop
 
-// MaxI64 finds the maximum signed element in `src`, placing it in `dst[0]`.
-func MaxI64(src, dst []int64) { maxI64Impl(src, dst) }
+import "math"
 
-func maxI64Fallback(src, dst []int64) {}
-
-// MinI64 finds the minimum signed element in `src`, placing it in `dst[0]`.
-func MinI64(src, dst []int64) { minI64Impl(src, dst) }
-
-func minI64Fallback(src, dst []int64) {}
-
-// MaxI32 finds the maximum signed element in `src`, placing it in `dst[0]`.
-func MaxI32(src, dst []int32) { maxI32Impl(src, dst) }
-
-func maxI32Fallback(src, dst []int32) {}
-
-// MinI32 finds the minimum signed element in `src`, placing it in `dst[0]`.
-func MinI32(src, dst []int32) { minI32Impl(src, dst) }
-
-func minI32Fallback(src, dst []int32) {}
-
-// MaxF64 finds the maximum  element in `src` (ignoring NaN elements), placing it in `dst[0]`.
-func MaxF64(src, dst []float64) { maxF64Impl(src, dst) }
-
-func maxF64Fallback(src, dst []float64) {}
-
-// MinF64 finds the minimum  element in `src` (ignoring NaN elements), placing it in `dst[0]`.
-func MinF64(src, dst []float64) { minF64Impl(src, dst) }
-
-func minF64Fallback(src, dst []float64) {}
-
-// MaxF32 finds the maximum  element in `src` (ignoring NaN elements), placing it in `dst[0]`.
-func MaxF32(src, dst []float32) { maxF32Impl(src, dst) }
-
-func maxF32Fallback(src, dst []float32) {}
-
-// MinF32 finds the minimum  element in `src` (ignoring NaN elements), placing it in `dst[0]`.
-func MinF32(src, dst []float32) { minF32Impl(src, dst) }
-
-func minF32Fallback(src, dst []float32) {}
-
-// MinMaxI64 finds the minimum and maximum signed elements in `src`, placing the "min" in `dst[0]`
-// and the "max" in `dst[1]`.
-func MinMaxI64(src, dst []int64) { minMaxI64Impl(src, dst) }
-
-func minMaxI64Fallback(src, dst []int64) {}
-
-// MinMaxI32 finds the minimum and maximum signed elements in `src`, placing the "min" in `dst[0]`
-// and the "max" in `dst[1]`.
-func MinMaxI32(src, dst []int32) { minMaxI32Impl(src, dst) }
-
-func minMaxI32Fallback(src, dst []int32) {}
-
-// MinMaxF64 finds the minimum and maximum elements in `src` (ignoring NaN elements), placing
-// the "min" in `dst[0]` and the "max" in `dst[1]`.
-func MinMaxF64(src, dst []float64) { minMaxF64Impl(src, dst) }
-
-func minMaxF64Fallback(src, dst []float64) {}
-
-// MinMaxF32 finds the minimum and maximum elements in `src` (ignoring NaN elements), placing
-// the "min" in `dst[0]` and the "max" in `dst[1]`.
-func MinMaxF32(src, dst []float32) { minMaxF32Impl(src, dst) }
-
-func minMaxF32Fallback(src, dst []float32) {}
-
-// MaxI64WithValidity finds the maximum signed element in `src`, placing it in `dst[0]`. `validity`
-// represents a validity bitmap, where only elements corresponding to set bits will be included in the
-// calculation.
-func MaxI64WithValidity(src, dst []int64, validity []byte) {
-	maxI64WithValidityImpl(src, dst, validity)
+func maxI64Fallback(src, dst []int64) {
+	result := int64(math.MinInt64)
+	for _, value := range src {
+		if value > result {
+			result = value
+		}
+	}
+	dst[0] = result
 }
 
-func maxI64WithValidityFallback(src, dst []int64, validity []byte) {}
-
-// MinI64WithValidity finds the minimum signed element in `src`, placing it in `dst[0]`. `validity`
-// represents a validity bitmap, where only elements corresponding to set bits will be included in the
-// calculation.
-func MinI64WithValidity(src, dst []int64, validity []byte) {
-	minI64WithValidityImpl(src, dst, validity)
+func minI64Fallback(src, dst []int64) {
+	result := int64(math.MaxInt64)
+	for _, value := range src {
+		if value < result {
+			result = value
+		}
+	}
+	dst[0] = result
 }
 
-func minI64WithValidityFallback(src, dst []int64, validity []byte) {}
-
-// MaxI32WithValidity finds the maximum signed element in `src`, placing it in `dst[0]`. `validity`
-// represents a validity bitmap, where only elements corresponding to set bits will be included in the
-// calculation.
-func MaxI32WithValidity(src, dst []int32, validity []byte) {
-	maxI32WithValidityImpl(src, dst, validity)
+func maxI32Fallback(src, dst []int32) {
+	result := int32(math.MinInt32)
+	for _, value := range src {
+		if value > result {
+			result = value
+		}
+	}
+	dst[0] = result
 }
 
-func maxI32WithValidityFallback(src, dst []int32, validity []byte) {}
-
-// MinI32WithValidity finds the minimum signed element in `src`, placing it in `dst[0]`. `validity`
-// represents a validity bitmap, where only elements corresponding to set bits will be included in the
-// calculation.
-func MinI32WithValidity(src, dst []int32, validity []byte) {
-	minI32WithValidityImpl(src, dst, validity)
+func minI32Fallback(src, dst []int32) {
+	result := int32(math.MaxInt32)
+	for _, value := range src {
+		if value < result {
+			result = value
+		}
+	}
+	dst[0] = result
 }
 
-func minI32WithValidityFallback(src, dst []int32, validity []byte) {}
-
-// MaxF64WithValidity finds the maximum  element in `src` (ignoring NaN elements), placing it in `dst[0]`. `validity`
-// represents a validity bitmap, where only elements corresponding to set bits will be included in the
-// calculation.
-func MaxF64WithValidity(src, dst []float64, validity []byte) {
-	maxF64WithValidityImpl(src, dst, validity)
+func maxF64Fallback(src, dst []float64) {
+	result := math.Inf(-1)
+	found := false
+	for _, value := range src {
+		if value == value && (!found || value > result) {
+			result = value
+			found = true
+		}
+	}
+	dst[0] = result
 }
 
-func maxF64WithValidityFallback(src, dst []float64, validity []byte) {}
-
-// MinF64WithValidity finds the minimum  element in `src` (ignoring NaN elements), placing it in `dst[0]`. `validity`
-// represents a validity bitmap, where only elements corresponding to set bits will be included in the
-// calculation.
-func MinF64WithValidity(src, dst []float64, validity []byte) {
-	minF64WithValidityImpl(src, dst, validity)
+func minF64Fallback(src, dst []float64) {
+	result := math.Inf(1)
+	found := false
+	for _, value := range src {
+		if value == value && (!found || value < result) {
+			result = value
+			found = true
+		}
+	}
+	dst[0] = result
 }
 
-func minF64WithValidityFallback(src, dst []float64, validity []byte) {}
-
-// MaxF32WithValidity finds the maximum  element in `src` (ignoring NaN elements), placing it in `dst[0]`. `validity`
-// represents a validity bitmap, where only elements corresponding to set bits will be included in the
-// calculation.
-func MaxF32WithValidity(src, dst []float32, validity []byte) {
-	maxF32WithValidityImpl(src, dst, validity)
+func maxF32Fallback(src, dst []float32) {
+	result := float32(math.Inf(-1))
+	found := false
+	for _, value := range src {
+		if value == value && (!found || value > result) {
+			result = value
+			found = true
+		}
+	}
+	dst[0] = result
 }
 
-func maxF32WithValidityFallback(src, dst []float32, validity []byte) {}
-
-// MinF32WithValidity finds the minimum  element in `src` (ignoring NaN elements), placing it in `dst[0]`. `validity`
-// represents a validity bitmap, where only elements corresponding to set bits will be included in the
-// calculation.
-func MinF32WithValidity(src, dst []float32, validity []byte) {
-	minF32WithValidityImpl(src, dst, validity)
+func minF32Fallback(src, dst []float32) {
+	result := float32(math.Inf(1))
+	found := false
+	for _, value := range src {
+		if value == value && (!found || value < result) {
+			result = value
+			found = true
+		}
+	}
+	dst[0] = result
 }
 
-func minF32WithValidityFallback(src, dst []float32, validity []byte) {}
-
-// MinMaxI64WithValidity finds the minimum and maximum signed elements in `src`, placing the "min" in `dst[0]`
-// and the "max" in `dst[1]`. `validity` represents a validity bitmap, where only elements
-// corresponding to set bits will be included in the calculation.
-func MinMaxI64WithValidity(src, dst []int64, validity []byte) {
-	minMaxI64WithValidityImpl(src, dst, validity)
+func minMaxI64Fallback(src, dst []int64) {
+	minimum, maximum := int64(math.MaxInt64), int64(math.MinInt64)
+	for _, value := range src {
+		if value < minimum {
+			minimum = value
+		}
+		if value > maximum {
+			maximum = value
+		}
+	}
+	dst[0], dst[1] = minimum, maximum
 }
 
-func minMaxI64WithValidityFallback(src, dst []int64, validity []byte) {}
-
-// MinMaxI32WithValidity finds the minimum and maximum signed elements in `src`, placing the "min" in `dst[0]`
-// and the "max" in `dst[1]`. `validity` represents a validity bitmap, where only elements
-// corresponding to set bits will be included in the calculation.
-func MinMaxI32WithValidity(src, dst []int32, validity []byte) {
-	minMaxI32WithValidityImpl(src, dst, validity)
+func minMaxI32Fallback(src, dst []int32) {
+	minimum, maximum := int32(math.MaxInt32), int32(math.MinInt32)
+	for _, value := range src {
+		if value < minimum {
+			minimum = value
+		}
+		if value > maximum {
+			maximum = value
+		}
+	}
+	dst[0], dst[1] = minimum, maximum
 }
 
-func minMaxI32WithValidityFallback(src, dst []int32, validity []byte) {}
-
-// MinMaxF64WithValidity finds the minimum and maximum elements in `src` (ignoring NaN elements), placing
-// the "min" in `dst[0]` and the "max" in `dst[1]`. `validity` represents a validity bitmap,
-// where only elements corresponding to set bits will be included in the calculation.
-func MinMaxF64WithValidity(src, dst []float64, validity []byte) {
-	minMaxF64WithValidityImpl(src, dst, validity)
+func minMaxF64Fallback(src, dst []float64) {
+	minimum, maximum := math.Inf(1), math.Inf(-1)
+	found := false
+	for _, value := range src {
+		if value != value {
+			continue
+		}
+		if !found || value < minimum {
+			minimum = value
+		}
+		if !found || value > maximum {
+			maximum = value
+		}
+		found = true
+	}
+	dst[0], dst[1] = minimum, maximum
 }
 
-func minMaxF64WithValidityFallback(src, dst []float64, validity []byte) {}
-
-// MinMaxF32WithValidity finds the minimum and maximum elements in `src` (ignoring NaN elements), placing
-// the "min" in `dst[0]` and the "max" in `dst[1]`. `validity` represents a validity bitmap,
-// where only elements corresponding to set bits will be included in the calculation.
-func MinMaxF32WithValidity(src, dst []float32, validity []byte) {
-	minMaxF32WithValidityImpl(src, dst, validity)
+func minMaxF32Fallback(src, dst []float32) {
+	minimum, maximum := float32(math.Inf(1)), float32(math.Inf(-1))
+	found := false
+	for _, value := range src {
+		if value != value {
+			continue
+		}
+		if !found || value < minimum {
+			minimum = value
+		}
+		if !found || value > maximum {
+			maximum = value
+		}
+		found = true
+	}
+	dst[0], dst[1] = minimum, maximum
 }
 
-func minMaxF32WithValidityFallback(src, dst []float32, validity []byte) {}
+func maxI64WithValidityFallback(src, dst []int64, validity []byte) {
+	result := int64(math.MinInt64)
+	for i, value := range src {
+		if validity[i/8]&(1<<uint(i%8)) != 0 && value > result {
+			result = value
+		}
+	}
+	dst[0] = result
+}
+
+func minI64WithValidityFallback(src, dst []int64, validity []byte) {
+	result := int64(math.MaxInt64)
+	for i, value := range src {
+		if validity[i/8]&(1<<uint(i%8)) != 0 && value < result {
+			result = value
+		}
+	}
+	dst[0] = result
+}
+
+func maxI32WithValidityFallback(src, dst []int32, validity []byte) {
+	result := int32(math.MinInt32)
+	for i, value := range src {
+		if validity[i/8]&(1<<uint(i%8)) != 0 && value > result {
+			result = value
+		}
+	}
+	dst[0] = result
+}
+
+func minI32WithValidityFallback(src, dst []int32, validity []byte) {
+	result := int32(math.MaxInt32)
+	for i, value := range src {
+		if validity[i/8]&(1<<uint(i%8)) != 0 && value < result {
+			result = value
+		}
+	}
+	dst[0] = result
+}
+
+func maxF64WithValidityFallback(src, dst []float64, validity []byte) {
+	result := math.Inf(-1)
+	found := false
+	for i, value := range src {
+		if validity[i/8]&(1<<uint(i%8)) != 0 && value == value && (!found || value > result) {
+			result = value
+			found = true
+		}
+	}
+	dst[0] = result
+}
+
+func minF64WithValidityFallback(src, dst []float64, validity []byte) {
+	result := math.Inf(1)
+	found := false
+	for i, value := range src {
+		if validity[i/8]&(1<<uint(i%8)) != 0 && value == value && (!found || value < result) {
+			result = value
+			found = true
+		}
+	}
+	dst[0] = result
+}
+
+func maxF32WithValidityFallback(src, dst []float32, validity []byte) {
+	result := float32(math.Inf(-1))
+	found := false
+	for i, value := range src {
+		if validity[i/8]&(1<<uint(i%8)) != 0 && value == value && (!found || value > result) {
+			result = value
+			found = true
+		}
+	}
+	dst[0] = result
+}
+
+func minF32WithValidityFallback(src, dst []float32, validity []byte) {
+	result := float32(math.Inf(1))
+	found := false
+	for i, value := range src {
+		if validity[i/8]&(1<<uint(i%8)) != 0 && value == value && (!found || value < result) {
+			result = value
+			found = true
+		}
+	}
+	dst[0] = result
+}
+
+func minMaxI64WithValidityFallback(src, dst []int64, validity []byte) {
+	minimum, maximum := int64(math.MaxInt64), int64(math.MinInt64)
+	for i, value := range src {
+		if validity[i/8]&(1<<uint(i%8)) == 0 {
+			continue
+		}
+		if value < minimum {
+			minimum = value
+		}
+		if value > maximum {
+			maximum = value
+		}
+	}
+	dst[0], dst[1] = minimum, maximum
+}
+
+func minMaxI32WithValidityFallback(src, dst []int32, validity []byte) {
+	minimum, maximum := int32(math.MaxInt32), int32(math.MinInt32)
+	for i, value := range src {
+		if validity[i/8]&(1<<uint(i%8)) == 0 {
+			continue
+		}
+		if value < minimum {
+			minimum = value
+		}
+		if value > maximum {
+			maximum = value
+		}
+	}
+	dst[0], dst[1] = minimum, maximum
+}
+
+func minMaxF64WithValidityFallback(src, dst []float64, validity []byte) {
+	minimum, maximum := math.Inf(1), math.Inf(-1)
+	found := false
+	for i, value := range src {
+		if validity[i/8]&(1<<uint(i%8)) == 0 || value != value {
+			continue
+		}
+		if !found || value < minimum {
+			minimum = value
+		}
+		if !found || value > maximum {
+			maximum = value
+		}
+		found = true
+	}
+	dst[0], dst[1] = minimum, maximum
+}
+
+func minMaxF32WithValidityFallback(src, dst []float32, validity []byte) {
+	minimum, maximum := float32(math.Inf(1)), float32(math.Inf(-1))
+	found := false
+	for i, value := range src {
+		if validity[i/8]&(1<<uint(i%8)) == 0 || value != value {
+			continue
+		}
+		if !found || value < minimum {
+			minimum = value
+		}
+		if !found || value > maximum {
+			maximum = value
+		}
+		found = true
+	}
+	dst[0], dst[1] = minimum, maximum
+}

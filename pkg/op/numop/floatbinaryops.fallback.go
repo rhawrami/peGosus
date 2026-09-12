@@ -1,83 +1,97 @@
-//go:build !arm64
-
 package numop
 
-// AddF64Lit adds `lit` to elements in `src`, placing the result in `dst`.
-func AddF64Lit(src, dst []float64, lit float64) { addF64LitImpl(src, dst, lit) }
+func addF64LitFallback(src, dst []float64, lit float64) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = src[i] + lit
+	}
+}
 
-func addF64LitFallback(src, dst []float64, lit float64) {}
+func subF64LitFallback(src, dst []float64, lit float64) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = src[i] - lit
+	}
+}
 
-// SubF64Lit subtracts `lit` from elements in `src`, placing the result in `dst`.
-func SubF64Lit(src, dst []float64, lit float64) { subF64LitImpl(src, dst, lit) }
+func mulF64LitFallback(src, dst []float64, lit float64) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = src[i] * lit
+	}
+}
 
-func subF64LitFallback(src, dst []float64, lit float64) {}
+func divF64LitFallback(src, dst []float64, lit float64) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = src[i] / lit
+	}
+}
 
-// MulF64Lit multiplies `lit` by elements in `src`, placing the result in `dst`.
-func MulF64Lit(src, dst []float64, lit float64) { mulF64LitImpl(src, dst, lit) }
+func addF32LitFallback(src, dst []float32, lit float32) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = src[i] + lit
+	}
+}
 
-func mulF64LitFallback(src, dst []float64, lit float64) {}
+func subF32LitFallback(src, dst []float32, lit float32) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = src[i] - lit
+	}
+}
 
-// DivF64Lit divides elements in `src` by `lit` , placing the result in `dst`.
-func DivF64Lit(src, dst []float64, lit float64) { divF64LitImpl(src, dst, lit) }
+func mulF32LitFallback(src, dst []float32, lit float32) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = src[i] * lit
+	}
+}
 
-func divF64LitFallback(src, dst []float64, lit float64) {}
+func divF32LitFallback(src, dst []float32, lit float32) {
+	for i := 0; i < len(src); i++ {
+		dst[i] = src[i] / lit
+	}
+}
 
-// AddF32Lit adds `lit` to elements in `src`, placing the result in `dst`.
-func AddF32Lit(src, dst []float32, lit float32) { addF32LitImpl(src, dst, lit) }
+func addF64VecFallback(src1, src2, dst []float64) {
+	for i := 0; i < len(src1); i++ {
+		dst[i] = src1[i] + src2[i]
+	}
+}
 
-func addF32LitFallback(src, dst []float32, lit float32) {}
+func subF64VecFallback(src1, src2, dst []float64) {
+	for i := 0; i < len(src1); i++ {
+		dst[i] = src1[i] - src2[i]
+	}
+}
 
-// SubF32Lit subtracts `lit` from elements in `src`, placing the result in `dst`.
-func SubF32Lit(src, dst []float32, lit float32) { subF32LitImpl(src, dst, lit) }
+func mulF64VecFallback(src1, src2, dst []float64) {
+	for i := 0; i < len(src1); i++ {
+		dst[i] = src1[i] * src2[i]
+	}
+}
 
-func subF32LitFallback(src, dst []float32, lit float32) {}
+func divF64VecFallback(src1, src2, dst []float64) {
+	for i := 0; i < len(src1); i++ {
+		dst[i] = src1[i] / src2[i]
+	}
+}
 
-// MulF32Lit multiplies `lit` by elements in `src`, placing the result in `dst`.
-func MulF32Lit(src, dst []float32, lit float32) { mulF32LitImpl(src, dst, lit) }
+func addF32VecFallback(src1, src2, dst []float32) {
+	for i := 0; i < len(src1); i++ {
+		dst[i] = src1[i] + src2[i]
+	}
+}
 
-func mulF32LitFallback(src, dst []float32, lit float32) {}
+func subF32VecFallback(src1, src2, dst []float32) {
+	for i := 0; i < len(src1); i++ {
+		dst[i] = src1[i] - src2[i]
+	}
+}
 
-// DivF32Lit divides elements in `src` by `lit` , placing the result in `dst`.
-func DivF32Lit(src, dst []float32, lit float32) { divF32LitImpl(src, dst, lit) }
+func mulF32VecFallback(src1, src2, dst []float32) {
+	for i := 0; i < len(src1); i++ {
+		dst[i] = src1[i] * src2[i]
+	}
+}
 
-func divF32LitFallback(src, dst []float32, lit float32) {}
-
-// AddF64Vec adds elements in `src1` to elements in `src2`, placing the result in `dst`.
-func AddF64Vec(src1, src2, dst []float64) { addF64VecImpl(src1, src2, dst) }
-
-func addF64VecFallback(src1, src2, dst []float64) {}
-
-// SubF64Vec subtracts elements in `src2` from elements in `src1`, placing the result in `dst`.
-func SubF64Vec(src1, src2, dst []float64) { subF64VecImpl(src1, src2, dst) }
-
-func subF64VecFallback(src1, src2, dst []float64) {}
-
-// MulF64Vec multiplies elements in `src1` by elements in `src2`, placing the result in `dst`.
-func MulF64Vec(src1, src2, dst []float64) { mulF64VecImpl(src1, src2, dst) }
-
-func mulF64VecFallback(src1, src2, dst []float64) {}
-
-// DivF64Vec divides elements in `src1` by elements in `src2`, placing the result in `dst`.
-func DivF64Vec(src1, src2, dst []float64) { divF64VecImpl(src1, src2, dst) }
-
-func divF64VecFallback(src1, src2, dst []float64) {}
-
-// AddF32Vec adds elements in `src1` to elements in `src2`, placing the result in `dst`.
-func AddF32Vec(src1, src2, dst []float32) { addF32VecImpl(src1, src2, dst) }
-
-func addF32VecFallback(src1, src2, dst []float32) {}
-
-// SubF32Vec subtracts elements in `src2` from elements in `src1`, placing the result in `dst`.
-func SubF32Vec(src1, src2, dst []float32) { subF32VecImpl(src1, src2, dst) }
-
-func subF32VecFallback(src1, src2, dst []float32) {}
-
-// MulF32Vec multiplies elements in `src1` by elements in `src2`, placing the result in `dst`.
-func MulF32Vec(src1, src2, dst []float32) { mulF32VecImpl(src1, src2, dst) }
-
-func mulF32VecFallback(src1, src2, dst []float32) {}
-
-// DivF32Vec divides elements in `src1` by elements in `src2`, placing the result in `dst`.
-func DivF32Vec(src1, src2, dst []float32) { divF32VecImpl(src1, src2, dst) }
-
-func divF32VecFallback(src1, src2, dst []float32) {}
+func divF32VecFallback(src1, src2, dst []float32) {
+	for i := 0; i < len(src1); i++ {
+		dst[i] = src1[i] / src2[i]
+	}
+}
