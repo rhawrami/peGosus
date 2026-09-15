@@ -7,45 +7,45 @@ import (
 
 func TestAllocStats(t *testing.T) {
 	cycle := int(10)
-	a := AllocStats{cycle: cycle}
+	a := AllocStats{cycle: int64(cycle)}
 
 	// request 100 bytes, from general
 	r1 := 100
 	f1 := reqGeneral
 	a.updateState(r1, f1)
-	if a.avgReq != int(r1) {
-		t.Errorf("req 1 (avgReq): got %d, expected %d", a.avgReq, r1)
+	if a.avgReq.Load() != int64(r1) {
+		t.Errorf("req 1 (avgReq): got %d, expected %d", a.avgReq.Load(), r1)
 	}
-	if a.nLocs[reqGeneral] != 1 {
-		t.Errorf("req 1 (nLocs): got %d, expected %d", a.nLocs[reqGeneral], 1)
+	if a.nLocs[reqGeneral].Load() != 1 {
+		t.Errorf("req 1 (nLocs): got %d, expected %d", a.nLocs[reqGeneral].Load(), 1)
 	}
 
 	// request 200 bytes, from scratch
 	r2 := 200
 	f2 := reqScratch
 	a.updateState(r2, f2)
-	if a.avgReq != int((r2+r1)/2) {
-		t.Errorf("req 2 (avgReq): got %d, expected %d", a.avgReq, int((r2+r1)/2))
+	if a.avgReq.Load() != int64((r2+r1)/2) {
+		t.Errorf("req 2 (avgReq): got %d, expected %d", a.avgReq.Load(), int((r2+r1)/2))
 	}
-	if a.nLocs[reqScratch] != 1 {
-		t.Errorf("req 2 (nLocs): got %d, expected %d", a.nLocs[reqScratch], 1)
+	if a.nLocs[reqScratch].Load() != 1 {
+		t.Errorf("req 2 (nLocs): got %d, expected %d", a.nLocs[reqScratch].Load(), 1)
 	}
 
 	// request 500 bytes, from general
 	r3 := 500
 	f3 := reqGeneral
 	a.updateState(r3, f3)
-	if a.avgReq != int((r2+r1)/2+r3)/2 {
-		t.Errorf("req 3 (avgReq): got %d, expected %d", a.avgReq, int((r3+r2+r1)/3))
+	if a.avgReq.Load() != int64((r2+r1)/2+r3)/2 {
+		t.Errorf("req 3 (avgReq): got %d, expected %d", a.avgReq.Load(), int((r3+r2+r1)/3))
 	}
-	if a.nLocs[reqGeneral] != 2 {
-		t.Errorf("req 3 (nLocs): got %d, expected %d", a.nLocs[reqGeneral], 2)
+	if a.nLocs[reqGeneral].Load() != 2 {
+		t.Errorf("req 3 (nLocs): got %d, expected %d", a.nLocs[reqGeneral].Load(), 2)
 	}
 
 	// reset
 	a.resetState()
-	if a.lastOptimized != 0 || a.nLocs[reqGeneral] != 0 || a.nLocs[reqScratch] != 0 {
-		t.Errorf("called reset: got lastOpt %d, nLocs %v, expected lastOpt 0, nLocs [0 0]", a.lastOptimized, a.nLocs)
+	if a.lastOptimized.Load() != 0 || a.nLocs[reqGeneral].Load() != 0 || a.nLocs[reqScratch].Load() != 0 {
+		t.Errorf("called reset: got lastOpt %d, nLocs [%d %d], expected lastOpt 0, nLocs [0 0]", a.lastOptimized.Load(), a.nLocs[reqGeneral].Load(), a.nLocs[reqScratch].Load())
 	}
 }
 
@@ -83,7 +83,7 @@ func TestMakeAllocatorWithConfig(t *testing.T) {
 		t.Errorf("got dataCache cap %d, expected %d", cap(a.dataCache), cacheN)
 	}
 	// cycle
-	if a.stats.cycle != cycleN {
+	if a.stats.cycle != int64(cycleN) {
 		t.Errorf("got cycle %d, expected %d", a.stats.cycle, cycleN)
 	}
 }
@@ -117,7 +117,7 @@ func TestMakeAllocatorWithProfiles(t *testing.T) {
 		t.Errorf("got dataCache cap %d, expected %d", cap(a.dataCache), dataCacheSizeDefault)
 	}
 	// cycle
-	if a.stats.cycle != optCycleDefault {
+	if a.stats.cycle != int64(optCycleDefault) {
 		t.Errorf("got cycle %d, expected %d", a.stats.cycle, optCycleDefault)
 	}
 }
@@ -358,7 +358,7 @@ func TestAllocatorAllocTemp(t *testing.T) {
 	if a.scratch.slabs[0].used == 0 {
 		t.Error("a1: expected alloc from scratch, but used == 0")
 	}
-	if a.stats.nLocs[reqScratch] == 0 {
+	if a.stats.nLocs[reqScratch].Load() == 0 {
 		t.Error("a1: expected alloc from scratch, but nLocs scratch == 0")
 	}
 
@@ -370,7 +370,7 @@ func TestAllocatorAllocTemp(t *testing.T) {
 	if a.general.slabs[0].used == 0 {
 		t.Error("a2: expected alloc from general, but used == 0")
 	}
-	if a.stats.nLocs[reqScratch] != 2 {
+	if a.stats.nLocs[reqScratch].Load() != 2 {
 		t.Error("a2: expected alloc request from scratch, but nLocs scratch != 2")
 	}
 
@@ -382,7 +382,7 @@ func TestAllocatorAllocTemp(t *testing.T) {
 	if a.scratch.slabs[1].used == 0 {
 		t.Error("a3: expected alloc from scratch, but used == 0")
 	}
-	if a.stats.nLocs[reqScratch] != 3 {
+	if a.stats.nLocs[reqScratch].Load() != 3 {
 		t.Error("a3: expected alloc from scratch, but nLocs scratch != 3 ")
 	}
 
@@ -409,8 +409,8 @@ func TestAllocatorAllocTempWithProfile(t *testing.T) {
 	if a.scratch.slabs[0].used != s*int(len(reqP)) {
 		t.Errorf("got scratch 0 used %d, expected %d", a.scratch.slabs[0].used, s*int(len(reqP)))
 	}
-	if a.stats.nLocs[reqScratch] != int(len(reqP)) {
-		t.Errorf("requested from scratch %d times, got %d, expected %d", len(reqP), a.stats.nLocs[reqScratch], len(reqP))
+	if a.stats.nLocs[reqScratch].Load() != int64(len(reqP)) {
+		t.Errorf("requested from scratch %d times, got %d, expected %d", len(reqP), a.stats.nLocs[reqScratch].Load(), len(reqP))
 	}
 
 	// req 4 segments, first 2 should come from scratch 0, last 2 from scratch 1
@@ -448,8 +448,8 @@ func TestAllocatorAlloc(t *testing.T) {
 	if d.segments[0].slab != a.general.slabs[0] {
 		t.Errorf("alloc 1: got slab %p, expected %p", d.segments[0].slab, a.general.slabs[0])
 	}
-	if a.stats.nLocs[reqGeneral] != 1 {
-		t.Errorf("alloc 1: got reqGeneral %d, expected %d", a.stats.nLocs[reqGeneral], 1)
+	if a.stats.nLocs[reqGeneral].Load() != 1 {
+		t.Errorf("alloc 1: got reqGeneral %d, expected %d", a.stats.nLocs[reqGeneral].Load(), 1)
 	}
 
 	// alloc 2 should come from general 1
@@ -460,8 +460,8 @@ func TestAllocatorAlloc(t *testing.T) {
 	if d.segments[0].slab != a.general.slabs[1] {
 		t.Errorf("alloc 2: got slab %p, expected %p", d.segments[0].slab, a.general.slabs[1])
 	}
-	if a.stats.nLocs[reqGeneral] != 2 {
-		t.Errorf("alloc 2: got reqGeneral %d, expected %d", a.stats.nLocs[reqGeneral], 2)
+	if a.stats.nLocs[reqGeneral].Load() != 2 {
+		t.Errorf("alloc 2: got reqGeneral %d, expected %d", a.stats.nLocs[reqGeneral].Load(), 2)
 	}
 }
 
@@ -486,8 +486,8 @@ func TestAllocatorAllocWithProfile(t *testing.T) {
 	if a.general.slabs[0].used != s*int(len(reqP)) {
 		t.Errorf("got scratch 0 used %d, expected %d", a.general.slabs[0].used, s*int(len(reqP)))
 	}
-	if a.stats.nLocs[reqGeneral] != int(len(reqP)) {
-		t.Errorf("requested from general %d times, got %d, expected %d", len(reqP), a.stats.nLocs[reqGeneral], len(reqP))
+	if a.stats.nLocs[reqGeneral].Load() != int64(len(reqP)) {
+		t.Errorf("requested from general %d times, got %d, expected %d", len(reqP), a.stats.nLocs[reqGeneral].Load(), len(reqP))
 	}
 
 	// req 4 segments, first 2 should come from general 0, last 2 from general 1

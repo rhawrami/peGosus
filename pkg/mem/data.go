@@ -28,7 +28,8 @@ func MakeDataFromSingleSegment(g *Segment) *Data {
 	}
 }
 
-// Data represents a set of segments.
+// Data represents an owner-confined set of segments. Its structure is not safe
+// for concurrent access; ownership must be transferred between workers.
 type Data struct {
 	length   int        // length in bytes
 	capacity int        // max byte capacity
@@ -230,14 +231,12 @@ func (d *Data) SetLength(l, o int) {
 // Merge merges `x` to `d`; if inc is true, all segments
 // in `x` are incremented.
 func (d *Data) Merge(x *Data, inc bool) {
-	a := int64(0)
-	if inc {
-		a = 1
-	}
 	d.length += x.length
 	d.capacity += x.capacity
 	for _, v := range x.segments {
-		v.refCount.Add(a)
+		if inc {
+			v.Inc()
+		}
 		d.segments = append(d.segments, v)
 	}
 }

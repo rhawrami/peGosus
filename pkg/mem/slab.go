@@ -38,6 +38,7 @@ func MakeSlab(l int) *Slab {
 // guaranteed to be at least `alignSize` bytes in length, divisible by `alignSize`
 // bytes in length, and divisible by `alignSize` in its base address.
 type Slab struct {
+	owner    atomic.Pointer[SlabSet]
 	buff     []byte     // underlying buffer
 	base     *byte      // base address
 	on       *byte      // current address on
@@ -49,6 +50,12 @@ type Slab struct {
 }
 
 func (s *Slab) String() string {
+	owner := s.lockOwner()
+	defer unlockSlabOwner(owner)
+	return s.stringLocked()
+}
+
+func (s *Slab) stringLocked() string {
 	share := float64(s.used) / float64(s.capacity) * 100
 	size := (14 + // address
 		6 + // " Slab["
@@ -75,6 +82,26 @@ func (s *Slab) String() string {
 	return string(b)
 }
 
+func (s *Slab) lockOwner() *SlabSet {
+	for {
+		owner := s.owner.Load()
+		if owner == nil {
+			return nil
+		}
+		owner.mu.Lock()
+		if s.owner.Load() == owner {
+			return owner
+		}
+		owner.mu.Unlock()
+	}
+}
+
+func unlockSlabOwner(owner *SlabSet) {
+	if owner != nil {
+		owner.mu.Unlock()
+	}
+}
+
 // takeSeg attempts to place `x` in the segment cache.
 func (s *Slab) takeSeg(x *Segment) {
 	if len(s.segCache) < cap(s.segCache) {
@@ -95,14 +122,28 @@ func (s *Slab) makeSeg() *Segment {
 }
 
 // Cap returns the capacity of the slab.
-func (s *Slab) Cap() int { return s.capacity }
+func (s *Slab) Cap() int {
+	owner := s.lockOwner()
+	defer unlockSlabOwner(owner)
+	return s.capacity
+}
 
 // Used returns the number of bytes used.
-func (s *Slab) Used() int { return s.used }
+func (s *Slab) Used() int {
+	owner := s.lockOwner()
+	defer unlockSlabOwner(owner)
+	return s.used
+}
 
 // Clear gives `s` a fresh slate; should be called knowing that all related
 // segments will now be undefined.
 func (s *Slab) Clear() {
+	owner := s.lockOwner()
+	defer unlockSlabOwner(owner)
+	s.clearLocked()
+}
+
+func (s *Slab) clearLocked() {
 	s.on = s.base
 	s.used = 0
 	s.holes = 0
@@ -122,15 +163,32 @@ func (s *Slab) Clear() {
 
 // Nuke sets all pointers (including the underlying buffer) to nil.
 func (s *Slab) Nuke() {
+	owner := s.lockOwner()
+	defer unlockSlabOwner(owner)
+	s.nukeLocked()
+}
+
+func (s *Slab) nukeLocked() {
 	s.buff = nil
 	s.base = nil
 	s.on = nil
 	s.segments = nil
 }
 
-// Grow grows the underlying buffer to at least `l` bytes; requires copy of
-// old to new buffer; does nothing if `l` is less than the current capacity.
+// Grow grows the underlying buffer to at least `l` bytes; it requires
+// quiescence because it copies the buffer and invalidates existing views. It
+// does nothing if `l` is less than the current capacity.
 func (s *Slab) Grow(l int) {
+	owner := s.lockOwner()
+	defer unlockSlabOwner(owner)
+	oldCapacity := s.capacity
+	s.growLocked(l)
+	if owner != nil {
+		owner.capacity += s.capacity - oldCapacity
+	}
+}
+
+func (s *Slab) growLocked(l int) {
 	if l <= s.capacity {
 		return
 	}
@@ -158,6 +216,8 @@ func (s *Slab) Grow(l int) {
 // FreeSpaceAtEnd returns the byte capacity of the final segment
 // (e.g, remaining space at end of slab, ignoring holes).
 func (s *Slab) FreeSpaceAtEnd() int {
+	owner := s.lockOwner()
+	defer unlockSlabOwner(owner)
 	return s.segments[len(s.segments)-1].capacity
 }
 
@@ -195,6 +255,12 @@ func (s *Slab) update(l, p int) {
 // into one; returns true if at least one coalescence succeeded;
 // only two contiguous segments can be coalesced.
 func (s *Slab) SimpleCoalesce() bool {
+	owner := s.lockOwner()
+	defer unlockSlabOwner(owner)
+	return s.simpleCoalesceLocked()
+}
+
+func (s *Slab) simpleCoalesceLocked() bool {
 	var yay bool
 	if s.holes < 2 {
 		return yay
@@ -224,13 +290,19 @@ func (s *Slab) SimpleCoalesce() bool {
 // FullCoalesce attempts to coalesce all adjacent free segments;
 // returns true if at least one coalesce attempt was successful.
 func (s *Slab) FullCoalesce() bool {
+	owner := s.lockOwner()
+	defer unlockSlabOwner(owner)
+	return s.fullCoalesceLocked()
+}
+
+func (s *Slab) fullCoalesceLocked() bool {
 	if s.holes == 0 {
 		return false
 	}
 	// if N holes == N segments - 1 (e.g, all holes) -> just clear
 	// this is also safe in the case of N segments == 1 (e.g., just edge)
 	if s.holes == len(s.segments)-1 {
-		s.Clear()
+		s.clearLocked()
 		return true
 	}
 
@@ -293,6 +365,12 @@ func (s *Slab) FullCoalesce() bool {
 // (nil, false) if `s` cannot support a new segment with `length` bytes
 // in its current state.
 func (s *Slab) MakeSegment(length int) (*Segment, bool) {
+	owner := s.lockOwner()
+	defer unlockSlabOwner(owner)
+	return s.makeSegmentLocked(length)
+}
+
+func (s *Slab) makeSegmentLocked(length int) (*Segment, bool) {
 	// ensure length divisible by alignment size
 	l := length
 	if l < alignSize {
@@ -355,14 +433,26 @@ func (s *Slab) MakeSegment(length int) (*Segment, bool) {
 // MakeSegmentWithCoalesce calls MakeSegment, but first attempts
 // to coalesce adjacent free segments.
 func (s *Slab) MakeSegmentWithCoalesce(length int) (*Segment, bool) {
+	owner := s.lockOwner()
+	defer unlockSlabOwner(owner)
+	return s.makeSegmentWithCoalesceLocked(length)
+}
+
+func (s *Slab) makeSegmentWithCoalesceLocked(length int) (*Segment, bool) {
 	if s.holes > 1 {
-		_ = s.FullCoalesce()
+		_ = s.fullCoalesceLocked()
 	}
-	return s.MakeSegment(length)
+	return s.makeSegmentLocked(length)
 }
 
 // TakeSegment takes a segment, returning it to `s`.
 func (s *Slab) TakeSegment(g *Segment) {
+	owner := s.lockOwner()
+	defer unlockSlabOwner(owner)
+	s.takeSegmentLocked(g)
+}
+
+func (s *Slab) takeSegmentLocked(g *Segment) {
 	s.used -= g.capacity
 	g.length = 0
 	g.refCount.Store(0)

@@ -117,10 +117,15 @@ func TestDecrement(t *testing.T) {
 	if g1 != s.segments[len(s.segments)-1] {
 		t.Errorf("Decd only seg to 0, seg didnt become edge")
 	}
+	g1.Inc()
+	if g1.RefCount() != 0 {
+		t.Errorf("incremented released segment: got refcount %d, expected 0", g1.RefCount())
+	}
 
 	g2, _ := s.MakeSegment(segSizeReq)
 
-	finalCtr := 1
+	g2.Inc()
+	finalCtr := 2
 	for i := range 100 {
 		if i%7 == 0 {
 			finalCtr -= 1

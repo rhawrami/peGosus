@@ -44,7 +44,21 @@ func (s *Segment) CanSupport(l, t int) bool {
 
 // Put returns `s` to its slab.
 func (s *Segment) Put() {
-	s.slab.TakeSegment(s)
+	for {
+		owner := s.slab.owner.Load()
+		if owner == nil {
+			s.slab.takeSegmentLocked(s)
+			return
+		}
+
+		owner.mu.Lock()
+		if s.slab.owner.Load() == owner {
+			s.slab.takeSegmentLocked(s)
+			owner.mu.Unlock()
+			return
+		}
+		owner.mu.Unlock()
+	}
 }
 
 // IsAligned checks if the base address for `s` is aligned to `x` bytes.
@@ -55,16 +69,49 @@ func (s *Segment) IsAligned(x int) bool {
 // Dec decrements the reference count by 1; if updated count is 0, `s` is
 // returned to its slab; returns false if `s` was returned to its slab.
 func (s *Segment) Dec() bool {
-	if s.refCount.Add(-1) == 0 {
-		s.Put()
+	for {
+		refs := s.refCount.Load()
+		if refs <= 0 {
+			return false
+		}
+		if refs > 1 {
+			if s.refCount.CompareAndSwap(refs, refs-1) {
+				return true
+			}
+			continue
+		}
+
+		owner := s.slab.owner.Load()
+		if owner == nil {
+			if s.refCount.CompareAndSwap(1, 0) {
+				s.slab.takeSegmentLocked(s)
+				return false
+			}
+			continue
+		}
+
+		owner.mu.Lock()
+		if s.slab.owner.Load() != owner || !s.refCount.CompareAndSwap(1, 0) {
+			owner.mu.Unlock()
+			continue
+		}
+		s.slab.takeSegmentLocked(s)
+		owner.mu.Unlock()
 		return false
 	}
-	return true
 }
 
 // Inc increments the reference count by 1.
 func (s *Segment) Inc() {
-	s.refCount.Add(1)
+	for {
+		refs := s.refCount.Load()
+		if refs <= 0 {
+			return
+		}
+		if s.refCount.CompareAndSwap(refs, refs+1) {
+			return
+		}
+	}
 }
 
 // AddLength increases the length by `l`; sets length to the max

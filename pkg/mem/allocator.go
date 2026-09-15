@@ -1,5 +1,10 @@
 package mem
 
+import (
+	"sync"
+	"sync/atomic"
+)
+
 const (
 	dataCacheSizeDefault int = 8
 	optCycleDefault      int = 16
@@ -30,7 +35,7 @@ func MakeAllocatorWithConfig(cfg AllocConfig) *Allocator {
 	cache := make([]*Data, 0, cfg.cacheN)
 
 	return &Allocator{
-		stats:     &AllocStats{cycle: cfg.cycleN},
+		stats:     &AllocStats{cycle: int64(cfg.cycleN)},
 		general:   general,
 		scratch:   scratch,
 		dataCache: cache,
@@ -45,7 +50,7 @@ func MakeAllocatorWithProfiles(generalProfile, scratchProfile []int) *Allocator 
 	cache := make([]*Data, 0, dataCacheSizeDefault)
 
 	return &Allocator{
-		stats:     &AllocStats{cycle: optCycleDefault},
+		stats:     &AllocStats{cycle: int64(optCycleDefault)},
 		general:   general,
 		scratch:   scratch,
 		dataCache: cache,
@@ -62,70 +67,79 @@ const (
 
 // AllocStats tracks allocation statistics; will be used later.
 type AllocStats struct {
-	cycle         int    // max number of allocations before next optimization must be ran
-	lastOptimized int    // number of allocations since last optimization
-	avgReq        int    // rounded rolling average allocation request size
-	nLocs         [2]int // number of allocations per general/scratch (since last optimization)
+	cycle         int64           // max number of allocations before optimization is recommended
+	lastOptimized atomic.Int64    // number of allocations since last optimization
+	avgReq        atomic.Int64    // rounded rolling average allocation request size
+	nLocs         [2]atomic.Int64 // number of allocations per general/scratch (since last optimization)
 }
 
 // updateAvgReq updates the average request size.
 func (a *AllocStats) updateAvgReq(l int) {
-	r := l
-	// if user requests zero bytes, this function interprets it
-	// as start of sequence; will change later.
-	if a.avgReq != 0 {
-		r = (a.avgReq + r) >> 1
+	for {
+		old := a.avgReq.Load()
+		r := int64(l)
+		// if user requests zero bytes, this function interprets it
+		// as start of sequence; will change later.
+		if old != 0 {
+			r = (old + r) >> 1
+		}
+		if a.avgReq.CompareAndSwap(old, r) {
+			return
+		}
 	}
-	a.avgReq = r
 }
 
 // updateNLocs updates the number of allocations for a given `l` location.
 func (a *AllocStats) updateNLocs(l reqLoc) {
-	a.nLocs[l] += 1
+	a.nLocs[l].Add(1)
 }
 
 // resetState resets the state of `a`, except the average request count.
 func (a *AllocStats) resetState() {
-	a.lastOptimized = 0
-	a.nLocs[reqGeneral] = 0
-	a.nLocs[reqScratch] = 0
+	a.lastOptimized.Store(0)
+	a.nLocs[reqGeneral].Store(0)
+	a.nLocs[reqScratch].Store(0)
 }
 
 // updateState updates the average request size, and the number
 // of allocations-per-location; increments lastOptimized.
 func (a *AllocStats) updateState(n int, l reqLoc) {
-	a.lastOptimized += 1
+	a.lastOptimized.Add(1)
 	a.updateAvgReq(n)
 	a.updateNLocs(l)
 }
 
-// Allocator allocates and manages memory; an Allocator comes with a set of
-// general slabs meant to allocate long-use data, and a set of scratch slabs
-// meant to allocate temporary data (e.g., returned before end of a function);
-// the current optimization logic is extremely basic, and will be built out over time :)
+// Allocator allocates and manages memory; allocation and release are safe for
+// concurrent use, while Clear and Optimize require a quiescent allocator.
+// An Allocator has general slabs for long-use data and scratch slabs for
+// temporary data.
 type Allocator struct {
-	stats     *AllocStats // allocation statistics
-	general   *SlabSet    // set for general, non-temporary data
-	scratch   *SlabSet    // set for temporary data
-	dataCache []*Data     // cache of data objects to reuse
+	stats       *AllocStats // allocation statistics
+	general     *SlabSet    // set for general, non-temporary data
+	scratch     *SlabSet    // set for temporary data
+	dataCacheMu sync.Mutex
+	dataCache   []*Data // cache of data objects to reuse
 }
 
-// ClearGeneral clears the general slabs.
+// ClearGeneral clears the general slabs; it requires a quiescent allocator.
 func (a *Allocator) ClearGeneral() {
 	a.general.Clear()
 }
 
-// ClearScratch clears the scratch slabs.
+// ClearScratch clears the scratch slabs; it requires a quiescent allocator.
 func (a *Allocator) ClearScratch() {
 	a.scratch.Clear()
 }
 
 // ClearDataCache clears the data cache.
 func (a *Allocator) ClearDataCache() {
+	a.dataCacheMu.Lock()
+	defer a.dataCacheMu.Unlock()
 	a.dataCache = a.dataCache[:0]
 }
 
-// Clear clears all underlying slabs, and the data cache.
+// Clear clears all underlying slabs and the data cache; it requires a
+// quiescent allocator.
 func (a *Allocator) Clear() {
 	a.ClearGeneral()
 	a.ClearScratch()
@@ -147,6 +161,8 @@ func (a *Allocator) GrowScratch(l int) {
 // TakeData attempts to add `x` to the data cache.
 func (a *Allocator) TakeData(x *Data) {
 	x.Clear()
+	a.dataCacheMu.Lock()
+	defer a.dataCacheMu.Unlock()
 	if len(a.dataCache) != cap(a.dataCache) {
 		a.dataCache = append(a.dataCache, x)
 	}
@@ -156,6 +172,9 @@ func (a *Allocator) TakeData(x *Data) {
 // pull from the cache; if the cache is empty, a data object
 // with segment capacity `hint` is created and returned.
 func (a *Allocator) makeData(hint int) *Data {
+	a.dataCacheMu.Lock()
+	defer a.dataCacheMu.Unlock()
+
 	var x *Data
 	if len(a.dataCache) > 0 {
 		x = a.dataCache[len(a.dataCache)-1]
@@ -166,25 +185,17 @@ func (a *Allocator) makeData(hint int) *Data {
 	return x
 }
 
-// Optimize runs Optimize on the slab sets, also resetting the
-// number of requests per location.
+// Optimize runs Optimize on the slab sets and resets request counts; it
+// requires a quiescent allocator.
 func (a *Allocator) Optimize() {
 	a.stats.resetState()
 	a.general.Optimize()
 	a.scratch.Optimize()
 }
 
-// checkOptimize checks if `a` needs to run a set of optimizations.
-func (a *Allocator) checkOptimize() {
-	if a.stats.lastOptimized > a.stats.cycle {
-		a.Optimize()
-	}
-}
-
 // AllocSegTemp allocates a segment, with the implication that
 // the object is temporary and will be freed shortly.
 func (a *Allocator) AllocSegTemp(l int) *Segment {
-	a.checkOptimize()
 	a.stats.updateState(l, reqScratch)
 	// check scratch, then general, then grow scratch if needed
 	g, ok := a.scratch.MakeSegment(l)
@@ -200,7 +211,6 @@ func (a *Allocator) AllocSegTemp(l int) *Segment {
 
 // AllocSeg allocates a segment.
 func (a *Allocator) AllocSeg(l int) *Segment {
-	a.checkOptimize()
 	a.stats.updateState(l, reqScratch)
 	// check scratch, then general, then grow scratch if needed
 	g, ok := a.scratch.MakeSegment(l)
@@ -217,7 +227,6 @@ func (a *Allocator) AllocSeg(l int) *Segment {
 // AllocDataTemp returns a Data object with a single segment, with the
 // implication that the object is temporary and will be freed shortly.
 func (a *Allocator) AllocDataTemp(l int) *Data {
-	a.checkOptimize()
 	a.stats.updateState(l, reqScratch)
 	// check scratch, then general, then grow scratch if needed
 	g, ok := a.scratch.MakeSegment(l)
@@ -235,7 +244,6 @@ func (a *Allocator) AllocDataTemp(l int) *Data {
 
 // AllocData returns a Data object with a single segment of at least `l` bytes.
 func (a *Allocator) AllocData(l int) *Data {
-	a.checkOptimize()
 	a.stats.updateState(l, reqGeneral)
 
 	g := a.general.ForceSegment(l)
@@ -248,8 +256,6 @@ func (a *Allocator) AllocData(l int) *Data {
 // in other words, the Data object will have len(`s`.p) segments, each with
 // at least `s`.p[i] bytes of capacity.
 func (a *Allocator) AllocDataWithProfile(p []int) *Data {
-	a.checkOptimize()
-
 	d := a.makeData(len(p))
 
 	for i := 0; i < len(p); i++ {
@@ -268,8 +274,6 @@ func (a *Allocator) AllocDataWithProfile(p []int) *Data {
 // at least `s`.p[i] bytes of capacity; implied that the object is
 // temporary and will be freed shortly.
 func (a *Allocator) AllocDataTempWithProfile(p []int) *Data {
-	a.checkOptimize()
-
 	d := a.makeData(len(p))
 
 	for _, l := range p {

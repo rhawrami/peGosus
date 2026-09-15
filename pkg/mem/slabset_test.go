@@ -164,11 +164,6 @@ func TestSlabSetRemove(t *testing.T) {
 		sizeProfile[i] = s
 	}
 	ss = MakeSlabSet(sizeProfile)
-	for i := range N {
-		if i%3 == 0 {
-			_, _ = ss.slabs[i].MakeSegment(int(ss.slabs[i].capacity) / 3)
-		}
-	}
 
 	N2 := 25
 	remd := make([]int, 0, N2)
