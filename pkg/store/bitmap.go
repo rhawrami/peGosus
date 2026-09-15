@@ -1,242 +1,313 @@
 package store
 
 import (
-	"math/bits"
-
 	"github.com/rhawrami/peGosus/pkg/mem"
 	"github.com/rhawrami/peGosus/pkg/op/bitop"
 )
 
-// MakeBitMapWithKnownNiN returns a bitmap with length `l`, a
-// "nulls-in-number" of count `nin`, and data object of `data`.
+// MakeBitMap returns an all-clear bitmap allocated from general storage.
+func MakeBitMap(a *mem.Allocator, l int) *BitMap {
+	return makeBitMap(a, l, false)
+}
+
+// MakeBitMapTemp returns an all-clear bitmap allocated from temporary storage.
+func MakeBitMapTemp(a *mem.Allocator, l int) *BitMap {
+	return makeBitMap(a, l, true)
+}
+
+// MakeBitMapWithKnownNiN returns a bitmap that takes ownership of `data` and
+// trusts the supplied null count. The logical length is limited by the data.
 func MakeBitMapWithKnownNiN(l, nin int, data *mem.Segment) *BitMap {
-	return &BitMap{length: l, nin: nin, data: data}
+	l = cleanBitMapLength(l, data)
+	if nin < 0 {
+		nin = 0
+	} else if nin > l {
+		nin = l
+	}
+	m := &BitMap{length: l, nin: nin, data: data}
+	m.maskTail()
+	return m
 }
 
-// MakeBitMapWithUnknownNiN returns a bitmap with length `l`, and a
-// "nulls-in-number" count based on `data`.
+// MakeBitMapWithUnknownNiN returns a bitmap that takes ownership of `data`
+// and calculates its null count. The logical length is limited by the data.
 func MakeBitMapWithUnknownNiN(l int, data *mem.Segment) *BitMap {
-	bm := &BitMap{length: l, data: data}
-	_ = bm.RecalcNiN()
-	return bm
+	m := &BitMap{length: cleanBitMapLength(l, data), data: data}
+	m.RecalcNiN()
+	return m
 }
 
-// BitMap represents a byte array, with each bit representing
-// a single element.
+// BitMap represents an LSB-first validity bitmap; set bits are valid.
 type BitMap struct {
-	length int          // element length
-	nin    int          // "nulls-in-number"
-	data   *mem.Segment // data
+	length int
+	nin    int
+	data   *mem.Segment
 }
 
-// Len returns the bitmap's element length.
+// Len returns the bitmap's logical element length.
 func (m *BitMap) Len() int { return m.length }
 
-// Put returns the underlying data, making the bitmap undefined.
-func (m *BitMap) Put() {
-	m.length = 0
-	m.nin = 0
-	m.data.Put()
-}
-
-// ViN returns the bitmap's "valids-in-number."
+// ViN returns the number of set bits in the logical range.
 func (m *BitMap) ViN() int { return m.length - m.nin }
 
-// NiN returns the bitmap's "nulls-in-number."
+// NiN returns the number of clear bits in the logical range.
 func (m *BitMap) NiN() int { return m.nin }
 
-// RecalcNiN recalculates the bitmap's "nulls-in-number," updates
-// the count, and returns the new "nulls-in-number."
+// Data returns the borrowed backing segment.
+func (m *BitMap) Data() *mem.Segment { return m.data }
+
+// Bytes returns a borrowed view containing only logical bitmap bytes.
+func (m *BitMap) Bytes() []byte { return m.bytes() }
+
+// IsSet returns whether the bit at `o` is set.
+func (m *BitMap) IsSet(o int) bool {
+	return o >= 0 && o < m.length && (m.bytes()[o>>3]>>(o&7))&1 == 1
+}
+
+// Set sets the bit at `o` and updates the null count.
+func (m *BitMap) Set(o int) {
+	if o < 0 || o >= m.length || m.IsSet(o) {
+		return
+	}
+	m.bytes()[o>>3] |= 1 << (o & 7)
+	m.nin--
+}
+
+// Clear clears the bit at `o` and updates the null count.
+func (m *BitMap) Clear(o int) {
+	if o < 0 || o >= m.length || !m.IsSet(o) {
+		return
+	}
+	m.bytes()[o>>3] &^= 1 << (o & 7)
+	m.nin++
+}
+
+// Retain returns an independently releasable bitmap over the same data.
+// Payload mutation requires sole ownership because null counts are per wrapper.
+func (m *BitMap) Retain() *BitMap {
+	if m == nil || m.data == nil {
+		return nil
+	}
+	m.data.Inc()
+	return &BitMap{length: m.length, nin: m.nin, data: m.data}
+}
+
+// Release releases the bitmap's segment reference and clears the wrapper.
+func (m *BitMap) Release() {
+	if m == nil || m.data == nil {
+		return
+	}
+	m.data.Dec()
+	m.length = 0
+	m.nin = 0
+	m.data = nil
+}
+
+// Put releases the bitmap.
+func (m *BitMap) Put() { m.Release() }
+
+// RecalcNiN recalculates and returns the number of clear logical bits.
 func (m *BitMap) RecalcNiN() int {
-	pc := int(bitop.PopCount(m.data.AsBytes()))
-	nin := m.length - pc
-	m.nin = nin
-	return nin
+	m.maskTail()
+	if m.length == 0 {
+		m.nin = 0
+		return 0
+	}
+	m.nin = m.length - int(bitop.PopCount(m.bytes()))
+	return m.nin
 }
 
-// RangeViN returns the "valids-in-number" over [start, stop).
+// RangeViN returns the number of set bits over the cleaned range [start, stop).
 func (m *BitMap) RangeViN(start, stop int) int {
-	return rangePCFromBM(start, stop, m.data)
+	start, stop = m.cleanRange(start, stop)
+	var count int
+	data := m.bytes()
+	for i := start; i < stop; i++ {
+		count += int((data[i>>3] >> (i & 7)) & 1)
+	}
+	return count
 }
 
-// RangeNiN returns the "nulls-in-number" over [start, stop).
+// RangeNiN returns the number of clear bits over the cleaned range [start, stop).
 func (m *BitMap) RangeNiN(start, stop int) int {
-	return m.length - rangePCFromBM(start, stop, m.data)
+	start, stop = m.cleanRange(start, stop)
+	return stop - start - m.RangeViN(start, stop)
 }
 
-// ClearAll sets all bits to zero, also updating "nulls-in-number."
-// to zero.
+// ClearAll clears every logical bit.
 func (m *BitMap) ClearAll() {
-	m.data.MemSetU8(0x00)
+	data := m.bytes()
+	for i := range data {
+		data[i] = 0
+	}
 	m.nin = m.length
 }
 
-// SetAll sets all bits to one, also updating "nulls-in-number."
-// to be equal to length.
+// SetAll sets every logical bit and clears all tail padding.
 func (m *BitMap) SetAll() {
-	m.data.MemSetU8(0xFF)
-	// set excess bits to zero
-	if rem := m.length & 7; rem != 0 {
-		m.data.AsBytes()[m.data.Len()-1] &= (255 >> rem)
+	data := m.bytes()
+	for i := range data {
+		data[i] = 0xff
 	}
+	m.maskTail()
 	m.nin = 0
 }
 
-// ANDInPlaceViN takes the bitwise AND of `m` and `x`, placing the
-// result in `m`, and returns the new "valids-in-number".
+// ANDInPlaceViN intersects `m` with `x` and returns the set-bit count.
 func (m *BitMap) ANDInPlaceViN(x *BitMap) int {
-	// all nulls in m
-	if m.nin == 0 {
-		return 0
-	}
-	// all nulls in x
-	if x.nin == 0 {
-		m.ClearAll()
-		return 0
-	}
-	// alias dst
-	pc := int(bitop.BitWiseAndWithPopCount(m.data.AsBytes(), x.data.AsBytes(), m.data.AsBytes()))
-	m.nin = m.length - pc
-	return pc
+	return AndViNFromBMs(m, x, m)
 }
 
-// ORInPlaceViN takes the bitwise ORR of `m` and `x`, placing the
-// result in `m`, and returns the new "valids-in-number".
+// ORInPlaceViN unions `m` with `x` and returns the set-bit count.
 func (m *BitMap) ORInPlaceViN(x *BitMap) int {
-	// all nulls in both
-	if (m.nin == m.length) && (x.nin == m.length) {
-		return 0
-	}
-	// alias dst
-	pc := int(bitop.BitWiseOrWithPopCount(m.data.AsBytes(), x.data.AsBytes(), m.data.AsBytes()))
-	m.nin = m.length - pc
-	return pc
+	return OrViNFromBMs(m, x, m)
 }
 
-// XORInPlaceViN takes the bitwise XOR of `m` and `x`, placing the
-// result in `m`, and returns the new "valids-in-number".
+// XORInPlaceViN applies XOR to `m` and `x` and returns the set-bit count.
 func (m *BitMap) XORInPlaceViN(x *BitMap) int {
-	// all nulls in both
-	if (m.nin == 0) && (x.nin == 0) {
-		return 0
-	}
-	// alias dst
-	pc := int(bitop.BitWiseXorWithPopCount(m.data.AsBytes(), x.data.AsBytes(), m.data.AsBytes()))
-	m.nin = m.length - pc
-	return pc
+	return XorViNFromBMs(m, x, m)
 }
 
-// ANDNInPlaceViN takes the bitwise ANDN of `m` and `x`, placing the
-// result in `m`, and returns the new "valids-in-number".
+// ANDNInPlace applies AND NOT to `m` and `x` and returns the set-bit count.
 func (m *BitMap) ANDNInPlace(x *BitMap) int {
-	// all nulls in m
-	if m.nin == 0 {
-		return 0
-	}
-	// all valids in x
-	if x.nin == x.length {
-		m.ClearAll()
-		return 0
-	}
-	// alias dst
-	pc := int(bitop.BitWiseAndNWithPopCount(m.data.AsBytes(), x.data.AsBytes(), m.data.AsBytes()))
-	m.nin = m.length - pc
-	return pc
+	return AndNViNFromBMs(m, x, m)
 }
 
-// AndViNFromBMs performs a bitwise AND on `x` and `y`, places the
-// result in `z`, updates `z`'s state, and returns the "valids-in-number".
+// AndViNFromBMs places `x & y` in `z` and returns its set-bit count.
 func AndViNFromBMs(x, y, z *BitMap) int {
-	// all nulls
-	if (x.nin == x.length) || (y.nin == y.length) {
-		z.ClearAll()
+	if !bitMapShapesEqual(x, y, z) {
+		if z != nil {
+			z.ClearAll()
+		}
 		return 0
 	}
-	pc := bitop.BitWiseAndWithPopCount(
-		x.data.AsBytes(), y.data.AsBytes(), z.data.AsBytes(),
-	)
-	z.nin = z.length - int(pc)
-	return int(pc)
+	if x.length == 0 {
+		z.nin = 0
+		return 0
+	}
+	bitop.BitWiseAndWithPopCount(x.bytes(), y.bytes(), z.bytes())
+	return z.recalcAfterBinary()
 }
 
-// OrViNFromBMs performs a bitwise ORR on `x` and `y`, places the
-// result in `z`, updates `z`'s state, and returns the "valids-in-number".
+// OrViNFromBMs places `x | y` in `z` and returns its set-bit count.
 func OrViNFromBMs(x, y, z *BitMap) int {
-	// all nulls
-	if (x.nin == x.length) && (y.nin == y.length) {
-		z.ClearAll()
+	if !bitMapShapesEqual(x, y, z) {
+		if z != nil {
+			z.ClearAll()
+		}
 		return 0
 	}
-	// all valids
-	if (x.nin == 0) || (y.nin == 0) {
-		z.SetAll()
-		return z.length
+	if x.length == 0 {
+		z.nin = 0
+		return 0
 	}
-	pc := bitop.BitWiseOrWithPopCount(
-		x.data.AsBytes(), y.data.AsBytes(), z.data.AsBytes(),
-	)
-	z.nin = z.length - int(pc)
-	return int(pc)
+	bitop.BitWiseOrWithPopCount(x.bytes(), y.bytes(), z.bytes())
+	return z.recalcAfterBinary()
 }
 
-// XorViNFromBMs performs a bitwise XOR on `x` and `y`, places the
-// result in `z`, updates `z`'s state, and returns the "valids-in-number".
+// XorViNFromBMs places `x ^ y` in `z` and returns its set-bit count.
 func XorViNFromBMs(x, y, z *BitMap) int {
-	// all nulls
-	if (x.nin == x.length) && (y.nin == y.length) {
-		z.ClearAll()
+	if !bitMapShapesEqual(x, y, z) {
+		if z != nil {
+			z.ClearAll()
+		}
 		return 0
 	}
-	// all valids
-	if (x.nin == 0) && (y.nin == 0) {
-		z.ClearAll()
+	if x.length == 0 {
+		z.nin = 0
 		return 0
 	}
-	pc := bitop.BitWiseXorWithPopCount(
-		x.data.AsBytes(), y.data.AsBytes(), z.data.AsBytes(),
-	)
-	z.nin = z.length - int(pc)
-	return int(pc)
+	bitop.BitWiseXorWithPopCount(x.bytes(), y.bytes(), z.bytes())
+	return z.recalcAfterBinary()
 }
 
-// AndNViNFromBMs performs a bitwise AND NOT on `x` and `y`, places the
-// result in `z`, updates `z`'s state, and returns the "valids-in-number".
+// AndNViNFromBMs places `x &^ y` in `z` and returns its set-bit count.
 func AndNViNFromBMs(x, y, z *BitMap) int {
-	// all nulls
-	if (x.nin == x.length) || (y.nin == 0) {
-		z.ClearAll()
+	if !bitMapShapesEqual(x, y, z) {
+		if z != nil {
+			z.ClearAll()
+		}
 		return 0
 	}
-	// all valids
-	if (x.nin == 0) || (y.nin == y.length) {
-		z.SetAll()
-		return z.length
+	if x.length == 0 {
+		z.nin = 0
+		return 0
 	}
-	pc := bitop.BitWiseAndNWithPopCount(
-		x.data.AsBytes(), y.data.AsBytes(), z.data.AsBytes(),
-	)
-	z.nin = z.length - int(pc)
-	return int(pc)
+	bitop.BitWiseAndNWithPopCount(x.bytes(), y.bytes(), z.bytes())
+	return z.recalcAfterBinary()
 }
 
-// rangePCFromBM returns the population count over [start, stop) from
-// a bitmap.
-func rangePCFromBM(start, stop int, bm *mem.Segment) int {
-	a := (start + 7) >> 3
-	b := (stop - 1 + 7) >> 3
-	buff := bm.AsBytes()[a : b+1]
-
-	pc := int(bitop.PopCount(buff))
-
-	// adjust junk data in remaining bits
-	if rem := start & 7; rem != 0 {
-		pc -= bits.OnesCount8(buff[0])
-		pc += bits.OnesCount8(buff[0] << rem)
+func cleanBitMapLength(l int, data *mem.Segment) int {
+	if l < 0 || data == nil {
+		return 0
 	}
-	if rem := (stop - 1) & 7; rem != 0 {
-		pc -= bits.OnesCount8(buff[len(buff)-1])
-		pc += bits.OnesCount8(buff[len(buff)-1] << rem)
+	maxInt := int(^uint(0) >> 1)
+	max := maxInt
+	if data.Len() <= maxInt>>3 {
+		max = data.Len() << 3
 	}
+	if l > max {
+		return max
+	}
+	return l
+}
 
-	return pc
+func makeBitMap(a *mem.Allocator, l int, temporary bool) *BitMap {
+	if l < 0 {
+		l = 0
+	}
+	var data *mem.Segment
+	if temporary {
+		data = a.AllocSegTemp(bitMapByteLength(l))
+	} else {
+		data = a.AllocSeg(bitMapByteLength(l))
+	}
+	m := MakeBitMapWithKnownNiN(l, l, data)
+	m.ClearAll()
+	return m
+}
+
+func bitMapShapesEqual(x, y, z *BitMap) bool {
+	return x != nil && y != nil && z != nil && x.length == y.length && x.length == z.length
+}
+
+func (m *BitMap) bytes() []byte {
+	if m == nil || m.data == nil {
+		return nil
+	}
+	return m.data.AsBytes()[:bitMapByteLength(m.length)]
+}
+
+func bitMapByteLength(length int) int {
+	return (length >> 3) + min(length&7, 1)
+}
+
+func (m *BitMap) maskTail() {
+	if m == nil || m.length == 0 || m.data == nil {
+		return
+	}
+	if rem := m.length & 7; rem != 0 {
+		data := m.bytes()
+		data[len(data)-1] &= byte((1 << rem) - 1)
+	}
+}
+
+func (m *BitMap) recalcAfterBinary() int {
+	m.maskTail()
+	count := int(bitop.PopCount(m.bytes()))
+	m.nin = m.length - count
+	return count
+}
+
+func (m *BitMap) cleanRange(start, stop int) (int, int) {
+	if start < 0 {
+		start = 0
+	}
+	if stop > m.length {
+		stop = m.length
+	}
+	if stop < start || stop < 0 || start > m.length {
+		return 0, 0
+	}
+	return start, stop
 }
