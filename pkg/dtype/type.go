@@ -1,47 +1,43 @@
 package dtype
 
 const (
-	flagIsFixedSize   uint16 = 0
-	flagIsNumericPrim uint16 = 1
-	flagisNumericType uint16 = 2
+	flagIsFixedSize uint16 = iota
+	flagIsNumericPrim
+	flagIsNumericType
+	flagIsTimeType
+	flagIsIntegral
+	flagIsFloating
+	flagHasVarlen
+	flagIsBitPacked
 )
 
-// variable-length element offsets are unsigned 32 bit integers.
-const VariableOffsetByteSize = 4
-
-// TID signifies a data type ID
+// TID identifies a logical data type.
 type TID uint8
 
 const (
-	// null
-	NULLT TID = iota
-	// 32-bit signed integer
+	INVALIDT TID = iota
+	NULLT
 	INT32T
-	// 64-bit signed integer
 	INT64T
-	// 32-bit floating-point
 	FLOAT32T
-	// 64-bit floating-point
 	FLOAT64T
-	// 32-bit signed integer
 	DATET
-	// 64-bit signed integer
 	TIMESTAMPTZT
-	// string ("German string" style)
 	STRT
-	// bitpacked
 	BOOLT
 )
 
-// Type represents a supported data type.
+// Type represents a supported logical data type and its physical slot traits.
 type Type struct {
 	id    TID    // type ID
-	size  int8   // size in bits
-	flags uint16 // flags
+	size  uint16 // primary storage size in bits per value
+	flags uint16 // type traits
 }
 
 func (t Type) String() string {
 	switch t.id {
+	case INVALIDT:
+		return "invalid_t"
 	case NULLT:
 		return "na_t"
 	case INT32T:
@@ -56,6 +52,8 @@ func (t Type) String() string {
 		return "date_t"
 	case TIMESTAMPTZT:
 		return "timestamptz_t"
+	case STRT:
+		return "string_t"
 	case BOOLT:
 		return "bool_t"
 	default:
@@ -63,28 +61,64 @@ func (t Type) String() string {
 	}
 }
 
-// ID returns a type's type ID.
+// ID returns the type ID.
 func (t Type) ID() TID { return t.id }
 
-// Size1 returns a type's size in bits (not valid for non-fixed-size types).
+// Valid returns whether the type has a recognized logical type ID.
+func (t Type) Valid() bool { return t.id > INVALIDT && t.id <= BOOLT }
+
+// Equal returns whether the types have identical canonical metadata.
+func (t Type) Equal(x Type) bool { return t == x }
+
+// Size1 returns the primary storage size in bits per value.
 func (t Type) Size1() int { return int(t.size) }
 
-// IsFixedSize returns true if a type's storage is fixed size.
-func (t Type) IsFixedSize() bool {
-	return (t.flags>>flagIsFixedSize)&1 == 1
+// SlotBits returns the primary storage size in bits per value. Strings use a
+// fixed descriptor slot and separately retain any non-inline payload.
+func (t Type) SlotBits() int { return int(t.size) }
+
+// IsFixedSize returns whether values require no auxiliary variable storage.
+func (t Type) IsFixedSize() bool { return t.hasFlag(flagIsFixedSize) }
+
+// IsNumericPrim returns whether the physical primitive is numeric.
+func (t Type) IsNumericPrim() bool { return t.hasFlag(flagIsNumericPrim) }
+
+// IsNumericType returns whether the logical type is numeric.
+func (t Type) IsNumericType() bool { return t.hasFlag(flagIsNumericType) }
+
+// IsTimeType returns whether the logical type is temporal.
+func (t Type) IsTimeType() bool { return t.hasFlag(flagIsTimeType) }
+
+// IsIntegral returns whether the logical type is an integer.
+func (t Type) IsIntegral() bool { return t.hasFlag(flagIsIntegral) }
+
+// IsFloating returns whether the logical type is floating point.
+func (t Type) IsFloating() bool { return t.hasFlag(flagIsFloating) }
+
+// HasVarlen returns whether values may reference auxiliary variable storage.
+func (t Type) HasVarlen() bool { return t.hasFlag(flagHasVarlen) }
+
+// IsBitPacked returns whether adjacent values are stored one bit apart.
+func (t Type) IsBitPacked() bool { return t.hasFlag(flagIsBitPacked) }
+
+// CanArithmetic returns whether arithmetic operators accept the type.
+func (t Type) CanArithmetic() bool { return t.IsNumericType() }
+
+// CanCompareEquality returns whether equality operators accept the type.
+func (t Type) CanCompareEquality() bool {
+	return t.Valid() && t.id != NULLT
 }
 
-// IsNumericPrim returns true if a type's primitive type is numeric.
-func (t Type) IsNumericPrim() bool {
-	return (t.flags>>flagIsNumericPrim)&1 == 1
+// CanOrder returns whether ordering operators accept the type.
+func (t Type) CanOrder() bool {
+	return t.IsNumericType() || t.IsTimeType() || t.id == STRT
 }
 
-// IsNumericType returns true if a type's type is numeric.
-func (t Type) IsNumericType() bool {
-	return (t.flags>>flagisNumericType)&1 == 1
+// CanHash returns whether hash operators accept the type.
+func (t Type) CanHash() bool {
+	return t.Valid() && t.id != NULLT
 }
 
-// TypesEq returns true if the types are equal to each other.
-func TypesEq(x, y Type) bool {
-	return x.ID() == y.ID()
+func (t Type) hasFlag(flag uint16) bool {
+	return (t.flags>>flag)&1 == 1
 }
