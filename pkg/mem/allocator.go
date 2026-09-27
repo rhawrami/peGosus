@@ -196,6 +196,9 @@ func (a *Allocator) Optimize() {
 // AllocSegTemp allocates a segment, with the implication that
 // the object is temporary and will be freed shortly.
 func (a *Allocator) AllocSegTemp(l int) *Segment {
+	if l < 0 {
+		l = 0
+	}
 	a.stats.updateState(l, reqScratch)
 	// check scratch, then general, then grow scratch if needed
 	g, ok := a.scratch.MakeSegment(l)
@@ -211,22 +214,19 @@ func (a *Allocator) AllocSegTemp(l int) *Segment {
 
 // AllocSeg allocates a segment.
 func (a *Allocator) AllocSeg(l int) *Segment {
-	a.stats.updateState(l, reqScratch)
-	// check scratch, then general, then grow scratch if needed
-	g, ok := a.scratch.MakeSegment(l)
-	if !ok {
-		g, ok = a.general.MakeSegment(l)
+	if l < 0 {
+		l = 0
 	}
-	if !ok {
-		g = a.scratch.GrowAndMakeSegment(l)
-	}
-
-	return g
+	a.stats.updateState(l, reqGeneral)
+	return a.general.ForceSegment(l)
 }
 
 // AllocDataTemp returns a Data object with a single segment, with the
 // implication that the object is temporary and will be freed shortly.
 func (a *Allocator) AllocDataTemp(l int) *Data {
+	if l < 0 {
+		l = 0
+	}
 	a.stats.updateState(l, reqScratch)
 	// check scratch, then general, then grow scratch if needed
 	g, ok := a.scratch.MakeSegment(l)
@@ -244,6 +244,9 @@ func (a *Allocator) AllocDataTemp(l int) *Data {
 
 // AllocData returns a Data object with a single segment of at least `l` bytes.
 func (a *Allocator) AllocData(l int) *Data {
+	if l < 0 {
+		l = 0
+	}
 	a.stats.updateState(l, reqGeneral)
 
 	g := a.general.ForceSegment(l)

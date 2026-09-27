@@ -117,7 +117,10 @@ func (s *Segment) Inc() {
 // AddLength increases the length by `l`; sets length to the max
 // length if `l` + current length > capacity.
 func (s *Segment) AddLength(l int) {
-	if l+s.length > s.capacity {
+	if l <= 0 {
+		return
+	}
+	if l > s.capacity-s.length {
 		s.length = s.capacity
 	} else {
 		s.length += l
@@ -127,6 +130,9 @@ func (s *Segment) AddLength(l int) {
 // SubLength decreases the length by `l`; sets length to 0
 // if `l` > current length.
 func (s *Segment) SubLength(l int) {
+	if l <= 0 {
+		return
+	}
 	if l > s.length {
 		s.length = 0
 	} else {
@@ -138,7 +144,9 @@ func (s *Segment) SubLength(l int) {
 // if `l` > capacity.
 func (s *Segment) SetLength(l int) {
 	length := l
-	if length > s.capacity {
+	if length < 0 {
+		length = 0
+	} else if length > s.capacity {
 		length = s.capacity
 	}
 	s.length = length

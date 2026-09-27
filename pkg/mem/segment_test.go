@@ -42,6 +42,15 @@ func TestChangeLength(t *testing.T) {
 	g1, _ := s.MakeSegment(segSizeReq)
 
 	g1.SetLength(0)
+	g1.SetLength(-1)
+	if g1.Len() != 0 {
+		t.Fatalf("negative set length: got %d, expected 0", g1.Len())
+	}
+	g1.AddLength(-1)
+	g1.SubLength(-1)
+	if g1.Len() != 0 {
+		t.Fatalf("negative length adjustment: got %d, expected 0", g1.Len())
+	}
 	if g1.length != 0 {
 		t.Errorf("set length to 0, but got %d", g1.length)
 	}

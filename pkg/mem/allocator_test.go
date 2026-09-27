@@ -245,6 +245,40 @@ func TestAllocatorGrow(t *testing.T) {
 	}
 }
 
+func TestAllocatorSegmentPlacement(t *testing.T) {
+	a := MakeAllocatorWithProfiles([]int{4_096}, []int{4_096})
+
+	general := a.AllocSeg(128)
+	if owner := general.slab.owner.Load(); owner != a.general {
+		t.Fatal("AllocSeg did not allocate from the general slab set")
+	}
+	if got := a.stats.nLocs[reqGeneral].Load(); got != 1 {
+		t.Fatalf("general request count: got %d, expected 1", got)
+	}
+
+	temporary := a.AllocSegTemp(128)
+	if owner := temporary.slab.owner.Load(); owner != a.scratch {
+		t.Fatal("AllocSegTemp did not allocate from the scratch slab set")
+	}
+	if got := a.stats.nLocs[reqScratch].Load(); got != 1 {
+		t.Fatalf("scratch request count: got %d, expected 1", got)
+	}
+
+	general.Put()
+	temporary.Put()
+}
+
+func TestAllocatorCleansEmptyProfilesAndNegativeRequests(t *testing.T) {
+	a := MakeAllocatorWithProfiles(nil, nil)
+	general := a.AllocSeg(-1)
+	temporary := a.AllocSegTemp(-1)
+	if general == nil || temporary == nil || general.Len() != 0 || temporary.Len() != 0 {
+		t.Fatal("allocator did not clean empty profiles and negative requests")
+	}
+	general.Dec()
+	temporary.Dec()
+}
+
 func TestAllocatorDataCache(t *testing.T) {
 	nGP, nSP := 10, 5
 	gp, sp := make([]int, nGP), make([]int, nSP)

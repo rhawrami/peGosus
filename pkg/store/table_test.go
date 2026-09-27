@@ -16,6 +16,9 @@ func TestTableRetainsBatches(t *testing.T) {
 	if table == nil || table.NColumns() != 1 || table.NBatches() != 1 || !table.TypeAt(0).Equal(dtype.Int64T()) {
 		t.Fatal("unexpected table metadata")
 	}
+	if table.NullableAt(0) {
+		t.Fatal("all-valid table column is unexpectedly nullable")
+	}
 
 	batch.Release()
 	if got := table.BatchAt(0).VectorAt(0).I64s()[1]; got != 20 {
@@ -37,11 +40,32 @@ func TestTableRejectsTypeMismatch(t *testing.T) {
 
 func TestEmptyTableRetainsTypes(t *testing.T) {
 	table := MakeEmptyTable([]dtype.Type{dtype.Int64T(), dtype.StringT()})
-	if table == nil || table.NColumns() != 2 || table.NBatches() != 0 || !table.TypeAt(1).Equal(dtype.StringT()) {
+	if !table.Valid() || table.NColumns() != 2 || table.NBatches() != 0 || !table.TypeAt(1).Equal(dtype.StringT()) {
 		t.Fatal("unexpected empty table metadata")
 	}
 	table.Release()
+	if table.Valid() || table.Retain() != nil {
+		t.Fatal("released table remained valid")
+	}
 	if invalid := MakeEmptyTable([]dtype.Type{dtype.NullT()}); invalid != nil {
 		t.Fatal("accepted NULL as a physical empty-table type")
 	}
+}
+
+func TestTableTracksSourceNullability(t *testing.T) {
+	a := mem.MakeAllocatorWithProfiles([]int{4_096}, []int{4_096})
+	vector := MakeVector(a, 2, dtype.Int32T(), true)
+	vector.Validity().Clear(1)
+	batch := MakeBatch([]Vector{vector})
+	table := MakeTable([]*Batch{batch})
+	batch.Release()
+	if !table.NullableAt(0) {
+		t.Fatal("table did not retain source nullability")
+	}
+	retained := table.Retain()
+	if !retained.NullableAt(0) {
+		t.Fatal("retained table lost source nullability")
+	}
+	retained.Release()
+	table.Release()
 }

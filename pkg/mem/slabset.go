@@ -9,6 +9,9 @@ var nextSlabSetID atomic.Uint64
 
 // MakeSlabSet returns a SlabSet, given a size profile.
 func MakeSlabSet(p []int) *SlabSet {
+	if len(p) == 0 {
+		p = []int{0}
+	}
 	var capacity int
 	slabs := make([]*Slab, len(p))
 
@@ -190,6 +193,9 @@ func (s *SlabSet) MakeSegment(l int) (*Segment, bool) {
 }
 
 func (s *SlabSet) makeSegmentLocked(l int) (*Segment, bool) {
+	if l < 0 {
+		l = 0
+	}
 	g, ok := s.slabs[s.on].makeSegmentLocked(l)
 	if !ok {
 		for _, v := range s.slabs {
