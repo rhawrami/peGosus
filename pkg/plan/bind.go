@@ -47,6 +47,159 @@ func (b *binder) bindLogicalNode(node *logicalNode) (*boundLogicalNode, *PlanErr
 		return nil, err
 	}
 	switch node.operation {
+	case logicalJoin:
+		right, err := b.bindLogicalNode(node.right)
+		if err != nil {
+			return nil, err
+		}
+		for i := range input.schema.Len() {
+			if input.schema.FieldAt(i).Source() == "" {
+				return nil, makePlanError(ErrorInvalidPlan, "left join input requires a source alias")
+			}
+		}
+		for i := range right.schema.Len() {
+			if right.schema.FieldAt(i).Source() == "" {
+				return nil, makePlanError(ErrorInvalidPlan, "right join input requires a source alias")
+			}
+			for j := range input.schema.Len() {
+				if right.schema.FieldAt(i).Source() == input.schema.FieldAt(j).Source() {
+					return nil, makePlanError(ErrorAmbiguousColumn, "join inputs share a source alias")
+				}
+			}
+		}
+		fields := append([]Field(nil), input.schema.fields...)
+		fields = append(fields, right.schema.fields...)
+		for i := range fields {
+			if node.joinKind == JoinFull && i < input.schema.Len() || (node.joinKind == JoinLeft || node.joinKind == JoinFull) && i >= input.schema.Len() {
+				fields[i].nullable = true
+			}
+		}
+		merged := Schema{valid: true, fields: fields}
+		leftKeys, rightKeys := make([]boundExprID, len(node.leftKeys)), make([]boundExprID, len(node.rightKeys))
+		for i := range leftKeys {
+			leftID, err := b.bindExpr(node.leftKeys[i].node, input.schema, dtype.Type{})
+			if err != nil {
+				return nil, err
+			}
+			rightID, err := b.bindExpr(node.rightKeys[i].node, right.schema, dtype.Type{})
+			if err != nil {
+				return nil, err
+			}
+			leftType, rightType := b.expressions[leftID].dType, b.expressions[rightID].dType
+			if !leftType.Equal(rightType) {
+				common, ok := dtype.CommonNumericType(leftType, rightType)
+				if !ok {
+					return nil, makePlanError(ErrorTypeMismatch, "join key types are incompatible")
+				}
+				leftID, err = b.addCast(leftID, common, true)
+				if err != nil {
+					return nil, err
+				}
+				rightID, err = b.addCast(rightID, common, true)
+				if err != nil {
+					return nil, err
+				}
+			}
+			leftKeys[i], rightKeys[i] = leftID, rightID
+		}
+		var residual boundExprID
+		if node.residual.Valid() {
+			residual, err = b.bindExpr(node.residual.node, merged, dtype.BoolT())
+			if err != nil {
+				return nil, err
+			}
+			if b.expressions[residual].dType.ID() != dtype.BOOLT {
+				return nil, makePlanError(ErrorTypeMismatch, "join residual must be BOOL")
+			}
+		}
+		if node.joinKind == JoinSemi || node.joinKind == JoinAnti {
+			merged = input.schema
+		}
+		return &boundLogicalNode{operation: logicalJoin, input: input, right: right, schema: merged, joinKind: node.joinKind, leftKeys: leftKeys, rightKeys: rightKeys, residual: residual}, nil
+	case logicalAlias:
+		fields := make([]Field, input.schema.Len())
+		for i := range fields {
+			fields[i] = input.schema.FieldAt(i)
+			fields[i].id = makeFieldID()
+			fields[i].source = node.alias
+		}
+		return &boundLogicalNode{operation: logicalAlias, input: input, schema: Schema{valid: true, fields: fields}}, nil
+	case logicalSort:
+		order := make([]boundOrderKey, len(node.order))
+		for i, key := range node.order {
+			if !key.input.Valid() {
+				return nil, makePlanError(ErrorInvalidExpression, "sort key is invalid")
+			}
+			id, err := b.bindExpr(key.input.node, input.schema, dtype.Type{})
+			if err != nil {
+				return nil, err
+			}
+			if !b.expressions[id].dType.CanOrder() {
+				return nil, makePlanError(ErrorUnsupportedOperation, "sort key is not orderable")
+			}
+			order[i] = boundOrderKey{input: id, descending: key.descending, nullsFirst: key.nullsFirst}
+		}
+		return &boundLogicalNode{operation: logicalSort, input: input, schema: input.schema, order: order}, nil
+	case logicalDistinct:
+		if input.schema.Len() == 0 {
+			return nil, makePlanError(ErrorUnsupportedOperation, "DISTINCT requires at least one field")
+		}
+		return &boundLogicalNode{operation: logicalDistinct, input: input, schema: input.schema}, nil
+	case logicalAggregate:
+		fields := make([]Field, len(node.groupKeys)+len(node.aggregates))
+		groupKeys := make([]boundExprID, len(node.groupKeys))
+		for i, key := range node.groupKeys {
+			if !key.Valid() {
+				return nil, makePlanError(ErrorInvalidExpression, "group key is invalid")
+			}
+			id, err := b.bindExpr(key.node, input.schema, dtype.Type{})
+			if err != nil {
+				return nil, err
+			}
+			if !b.expressions[id].dType.CanHash() {
+				return nil, makePlanError(ErrorUnsupportedOperation, "group key cannot be hashed")
+			}
+			name := key.alias
+			if name == "" {
+				name = fmt.Sprintf("key_%d", i+1)
+			}
+			fields[i] = Field{id: makeFieldID(), name: name, dType: b.expressions[id].dType, nullable: b.expressions[id].nullable}
+			groupKeys[i] = id
+		}
+		aggregates := make([]boundAggregate, len(node.aggregates))
+		for i, aggregate := range node.aggregates {
+			if aggregate.distinct && aggregate.kind == AggregateCountStar {
+				return nil, makePlanError(ErrorUnsupportedOperation, "COUNT(DISTINCT *) is not supported")
+			}
+			var inputType dtype.Type
+			var inputID boundExprID
+			if aggregate.kind != AggregateCountStar {
+				if !aggregate.input.Valid() {
+					return nil, makePlanError(ErrorInvalidExpression, "aggregate input is invalid")
+				}
+				inputID, err = b.bindExpr(aggregate.input.node, input.schema, dtype.Type{})
+				if err != nil {
+					return nil, err
+				}
+				inputType = b.expressions[inputID].dType
+			}
+			resultType, nullable, ok := aggregateType(aggregate.kind, inputType)
+			if !ok {
+				return nil, makePlanError(ErrorUnsupportedOperation, "unsupported aggregate input type")
+			}
+			name := aggregate.alias
+			if name == "" {
+				name = fmt.Sprintf("aggregate_%d", i+1)
+			}
+			fields[len(groupKeys)+i] = Field{id: makeFieldID(), name: name, dType: resultType, nullable: nullable}
+			aggregates[i] = boundAggregate{kind: aggregate.kind, input: inputID, distinct: aggregate.distinct}
+		}
+		return &boundLogicalNode{operation: logicalAggregate, input: input, schema: Schema{valid: true, fields: fields}, groupKeys: groupKeys, aggregates: aggregates}, nil
+	case logicalLimit:
+		if node.limit < 0 || node.offset < 0 {
+			return nil, makePlanError(ErrorInvalidPlan, "negative limit or offset")
+		}
+		return &boundLogicalNode{operation: logicalLimit, input: input, schema: input.schema, limit: node.limit, offset: node.offset}, nil
 	case logicalFilter:
 		predicate, err := b.bindExpr(node.predicate.node, input.schema, dtype.BoolT())
 		if err != nil {
@@ -76,6 +229,9 @@ func (b *binder) bindLogicalNode(node *logicalNode) (*boundLogicalNode, *PlanErr
 			}
 			projections[i] = id
 			fields[i] = Field{id: makeFieldID(), name: name, dType: bound.dType, nullable: bound.nullable}
+			if expression.alias == "" && bound.kind == exprColumn {
+				fields[i].source = input.schema.FieldAt(input.schema.offsetOf(bound.field)).Source()
+			}
 		}
 		return &boundLogicalNode{
 			operation: logicalProject, input: input, schema: Schema{valid: true, fields: fields}, projections: projections,

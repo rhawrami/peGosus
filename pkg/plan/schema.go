@@ -40,6 +40,7 @@ func MakeSchemaWithNullability(names []string, types []dtype.Type, nullable []bo
 type Field struct {
 	id       FieldID
 	name     string
+	source   string
 	dType    dtype.Type
 	nullable bool
 }
@@ -49,6 +50,9 @@ func (f Field) ID() FieldID { return f.id }
 
 // Name returns the field name.
 func (f Field) Name() string { return f.name }
+
+// Source returns the relation alias used to qualify the field.
+func (f Field) Source() string { return f.source }
 
 // Type returns the field type.
 func (f Field) Type() dtype.Type { return f.dType }
@@ -87,7 +91,7 @@ func (s Schema) find(name string) (int, bool) {
 func (s Schema) resolve(name string) (int, ErrorCode) {
 	offset := -1
 	for i, field := range s.fields {
-		if field.name != name {
+		if field.name != name && (field.source == "" || field.source+"."+field.name != name) {
 			continue
 		}
 		if offset != -1 {

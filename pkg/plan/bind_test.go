@@ -3,6 +3,7 @@ package plan
 import (
 	"errors"
 	"math"
+	"strconv"
 	"testing"
 
 	"github.com/rhawrami/peGosus/pkg/dtype"
@@ -86,6 +87,10 @@ func TestBindDirectLiteralAndInsertedCast(t *testing.T) {
 }
 
 func TestBindUntypedOperandsJointly(t *testing.T) {
+	if strconv.IntSize < 64 {
+		t.Skip("oversized Go int literals require a 64-bit host")
+	}
+	large := int64(3_000_000_000)
 	a := mem.MakeAllocatorWithProfiles([]int{4_096}, []int{4_096})
 	batch := store.MakeBatch([]store.Vector{
 		store.MakeVector(a, 1, dtype.Int32T(), false),
@@ -97,12 +102,12 @@ func TestBindUntypedOperandsJointly(t *testing.T) {
 		[]string{"value", "condition"}, []dtype.Type{dtype.Int32T(), dtype.BoolT()}, []bool{false, false},
 	)
 	logical := MakeScan(table, schema).Project(
-		MakeColumn("value").Add(3_000_000_000).Alias("wide"),
+		MakeColumn("value").Add(int(large)).Alias("wide"),
 		MakeLiteral(nil).Coalesce(1).Alias("coalesced"),
 		MakeLiteral(nil).Coalesce(nil, 1).Alias("variadic"),
 		MakeColumn("value").Coalesce(1, 2).Alias("contextual_variadic"),
 		MakeCase(MakeColumn("condition"), nil, 1).Alias("chosen"),
-		MakeColumn("value").Between(3_000_000_000, MakeF64Scalar(4)).Alias("between"),
+		MakeColumn("value").Between(int(large), MakeF64Scalar(4)).Alias("between"),
 		MakeLiteral(1).IsNull().Alias("literal_is_null"),
 		MakeLiteral(nil).Coalesce(nil).Eq(MakeColumn("value")).Alias("contextual_nulls"),
 	)
@@ -128,8 +133,12 @@ func TestBindUntypedOperandsJointly(t *testing.T) {
 }
 
 func TestBindExplicitCastPreservesSourceType(t *testing.T) {
+	if strconv.IntSize < 64 {
+		t.Skip("oversized Go int literals require a 64-bit host")
+	}
+	large := int64(2_147_483_648)
 	table := store.MakeEmptyTable(nil)
-	logical := MakeScan(table, MakeSchema(nil, nil)).Project(MakeLiteral(2_147_483_648).Cast(dtype.Int32T()))
+	logical := MakeScan(table, MakeSchema(nil, nil)).Project(MakeLiteral(int(large)).Cast(dtype.Int32T()))
 	bound, err := BindLogicalPlan(logical)
 	if err != nil {
 		t.Fatalf("bind explicit narrowing cast: %v", err)
@@ -273,21 +282,28 @@ func TestScalarExceptionalCastReturnsNull(t *testing.T) {
 	}
 }
 
-func TestPhysicalRejectsBoundComputedProjection(t *testing.T) {
+func TestPhysicalExecutesBoundComputedProjection(t *testing.T) {
 	a := mem.MakeAllocatorWithProfiles([]int{4_096}, []int{4_096})
-	batch := store.MakeBatch([]store.Vector{store.MakeVector(a, 1, dtype.Int32T(), false)})
+	vector := store.MakeVector(a, 1, dtype.Int32T(), false)
+	vector.I32s()[0] = 41
+	batch := store.MakeBatch([]store.Vector{vector})
 	table := store.MakeTable([]*store.Batch{batch})
 	batch.Release()
 	logical := MakeScan(table, MakeSchema([]string{"x"}, []dtype.Type{dtype.Int32T()})).Project(MakeColumn("x").Add(1))
 	physical, err := MakePhysicalPlan(logical)
-	if err == nil || physical != nil {
-		t.Fatal("lowered an unimplemented computed projection")
-	}
-	var planErr *PlanError
-	if !errors.As(err, &planErr) || planErr.Code() != ErrorUnsupportedOperation {
-		t.Fatalf("unexpected physical error: %v", err)
-	}
 	table.Release()
+	if err != nil {
+		t.Fatalf("lower computed projection: %v", err)
+	}
+	if !physical.Execute(a, func(output *store.Batch) bool {
+		if got := output.VectorAt(0).I32s()[0]; got != 42 {
+			t.Fatalf("computed value: got %d, expected 42", got)
+		}
+		return true
+	}) {
+		t.Fatal("computed projection execution failed")
+	}
+	physical.Release()
 }
 
 func TestBindRejectsUnderstatedSourceNullability(t *testing.T) {

@@ -23,10 +23,26 @@ type boundExpr struct {
 type boundLogicalNode struct {
 	operation   logicalOp
 	input       *boundLogicalNode
+	right       *boundLogicalNode
 	table       *store.Table
 	schema      Schema
 	predicate   boundExprID
 	projections []boundExprID
+	limit       int64
+	offset      int64
+	aggregates  []boundAggregate
+	groupKeys   []boundExprID
+	order       []boundOrderKey
+	joinKind    JoinKind
+	leftKeys    []boundExprID
+	rightKeys   []boundExprID
+	residual    boundExprID
+}
+
+type boundAggregate struct {
+	kind     AggregateKind
+	input    boundExprID
+	distinct bool
 }
 
 // BoundPlan is an immutable logical plan with resolved fields, exact types,

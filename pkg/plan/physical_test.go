@@ -155,10 +155,18 @@ func TestPhysicalComparisonKernelBoundaries(t *testing.T) {
 				a := mem.MakeAllocatorWithProfiles([]int{4_096}, []int{4_096})
 				vector := store.MakeVector(a, length, typeTest.typeVal, false)
 				typeTest.fill(&vector)
+				literal := materializeScalar(a, length, typeTest.literal, false)
 				mask := store.MakeBitMapTemp(a, length)
-				evaluateComparison(&vector, mask.Bytes(), physicalFilterData{
-					dType: typeTest.typeVal, operation: exprOpGT, literal: typeTest.literal,
-				})
+				switch typeTest.typeVal.ID() {
+				case dtype.INT32T:
+					evaluateI32ComparisonVectors(vector.I32s(), literal.I32s(), mask.Bytes(), exprOpGT)
+				case dtype.INT64T:
+					evaluateI64ComparisonVectors(vector.I64s(), literal.I64s(), mask.Bytes(), exprOpGT)
+				case dtype.FLOAT32T:
+					evaluateF32ComparisonVectors(vector.F32s(), literal.F32s(), mask.Bytes(), exprOpGT)
+				case dtype.FLOAT64T:
+					evaluateF64ComparisonVectors(vector.F64s(), literal.F64s(), mask.Bytes(), exprOpGT)
+				}
 				mask.RecalcNiN()
 				for i := range length {
 					if got, want := mask.IsSet(i), i%5 > 2; got != want {
@@ -166,6 +174,7 @@ func TestPhysicalComparisonKernelBoundaries(t *testing.T) {
 					}
 				}
 				mask.Release()
+				literal.Release()
 				vector.Release()
 			})
 		}
@@ -188,10 +197,9 @@ func TestPhysicalFloatingPointSemantics(t *testing.T) {
 	for _, test := range tests {
 		vector := store.MakeVector(a, 5, dtype.Float64T(), false)
 		copy(vector.F64s(), []float64{math.NaN(), math.Copysign(0, -1), 0, math.Inf(-1), math.Inf(1)})
+		literal := materializeScalar(a, 5, MakeF64Scalar(0), false)
 		mask := store.MakeBitMapTemp(a, 5)
-		evaluateComparison(&vector, mask.Bytes(), physicalFilterData{
-			dType: dtype.Float64T(), operation: test.operation, literal: MakeF64Scalar(0),
-		})
+		evaluateF64ComparisonVectors(vector.F64s(), literal.F64s(), mask.Bytes(), test.operation)
 		mask.RecalcNiN()
 		for i, want := range test.want {
 			if got := mask.IsSet(i); got != want {
@@ -199,6 +207,7 @@ func TestPhysicalFloatingPointSemantics(t *testing.T) {
 			}
 		}
 		mask.Release()
+		literal.Release()
 		vector.Release()
 	}
 }
@@ -224,7 +233,7 @@ func TestPhysicalPlanBindingFailures(t *testing.T) {
 	table.Release()
 }
 
-func TestPhysicalPlanRejectsSemanticNarrowing(t *testing.T) {
+func TestPhysicalPlanExecutesWidenedComparisons(t *testing.T) {
 	a := mem.MakeAllocatorWithProfiles([]int{4_096}, []int{4_096})
 	vector := store.MakeVector(a, 1, dtype.Int32T(), false)
 	vector.I32s()[0] = 1
@@ -234,9 +243,18 @@ func TestPhysicalPlanRejectsSemanticNarrowing(t *testing.T) {
 	scan := MakeScan(table, MakeSchema([]string{"x"}, []dtype.Type{dtype.Int32T()}))
 
 	for _, literal := range []Scalar{MakeI64Scalar(1), MakeF64Scalar(1.5)} {
-		if physical, err := MakePhysicalPlan(scan.Filter(MakeColumn("x").Eq(literal))); err == nil || physical != nil {
-			t.Fatalf("bound narrowing comparison from %s", literal.Type())
+		physical, err := MakePhysicalPlan(scan.Filter(MakeColumn("x").Eq(literal)))
+		if err != nil {
+			t.Fatalf("lower widened comparison from %s: %v", literal.Type(), err)
 		}
+		physical.Execute(a, func(output *store.Batch) bool {
+			want := literal.Type().Equal(dtype.Int64T())
+			if (output.ActiveLen() == 1) != want {
+				t.Fatalf("comparison from %s selected %d rows", literal.Type(), output.ActiveLen())
+			}
+			return true
+		})
+		physical.Release()
 	}
 	table.Release()
 }
