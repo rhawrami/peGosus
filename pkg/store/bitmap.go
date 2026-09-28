@@ -262,6 +262,9 @@ func makeBitMap(a *mem.Allocator, l int, temporary bool) *BitMap {
 	} else {
 		data = a.AllocSeg(bitMapByteLength(l))
 	}
+	if data == nil {
+		return nil
+	}
 	m := MakeBitMapWithKnownNiN(l, l, data)
 	m.ClearAll()
 	return m

@@ -119,6 +119,7 @@ type Allocator struct {
 	scratch     *SlabSet    // set for temporary data
 	dataCacheMu sync.Mutex
 	dataCache   []*Data // cache of data objects to reuse
+	scope       *AllocationScope
 }
 
 // ClearGeneral clears the general slabs; it requires a quiescent allocator.
@@ -199,6 +200,10 @@ func (a *Allocator) AllocSegTemp(l int) *Segment {
 	if l < 0 {
 		l = 0
 	}
+	if a.scope != nil {
+		segment, _ := a.scope.AllocSegTemp(l)
+		return segment
+	}
 	a.stats.updateState(l, reqScratch)
 	// check scratch, then general, then grow scratch if needed
 	g, ok := a.scratch.MakeSegment(l)
@@ -217,6 +222,10 @@ func (a *Allocator) AllocSeg(l int) *Segment {
 	if l < 0 {
 		l = 0
 	}
+	if a.scope != nil {
+		segment, _ := a.scope.AllocSeg(l)
+		return segment
+	}
 	a.stats.updateState(l, reqGeneral)
 	return a.general.ForceSegment(l)
 }
@@ -224,6 +233,18 @@ func (a *Allocator) AllocSeg(l int) *Segment {
 // AllocDataTemp returns a Data object with a single segment, with the
 // implication that the object is temporary and will be freed shortly.
 func (a *Allocator) AllocDataTemp(l int) *Data {
+	if a.scope != nil {
+		if l < 0 {
+			l = 0
+		}
+		segment := a.AllocSegTemp(l)
+		if segment == nil {
+			return nil
+		}
+		d := a.makeData(1)
+		d.AddSegment(segment, false)
+		return d
+	}
 	if l < 0 {
 		l = 0
 	}
@@ -244,6 +265,18 @@ func (a *Allocator) AllocDataTemp(l int) *Data {
 
 // AllocData returns a Data object with a single segment of at least `l` bytes.
 func (a *Allocator) AllocData(l int) *Data {
+	if a.scope != nil {
+		if l < 0 {
+			l = 0
+		}
+		segment := a.AllocSeg(l)
+		if segment == nil {
+			return nil
+		}
+		d := a.makeData(1)
+		d.AddSegment(segment, false)
+		return d
+	}
 	if l < 0 {
 		l = 0
 	}
@@ -259,6 +292,22 @@ func (a *Allocator) AllocData(l int) *Data {
 // in other words, the Data object will have len(`s`.p) segments, each with
 // at least `s`.p[i] bytes of capacity.
 func (a *Allocator) AllocDataWithProfile(p []int) *Data {
+	if a.scope != nil {
+		d := a.makeData(len(p))
+		for _, length := range p {
+			if length < 0 {
+				length = 0
+			}
+			segment := a.AllocSeg(length)
+			if segment == nil {
+				d.DecAll()
+				a.TakeData(d)
+				return nil
+			}
+			d.AddSegment(segment, false)
+		}
+		return d
+	}
 	d := a.makeData(len(p))
 
 	for i := 0; i < len(p); i++ {
@@ -277,6 +326,22 @@ func (a *Allocator) AllocDataWithProfile(p []int) *Data {
 // at least `s`.p[i] bytes of capacity; implied that the object is
 // temporary and will be freed shortly.
 func (a *Allocator) AllocDataTempWithProfile(p []int) *Data {
+	if a.scope != nil {
+		d := a.makeData(len(p))
+		for _, length := range p {
+			if length < 0 {
+				length = 0
+			}
+			segment := a.AllocSegTemp(length)
+			if segment == nil {
+				d.DecAll()
+				a.TakeData(d)
+				return nil
+			}
+			d.AddSegment(segment, false)
+		}
+		return d
+	}
 	d := a.makeData(len(p))
 
 	for _, l := range p {

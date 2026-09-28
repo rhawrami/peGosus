@@ -112,6 +112,9 @@ func (s *RowSelection) MakeBitMapTemp(a *mem.Allocator) *BitMap {
 		return nil
 	}
 	data := a.AllocSegTemp(bitMapByteLength(s.Len()))
+	if data == nil {
+		return nil
+	}
 	m := MakeBitMapWithKnownNiN(s.Len(), s.Len(), data)
 	m.ClearAll()
 	if bitmap, ok := s.AsBitMap(); ok {

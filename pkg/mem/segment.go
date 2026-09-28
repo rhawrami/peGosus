@@ -12,6 +12,16 @@ type Segment struct {
 	capacity int          // maximum byte capacity
 	refCount atomic.Int64 // reference count
 	slab     *Slab        // slab that segment belongs to
+	scope    *AllocationScope
+	reserved int64
+}
+
+func (s *Segment) releaseScope() {
+	if s.scope != nil {
+		s.scope.live.Add(-s.reserved)
+		s.scope = nil
+		s.reserved = 0
+	}
 }
 
 // String summarizes a segment's state.

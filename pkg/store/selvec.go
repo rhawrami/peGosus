@@ -107,6 +107,9 @@ func makeSelVecFromOffsets(a *mem.Allocator, rows int, offsets []uint32, tempora
 	} else {
 		data = a.AllocSeg(count * 4)
 	}
+	if data == nil {
+		return nil
+	}
 	copy(data.AsU32T(), cleaned)
 	return MakeSelVec(rows, count, data)
 }

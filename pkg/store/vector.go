@@ -204,12 +204,19 @@ func makeVector(a *mem.Allocator, length int, t dtype.Type, nullable, temporary 
 	} else {
 		data = a.AllocSeg(byteLength)
 	}
+	if data == nil {
+		return Vector{}
+	}
 	var validity *BitMap
 	if nullable {
 		if temporary {
 			validity = MakeBitMapTemp(a, length)
 		} else {
 			validity = MakeBitMap(a, length)
+		}
+		if validity == nil {
+			data.Dec()
+			return Vector{}
 		}
 		validity.SetAll()
 	}
@@ -248,6 +255,10 @@ func makeStringVector(a *mem.Allocator, values [][]byte, valid []bool, temporary
 			v.backing = a.AllocSegTemp(payloadLength)
 		} else {
 			v.backing = a.AllocSeg(payloadLength)
+		}
+		if v.backing == nil {
+			v.Release()
+			return Vector{}
 		}
 	}
 

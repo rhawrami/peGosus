@@ -453,6 +453,7 @@ func (s *Slab) TakeSegment(g *Segment) {
 }
 
 func (s *Slab) takeSegmentLocked(g *Segment) {
+	g.releaseScope()
 	s.used -= g.capacity
 	g.length = 0
 	g.refCount.Store(0)

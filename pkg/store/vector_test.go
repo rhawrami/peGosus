@@ -155,3 +155,35 @@ func TestStringVectorOwnsLongPayload(t *testing.T) {
 	}
 	retained.Release()
 }
+
+func TestScopedStoreAllocationFailure(t *testing.T) {
+	a := mem.MakeAllocatorWithProfiles([]int{4096}, []int{4096})
+	scope := mem.MakeAllocationScope(a, 8)
+	view := mem.MakeAllocatorWithScope(a, scope)
+	if vector := MakeVector(view, 2, dtype.Int64T(), false); vector.Kind() != VectorInvalid {
+		t.Fatal("allocated a vector above scope budget")
+	}
+	if vector := MakeVector(view, 2, dtype.Int32T(), true); vector.Kind() != VectorInvalid {
+		t.Fatal("retained data after validity allocation failed")
+	}
+	if scope.Live() != 0 {
+		t.Fatalf("failed vector allocation leaked %d bytes", scope.Live())
+	}
+	if bitmap := MakeBitMap(view, 100); bitmap != nil {
+		t.Fatal("allocated oversized bitmap")
+	}
+	if selection := MakeSelVecFromOffsets(view, 3, []uint32{0, 1, 2}); selection != nil {
+		t.Fatal("allocated oversized selection")
+	}
+	if scope.Live() != 0 {
+		t.Fatalf("failed bitmap/selection leaked %d bytes", scope.Live())
+	}
+	stringScope := mem.MakeAllocationScope(a, 16)
+	stringView := mem.MakeAllocatorWithScope(a, stringScope)
+	if vector := MakeStringVector(stringView, [][]byte{[]byte("long string backing value")}, nil); vector.Kind() != VectorInvalid {
+		t.Fatal("accepted string with unaffordable backing")
+	}
+	if stringScope.Live() != 0 {
+		t.Fatalf("failed string backing leaked %d bytes", stringScope.Live())
+	}
+}
