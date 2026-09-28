@@ -19,6 +19,7 @@ type distinctState struct {
 	index   keyIndex
 	keys    keyArena
 	rows    packedRows
+	scratch *mem.Segment
 	charged int64
 	scope   *mem.AllocationScope
 }
@@ -31,6 +32,10 @@ func (s *distinctState) release() {
 	s.index.release()
 	s.keys.release()
 	s.rows.release()
+	if s.scratch != nil {
+		s.scratch.Dec()
+		s.scratch = nil
+	}
 }
 
 func (s *distinctState) add(a *mem.Allocator, batch *store.Batch, row int, budget int64) (int, bool) {
@@ -38,12 +43,11 @@ func (s *distinctState) add(a *mem.Allocator, batch *store.Batch, row int, budge
 	if int64(length) > budget-s.charged {
 		return 0, false
 	}
-	buffer, on := encodeRowKey(a, batch, row, length)
-	if buffer == nil {
+	bytes := s.keyBuffer(a, length, budget)
+	if bytes == nil {
 		return 0, false
 	}
-	defer buffer.Dec()
-	bytes := buffer.AsBytes()
+	on := encodeRowKey(bytes, batch, row)
 	if index, exists := s.index.lookup(bytes[:on], &s.keys); exists {
 		return index, true
 	}
@@ -52,23 +56,79 @@ func (s *distinctState) add(a *mem.Allocator, batch *store.Batch, row int, budge
 	if !s.keys.append(a, bytes[:on], budget-other-priorIndexBytes) || !s.index.put(a, bytes[:on], s.rows.length, budget-other-s.keys.bytes()) || !s.rows.append(a, batch, row, budget-s.keys.bytes()-s.index.bytes()) {
 		return 0, false
 	}
-	s.charged = saturatingAdd(saturatingAdd(s.keys.bytes(), s.index.bytes()), s.rows.bytes())
+	s.charged = saturatingAdd(saturatingAdd(s.keys.bytes(), s.index.bytes()), s.rows.bytes()+int64(s.scratch.Len()))
+	return s.rows.length - 1, true
+}
+
+func (s *distinctState) addEncoded(a *mem.Allocator, encoded []byte, rows *packedRows, row int, budget int64) (int, bool) {
+	if int64(len(encoded)) > budget-s.charged {
+		return 0, false
+	}
+	if index, exists := s.index.lookup(encoded, &s.keys); exists {
+		return index, true
+	}
+	priorKeyBytes, priorIndexBytes := s.keys.bytes(), s.index.bytes()
+	other := s.charged - priorKeyBytes - priorIndexBytes
+	if !s.keys.append(a, encoded, budget-other-priorIndexBytes) || !s.index.put(a, encoded, s.rows.length, budget-other-s.keys.bytes()) {
+		return 0, false
+	}
+	values := make([]Scalar, len(rows.types))
+	for i := range values {
+		values[i] = rows.at(row, i)
+	}
+	if !s.rows.appendScalars(a, values, budget-s.keys.bytes()-s.index.bytes()) {
+		return 0, false
+	}
+	scratchBytes := int64(0)
+	if s.scratch != nil {
+		scratchBytes = int64(s.scratch.Len())
+	}
+	s.charged = saturatingAdd(saturatingAdd(s.keys.bytes(), s.index.bytes()), s.rows.bytes()+scratchBytes)
 	return s.rows.length - 1, true
 }
 
 func (s *distinctState) lookup(a *mem.Allocator, batch *store.Batch, row int) (int, bool) {
-	buffer, on := encodeRowKey(a, batch, row, encodedRowKeyLength(batch, row))
-	if buffer == nil {
+	bytes := s.keyBuffer(a, encodedRowKeyLength(batch, row), int64(^uint64(0)>>1))
+	if bytes == nil {
 		return 0, false
 	}
-	index, ok := s.index.lookup(buffer.AsBytes()[:on], &s.keys)
-	buffer.Dec()
-	return index, ok
+	on := encodeRowKey(bytes, batch, row)
+	return s.index.lookup(bytes[:on], &s.keys)
 }
 
-func encodeRowKey(a *mem.Allocator, batch *store.Batch, row, length int) (*mem.Segment, int) {
-	buffer := a.AllocSegTemp(length)
-	bytes := buffer.AsBytes()[:length]
+func (s *distinctState) keyBuffer(a *mem.Allocator, length int, budget int64) []byte {
+	if length <= 0 {
+		return nil
+	}
+	if s.scratch != nil && s.scratch.Len() >= length {
+		return s.scratch.AsBytes()[:length]
+	}
+	capacity := max(64, length)
+	if s.scratch != nil && s.scratch.Len() <= int(^uint(0)>>1)/2 {
+		capacity = max(capacity, s.scratch.Len()*2)
+	}
+	if int64(capacity) > budget-s.charged {
+		return nil
+	}
+	var next *mem.Segment
+	if s.scope != nil {
+		next, _ = s.scope.AllocSegTemp(capacity)
+	} else {
+		next = a.AllocSegTemp(capacity)
+	}
+	if next == nil {
+		return nil
+	}
+	if s.scratch != nil {
+		s.charged -= int64(s.scratch.Len())
+		s.scratch.Dec()
+	}
+	s.scratch = next
+	s.charged = saturatingAdd(s.charged, int64(capacity))
+	return next.AsBytes()[:length]
+}
+
+func encodeRowKey(bytes []byte, batch *store.Batch, row int) int {
 	on := 0
 	for column := range batch.NVectors() {
 		value := scalarAt(batch.VectorAt(column), row)
@@ -115,7 +175,7 @@ func encodeRowKey(a *mem.Allocator, batch *store.Batch, row, length int) (*mem.S
 			on += copy(bytes[on:], value.text)
 		}
 	}
-	return buffer, on
+	return on
 }
 
 func encodedRowKeyLength(batch *store.Batch, row int) int {
