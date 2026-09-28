@@ -185,6 +185,68 @@ func (g *compactGroupCountState) add(a *mem.Allocator, batch *store.Batch, step 
 	return true
 }
 
+func (g *compactGroupCountState) merge(a *mem.Allocator, src *compactGroupCountState, budget int64) bool {
+	if !g.keyType.Equal(src.keyType) || g.aggregateCount != src.aggregateCount {
+		return false
+	}
+	for row := range src.length {
+		key := src.keys.AsU64T()[row]
+		index := g.nullIndex
+		if row != src.nullIndex {
+			lookup := key
+			switch g.keyType.ID() {
+			case dtype.FLOAT32T:
+				value := math.Float32frombits(uint32(key))
+				if math.IsNaN(float64(value)) {
+					lookup = 0x7fc00000
+				} else if value == 0 {
+					lookup = 0
+				}
+			case dtype.FLOAT64T:
+				value := math.Float64frombits(key)
+				if math.IsNaN(value) {
+					lookup = 0x7ff8000000000000
+				} else if value == 0 {
+					lookup = 0
+				}
+			}
+			var found bool
+			index, found = g.index.get(lookup)
+			if !found {
+				index = -1
+			}
+			if index < 0 {
+				if g.length == g.capacity && !g.grow(a, budget) {
+					return false
+				}
+				index = g.length
+				if !g.index.put(a, lookup, index, budget-int64(g.capacity)*int64(g.aggregateCount+1)*8) {
+					return false
+				}
+			}
+		}
+		if index < 0 {
+			if g.length == g.capacity && !g.grow(a, budget) {
+				return false
+			}
+			index = g.length
+			g.nullIndex = index
+		}
+		if index == g.length {
+			g.length++
+			g.keys.AsU64T()[index] = key
+			clear(g.counts.AsI64T()[index*g.aggregateCount : (index+1)*g.aggregateCount])
+		}
+		for i, count := range src.counts.AsI64T()[row*src.aggregateCount : (row+1)*src.aggregateCount] {
+			g.counts.AsI64T()[index*g.aggregateCount+i] += count
+		}
+		if g.charged() > budget {
+			return false
+		}
+	}
+	return true
+}
+
 func (g *compactGroupCountState) finish(a *mem.Allocator, step physicalStep) *store.Batch {
 	vectors := make([]store.Vector, 1+g.aggregateCount)
 	vectors[0] = store.MakeVector(a, g.length, g.keyType, step.schema.FieldAt(0).Nullable())

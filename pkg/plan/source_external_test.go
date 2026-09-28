@@ -3,12 +3,14 @@ package plan
 import (
 	"context"
 	"crypto/sha256"
+	stdcsv "encoding/csv"
 	"encoding/hex"
 	"encoding/json"
 	"io"
 	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/rhawrami/peGosus/pkg/dtype"
@@ -368,5 +370,76 @@ func TestExternalSelectiveScanReference(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestExternalParallelParquetGroupingAgainstCSV(t *testing.T) {
+	pairedScanData(t)
+	file, err := os.Open(filepath.Join(externalIOData, "paired", "scan.csv"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	reference := stdcsv.NewReader(file)
+	if _, err := reference.Read(); err != nil {
+		t.Fatal(err)
+	}
+	type stats struct{ count, sum, nonNull int64 }
+	want := make(map[string]stats)
+	for {
+		record, err := reference.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		key := record[7]
+		if key == `\N` {
+			key = "<null>"
+		}
+		id, err := strconv.ParseInt(record[0], 10, 32)
+		if err != nil {
+			t.Fatal(err)
+		}
+		current := want[key]
+		current.count++
+		current.sum += id
+		if record[8] != `\N` {
+			current.nonNull++
+		}
+		want[key] = current
+	}
+	names := []string{"id", "seq", "measure", "score", "active", "day", "observed", "category", "message"}
+	nullable := make([]bool, len(names))
+	for i := range nullable {
+		nullable[i] = true
+	}
+	scan := MakeParquetScan(filepath.Join(externalIOData, "paired", "scan_snappy.parquet"), MakeSchemaWithNullability(names, pairedScanTypes(), nullable), parquet.ParquetOptions{})
+	a := mem.MakeAllocatorWithProfiles([]int{1 << 20}, []int{1 << 20})
+	p, err := MakePhysicalPlan(scan.GroupBy([]Expr{MakeColumn("category")}, MakeCountStar(), MakeSum(MakeColumn("id")), MakeCount(MakeColumn("message"))))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Release()
+	for _, workers := range []int{1, 4} {
+		seen := make(map[string]bool)
+		result := p.ExecuteWithOptions(context.Background(), a, ExecutionOptions{MemoryBudget: 64 << 20, Workers: workers}, func(batch *store.Batch) bool {
+			for row := range batch.Len() {
+				key := "<null>"
+				if v := batch.VectorAt(0); v.Validity() == nil || v.Validity().IsSet(row) {
+					key = v.Strings()[row].View()
+				}
+				stats, exists := want[key]
+				if !exists || seen[key] || batch.VectorAt(1).I64s()[row] != stats.count || batch.VectorAt(2).I64s()[row] != stats.sum || batch.VectorAt(3).I64s()[row] != stats.nonNull {
+					t.Errorf("workers=%d wrong Parquet group %q", workers, key)
+				}
+				seen[key] = true
+			}
+			return true
+		})
+		if result.Code() != ExecutionCompleted || len(seen) != len(want) {
+			t.Fatalf("workers=%d grouped scan %v/%v groups %d/%d", workers, result.Code(), result.Err(), len(seen), len(want))
+		}
 	}
 }

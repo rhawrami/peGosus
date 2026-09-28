@@ -59,7 +59,7 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 		switch step.operation {
 		case physicalPushedFilter, physicalFilter, physicalProject:
 		case physicalAggregate:
-			if i != len(p.steps)-1 || len(step.groupKeys) != 0 {
+			if i != len(p.steps)-1 {
 				return ExecutionResult{}, false
 			}
 			for _, aggregate := range step.aggregates {
@@ -74,6 +74,12 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 	}
 	if options.Workers == 0 && p.source.table != nil && aggregateAt < 0 {
 		return ExecutionResult{}, false
+	}
+	if options.Workers == 0 && aggregateAt >= 0 {
+		step := p.steps[aggregateAt]
+		if len(step.groupKeys) != 0 && makeCompactGroupCountState(step) == nil {
+			return ExecutionResult{}, false
+		}
 	}
 	workers := runtime.GOMAXPROCS(0)
 	if options.Workers > 1 {
@@ -162,10 +168,16 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 	}
 	var sinkMu sync.Mutex
 	workerStates := make([][]aggregateValue, workers)
+	workerGroups := make([]*groupState, workers)
 	defer func() {
 		for _, states := range workerStates {
 			for i := range states {
 				states[i].release()
+			}
+		}
+		for _, state := range workerGroups {
+			if state != nil {
+				state.release()
 			}
 		}
 	}()
@@ -181,13 +193,20 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 			var groups []*groupState
 			var joins []*joinState
 			if aggregateAt >= 0 {
-				workerStates[worker] = make([]aggregateValue, len(p.steps[aggregateAt].aggregates))
-				aggregates = make([][]aggregateValue, len(p.steps))
-				aggregates[aggregateAt] = workerStates[worker]
+				step := p.steps[aggregateAt]
+				if len(step.groupKeys) != 0 {
+					workerGroups[worker] = makeGroupState(step, scope)
+					groups = make([]*groupState, len(p.steps))
+					groups[aggregateAt] = workerGroups[worker]
+				} else {
+					workerStates[worker] = make([]aggregateValue, len(step.aggregates))
+					aggregates = make([][]aggregateValue, len(p.steps))
+					aggregates[aggregateAt] = workerStates[worker]
+					groups = make([]*groupState, len(p.steps))
+				}
 				uniques = make([][]*distinctState, len(p.steps))
 				distinct = make([]*distinctState, len(p.steps))
 				sorts = make([]*sortState, len(p.steps))
-				groups = make([]*groupState, len(p.steps))
 				joins = make([]*joinState, len(p.steps))
 			}
 			consume := func(batch *store.Batch) bool {
@@ -283,6 +302,70 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 	}
 	if aggregateAt >= 0 {
 		step := p.steps[aggregateAt]
+		if len(step.groupKeys) != 0 {
+			var remaining int64
+			for _, state := range workerGroups {
+				if state != nil {
+					remaining = saturatingAdd(remaining, state.charged(len(step.aggregates)))
+				}
+			}
+			if remaining > options.MemoryBudget {
+				return ExecutionResult{code: ExecutionResourceExhausted}, true
+			}
+			var merged *groupState
+			for i, state := range workerGroups {
+				if state == nil {
+					continue
+				}
+				charge := state.charged(len(step.aggregates))
+				if merged == nil {
+					merged = state
+					workerGroups[i] = nil
+					remaining -= charge
+					continue
+				}
+				if err := ctx.Err(); err != nil {
+					merged.release()
+					return ExecutionResult{code: ExecutionCancelled, cause: err}, true
+				}
+				if !merged.merge(scoped, state, step, options.MemoryBudget-remaining) {
+					merged.release()
+					return ExecutionResult{code: ExecutionResourceExhausted}, true
+				}
+				remaining -= charge
+				state.release()
+				workerGroups[i] = nil
+			}
+			if merged == nil {
+				return ExecutionResult{code: ExecutionCompleted}, true
+			}
+			defer merged.release()
+			length := len(merged.values)
+			if merged.compact != nil {
+				length = merged.compact.length
+			}
+			if length == 0 {
+				return ExecutionResult{code: ExecutionCompleted}, true
+			}
+			if merged.charged(len(step.aggregates)) > options.MemoryBudget-merged.charged(len(step.aggregates)) {
+				return ExecutionResult{code: ExecutionResourceExhausted}, true
+			}
+			batch := merged.finish(scoped, step)
+			if batch == nil {
+				if scope.Exhausted() {
+					return ExecutionResult{code: ExecutionResourceExhausted}, true
+				}
+				return ExecutionResult{code: ExecutionFailed}, true
+			}
+			defer batch.Release()
+			if err := ctx.Err(); err != nil {
+				return ExecutionResult{code: ExecutionCancelled, cause: err}, true
+			}
+			if !sink(batch) {
+				return ExecutionResult{code: ExecutionStopped}, true
+			}
+			return ExecutionResult{code: ExecutionCompleted}, true
+		}
 		merged := make([]aggregateValue, len(step.aggregates))
 		defer func() {
 			for i := range merged {

@@ -120,13 +120,7 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 					}
 				}
 			} else {
-				groupStates[i] = &groupState{compact: makeCompactGroupCountState(step)}
-				groupStates[i].scope = scope
-				groupStates[i].keys.setScope(scope)
-				if compact := groupStates[i].compact; compact != nil {
-					compact.scope = scope
-					compact.index.scope = scope
-				}
+				groupStates[i] = makeGroupState(step, scope)
 			}
 		} else if step.operation == physicalDistinct {
 			distinctStates[i] = &distinctState{}

@@ -5,6 +5,16 @@ import (
 	"github.com/rhawrami/peGosus/pkg/store"
 )
 
+func makeGroupState(step physicalStep, scope *mem.AllocationScope) *groupState {
+	g := &groupState{compact: makeCompactGroupCountState(step), scope: scope}
+	g.keys.setScope(scope)
+	if g.compact != nil {
+		g.compact.scope = scope
+		g.compact.index.scope = scope
+	}
+	return g
+}
+
 type groupState struct {
 	keys       distinctState
 	values     [][]aggregateValue
@@ -178,6 +188,40 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 			} else {
 				g.stateBytes -= int64(priorLength)
 			}
+		}
+	}
+	return true
+}
+
+func (g *groupState) merge(a *mem.Allocator, src *groupState, step physicalStep, budget int64) bool {
+	if g.compact != nil || src.compact != nil {
+		return g.compact != nil && src.compact != nil && g.compact.merge(a, src.compact, budget)
+	}
+	for row, states := range src.values {
+		key := src.keys.keys.key(row)
+		index, ok := g.keys.addEncoded(a, key, &src.keys.rows, row, budget-g.charged(len(step.aggregates))+g.keys.charged)
+		if !ok {
+			return false
+		}
+		for len(g.values) <= index {
+			g.values = append(g.values, make([]aggregateValue, len(step.aggregates)))
+			g.uniques = append(g.uniques, make([]*distinctState, len(step.aggregates)))
+			g.stateBytes = saturatingAdd(g.stateBytes, int64(len(step.aggregates))*64)
+		}
+		for i, aggregate := range step.aggregates {
+			before := 0
+			if text := g.values[index][i].text; text != nil {
+				before = text.Len()
+			}
+			mergeAggregate(&g.values[index][i], &states[i], aggregate.kind)
+			after := 0
+			if text := g.values[index][i].text; text != nil {
+				after = text.Len()
+			}
+			g.stateBytes += int64(after - before)
+		}
+		if g.charged(len(step.aggregates)) > budget {
+			return false
 		}
 	}
 	return true
