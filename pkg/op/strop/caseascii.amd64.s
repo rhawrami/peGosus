@@ -44,8 +44,8 @@ vecLoop:                                                   \
     VPCMPEQB Y7, Y8, Y7                                    \
     VPAND Y5, Y2, Y5                                       \
     VPAND Y7, Y2, Y7                                       \
-    vDiffOp Y2, Y3, Y3                                     \
-    vDiffOp Y2, Y5, Y4                                     \
+    vDiffOp Y5, Y3, Y3                                     \
+    vDiffOp Y7, Y4, Y4                                     \
     VMOVDQU Y3, (BX)                                       \
     VMOVDQU Y4, 32(BX)                                     \
     ADDQ $64, AX                                           \
@@ -64,7 +64,7 @@ tradLoop:                                                  \
     VPMINUB X3, X1, X6                                     \
     VPCMPEQB X5, X6, X5                                    \
     VPAND X5, X2, X5                                       \
-    vDiffOp X2, X3, X3                                     \
+    vDiffOp X5, X3, X3                                     \
     VMOVD X3, R8                                           \
     MOVB R8, (BX)                                          \
     ADDQ $1, AX                                            \
