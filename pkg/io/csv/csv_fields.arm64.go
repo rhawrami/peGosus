@@ -1,6 +1,6 @@
 //go:build arm64 && goexperiment.simd
 
-package parse
+package csv
 
 import "simd/archsimd"
 

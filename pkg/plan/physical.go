@@ -106,6 +106,9 @@ func lowerBoundNode(plan *BoundPlan, node *boundLogicalNode) (*scanSource, Schem
 			}
 			return &scanSource{csvPath: node.csvPath, csvOptions: node.csvOptions, schema: node.schema}, node.schema, nil, nil
 		}
+		if node.parquetPath != "" {
+			return &scanSource{parquetPath: node.parquetPath, parquetOptions: node.parquetOptions, schema: node.schema}, node.schema, nil, nil
+		}
 		if !node.table.Valid() || node.table.NColumns() != node.schema.Len() {
 			return nil, Schema{}, nil, makePlanError(ErrorInvalidPlan, "bound scan source is no longer valid")
 		}

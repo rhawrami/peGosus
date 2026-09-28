@@ -1,7 +1,8 @@
 package plan
 
 import (
-	"github.com/rhawrami/peGosus/pkg/parse"
+	"github.com/rhawrami/peGosus/pkg/io/csv"
+	"github.com/rhawrami/peGosus/pkg/io/parquet"
 	"github.com/rhawrami/peGosus/pkg/store"
 )
 
@@ -39,25 +40,27 @@ type LogicalPlan struct {
 }
 
 type logicalNode struct {
-	operation   logicalOp
-	input       *logicalNode
-	right       *logicalNode
-	table       *store.Table
-	csvPath     string
-	csvOptions  parse.CSVOptions
-	schema      Schema
-	predicate   Expr
-	projections []Expr
-	limit       int64
-	offset      int64
-	aggregates  []Aggregate
-	groupKeys   []Expr
-	order       []OrderKey
-	alias       string
-	joinKind    JoinKind
-	leftKeys    []Expr
-	rightKeys   []Expr
-	residual    Expr
+	operation      logicalOp
+	input          *logicalNode
+	right          *logicalNode
+	table          *store.Table
+	csvPath        string
+	csvOptions     csv.CSVOptions
+	parquetPath    string
+	parquetOptions parquet.ParquetOptions
+	schema         Schema
+	predicate      Expr
+	projections    []Expr
+	limit          int64
+	offset         int64
+	aggregates     []Aggregate
+	groupKeys      []Expr
+	order          []OrderKey
+	alias          string
+	joinKind       JoinKind
+	leftKeys       []Expr
+	rightKeys      []Expr
+	residual       Expr
 }
 
 // Valid returns whether the logical plan has a root.

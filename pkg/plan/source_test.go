@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/rhawrami/peGosus/pkg/dtype"
+	"github.com/rhawrami/peGosus/pkg/io/csv"
 	"github.com/rhawrami/peGosus/pkg/mem"
-	"github.com/rhawrami/peGosus/pkg/parse"
 	"github.com/rhawrami/peGosus/pkg/store"
 )
 
@@ -22,7 +22,7 @@ func TestCSVScanFilterProjectAcrossBatches(t *testing.T) {
 	}
 	a := mem.MakeAllocatorWithProfiles([]int{16384}, []int{16384})
 	schema := MakeSchemaWithNullability([]string{"name", "amount"}, []dtype.Type{dtype.StringT(), dtype.Int32T()}, []bool{false, true})
-	scan := MakeCSVScan(path, schema, parse.CSVOptions{HasHeader: true, BatchSize: 2})
+	scan := MakeCSVScan(path, schema, csv.CSVOptions{HasHeader: true, BatchSize: 2})
 	plan, err := MakePhysicalPlan(scan.Filter(MakeColumn("amount").Gt(10)).Project(MakeColumn("name"), MakeColumn("amount").Add(1)).Limit(2))
 	if err != nil {
 		t.Fatal(err)
@@ -50,7 +50,7 @@ func TestCSVScanStopsBeforeMalformedTail(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := mem.MakeAllocatorWithProfiles([]int{8192}, []int{8192})
-	scan := MakeCSVScan(path, MakeSchema([]string{"name", "amount"}, []dtype.Type{dtype.StringT(), dtype.Int32T()}), parse.CSVOptions{HasHeader: true, BatchSize: 2})
+	scan := MakeCSVScan(path, MakeSchema([]string{"name", "amount"}, []dtype.Type{dtype.StringT(), dtype.Int32T()}), csv.CSVOptions{HasHeader: true, BatchSize: 2})
 	plan, err := MakePhysicalPlan(scan)
 	if err != nil {
 		t.Fatal(err)
@@ -61,8 +61,8 @@ func TestCSVScanStopsBeforeMalformedTail(t *testing.T) {
 		t.Fatalf("early sink result %v, calls %d", result.Code(), count)
 	}
 	result = plan.ExecuteWithOptions(context.Background(), a, ExecutionOptions{MemoryBudget: 8192}, func(*store.Batch) bool { return true })
-	var csvErr *parse.CSVError
-	if result.Code() != ExecutionSourceFailure || !errors.As(result.Err(), &csvErr) || csvErr.Code() != parse.CSVInvalidValue || csvErr.Record() != 3 || csvErr.Column() != 1 {
+	var csvErr *csv.CSVError
+	if result.Code() != ExecutionSourceFailure || !errors.As(result.Err(), &csvErr) || csvErr.Code() != csv.CSVInvalidValue || csvErr.Record() != 3 || csvErr.Column() != 1 {
 		t.Fatalf("source error %v: %v", result.Code(), result.Err())
 	}
 	limited, err := MakePhysicalPlan(scan.Limit(1))
@@ -88,7 +88,7 @@ func TestCSVScanCancellationAndConcurrentReuse(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := mem.MakeAllocatorWithProfiles([]int{8192}, []int{8192})
-	plan, err := MakePhysicalPlan(MakeCSVScan(path, MakeSchema([]string{"k"}, []dtype.Type{dtype.Int32T()}), parse.CSVOptions{HasHeader: true, BatchSize: 2}).Aggregate(MakeCountStar()))
+	plan, err := MakePhysicalPlan(MakeCSVScan(path, MakeSchema([]string{"k"}, []dtype.Type{dtype.Int32T()}), csv.CSVOptions{HasHeader: true, BatchSize: 2}).Aggregate(MakeCountStar()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestCSVScanEmptyAndMissingSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := mem.MakeAllocatorWithProfiles([]int{4096}, []int{4096})
-	scan := MakeCSVScan(path, MakeSchema([]string{"k"}, []dtype.Type{dtype.Int32T()}), parse.CSVOptions{})
+	scan := MakeCSVScan(path, MakeSchema([]string{"k"}, []dtype.Type{dtype.Int32T()}), csv.CSVOptions{})
 	plan, err := MakePhysicalPlan(scan.Aggregate(MakeCountStar()))
 	if err != nil {
 		t.Fatal(err)
@@ -144,7 +144,7 @@ func TestCSVScanEmptyAndMissingSource(t *testing.T) {
 	if result.Code() != ExecutionCompleted {
 		t.Fatalf("empty CSV: %v", result.Code())
 	}
-	missing, err := MakePhysicalPlan(MakeCSVScan(path+"-missing", scan.root.schema, parse.CSVOptions{}))
+	missing, err := MakePhysicalPlan(MakeCSVScan(path+"-missing", scan.root.schema, csv.CSVOptions{}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestCSVScanProjectionPushdownPreservesFields(t *testing.T) {
 	}
 	a := mem.MakeAllocatorWithProfiles([]int{8192}, []int{8192})
 	schema := MakeSchema([]string{"name", "bad", "score", "unused"}, []dtype.Type{dtype.StringT(), dtype.Int32T(), dtype.Int32T(), dtype.StringT()})
-	query := MakeCSVScan(path, schema, parse.CSVOptions{HasHeader: true, BatchSize: 2}).Filter(MakeColumn("score").Gt(5)).Project(MakeColumn("name"), MakeColumn("score"))
+	query := MakeCSVScan(path, schema, csv.CSVOptions{HasHeader: true, BatchSize: 2}).Filter(MakeColumn("score").Gt(5)).Project(MakeColumn("name"), MakeColumn("score"))
 	bound, err := BindLogicalPlan(query)
 	if err != nil {
 		t.Fatal(err)

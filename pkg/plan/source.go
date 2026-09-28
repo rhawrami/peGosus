@@ -6,33 +6,45 @@ import (
 	"os"
 
 	"github.com/rhawrami/peGosus/pkg/dtype"
+	"github.com/rhawrami/peGosus/pkg/io/csv"
+	"github.com/rhawrami/peGosus/pkg/io/parquet"
 	"github.com/rhawrami/peGosus/pkg/mem"
-	"github.com/rhawrami/peGosus/pkg/parse"
 	"github.com/rhawrami/peGosus/pkg/store"
 )
 
 // MakeCSVScan returns a reusable logical scan over a CSV file. Every execution
 // opens the file independently; the schema supplies names, types and nullability.
-func MakeCSVScan(path string, schema Schema, options parse.CSVOptions) LogicalPlan {
+func MakeCSVScan(path string, schema Schema, options csv.CSVOptions) LogicalPlan {
 	if path == "" || !schema.Valid() || schema.Len() == 0 {
 		return LogicalPlan{}
 	}
 	return LogicalPlan{root: &logicalNode{operation: logicalScan, csvPath: path, csvOptions: options, schema: schema}}
 }
 
+// MakeParquetScan returns a reusable logical scan over a Parquet file.
+// The declared schema is checked against the file on every execution.
+func MakeParquetScan(path string, schema Schema, options parquet.ParquetOptions) LogicalPlan {
+	if path == "" || !schema.Valid() || schema.Len() == 0 {
+		return LogicalPlan{}
+	}
+	return LogicalPlan{root: &logicalNode{operation: logicalScan, parquetPath: path, parquetOptions: options, schema: schema}}
+}
+
 type scanSource struct {
-	table      *store.Table
-	csvPath    string
-	csvOptions parse.CSVOptions
-	schema     Schema
-	projection []int
-	filters    []physicalExprProgram
+	table          *store.Table
+	csvPath        string
+	csvOptions     csv.CSVOptions
+	parquetPath    string
+	parquetOptions parquet.ParquetOptions
+	schema         Schema
+	projection     []int
+	filters        []physicalExprProgram
 }
 
 var errScanFilter = errors.New("scan predicate evaluation failed")
 
 func (s *scanSource) Valid() bool {
-	return s != nil && (s.table.Valid() || s.csvPath != "" && s.schema.Valid())
+	return s != nil && (s.table.Valid() || (s.csvPath != "" || s.parquetPath != "") && s.schema.Valid())
 }
 
 func (s *scanSource) Retain() *scanSource {
@@ -66,13 +78,18 @@ func (s *scanSource) NBatches() int {
 func (s *scanSource) BatchAt(i int) *store.Batch { return s.table.BatchAt(i) }
 
 type scanCursor struct {
-	source *scanSource
-	file   *os.File
-	csv    *parse.CSVReader
-	index  int
+	source  *scanSource
+	file    *os.File
+	csv     *csv.CSVReader
+	parquet *parquet.ParquetReader
+	index   int
 }
 
 func (c *scanCursor) close() {
+	if c.parquet != nil {
+		c.parquet.Close()
+		c.parquet = nil
+	}
 	if c.file != nil {
 		c.file.Close()
 		c.file = nil
@@ -97,6 +114,48 @@ func (c *scanCursor) next(ctx context.Context, a *mem.Allocator) (*store.Batch, 
 		}
 		return batch, false, nil
 	}
+	if c.source.parquetPath != "" {
+		if c.parquet == nil {
+			file, err := os.Open(c.source.parquetPath)
+			if err != nil {
+				return nil, false, err
+			}
+			c.file = file
+			info, err := file.Stat()
+			if err != nil {
+				return nil, false, err
+			}
+			reader, parseErr := parquet.MakeParquetReaderProjected(file, info.Size(), a, c.source.projection, c.source.parquetOptions)
+			if parseErr != nil {
+				return nil, false, parseErr
+			}
+			if reader.ColumnCount() != c.source.schema.Len() {
+				reader.Close()
+				return nil, false, parquet.MakeParquetError(parquet.ParquetInvalid, errors.New("Parquet schema width differs from bound scan schema"))
+			}
+			for i := range c.source.schema.Len() {
+				name, typ, nullable := reader.Column(i)
+				field := c.source.schema.FieldAt(i)
+				if name != field.Name() || !typ.Equal(field.Type()) || nullable && !field.Nullable() {
+					reader.Close()
+					return nil, false, parquet.MakeParquetError(parquet.ParquetInvalid, errors.New("Parquet schema differs from bound scan schema"))
+				}
+			}
+			c.parquet = reader
+		}
+		batch, parseErr := c.parquet.Next(ctx)
+		if parseErr != nil {
+			return nil, false, parseErr
+		}
+		if batch == nil {
+			return nil, true, nil
+		}
+		if !c.applyFilters(a, batch) {
+			batch.Release()
+			return nil, false, errScanFilter
+		}
+		return batch, false, nil
+	}
 	if c.csv == nil {
 		file, err := os.Open(c.source.csvPath)
 		if err != nil {
@@ -109,7 +168,7 @@ func (c *scanCursor) next(ctx context.Context, a *mem.Allocator) (*store.Batch, 
 			field := c.source.schema.FieldAt(i)
 			types[i], nullable[i] = field.Type(), field.Nullable()
 		}
-		reader, parseError := parse.MakeCSVReaderProjected(file, a, types, nullable, c.source.projection, c.source.csvOptions)
+		reader, parseError := csv.MakeCSVReaderProjected(file, a, types, nullable, c.source.projection, c.source.csvOptions)
 		if parseError != nil {
 			return nil, false, parseError
 		}

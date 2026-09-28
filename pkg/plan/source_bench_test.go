@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/rhawrami/peGosus/pkg/dtype"
+	"github.com/rhawrami/peGosus/pkg/io/csv"
 	"github.com/rhawrami/peGosus/pkg/mem"
-	"github.com/rhawrami/peGosus/pkg/parse"
 	"github.com/rhawrami/peGosus/pkg/store"
 )
 
@@ -38,7 +38,7 @@ func BenchmarkCSVScanBatchSize(b *testing.B) {
 	a := mem.MakeAllocatorWithProfiles([]int{1 << 20}, []int{1 << 20})
 	for _, batchSize := range []int{1024, 4096, 8192, 16384} {
 		b.Run(fmt.Sprintf("rows=%d", batchSize), func(b *testing.B) {
-			query := MakeCSVScan(path, schema, parse.CSVOptions{BatchSize: batchSize}).Filter(MakeColumn("score").Gt(49)).Project(MakeColumn("value").Add(1))
+			query := MakeCSVScan(path, schema, csv.CSVOptions{BatchSize: batchSize}).Filter(MakeColumn("score").Gt(49)).Project(MakeColumn("value").Add(1))
 			plan, err := MakePhysicalPlan(query)
 			if err != nil {
 				b.Fatal(err)

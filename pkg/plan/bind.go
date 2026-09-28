@@ -37,6 +37,12 @@ func (b *binder) bindLogicalNode(node *logicalNode) (*boundLogicalNode, *PlanErr
 			}
 			return &boundLogicalNode{operation: logicalScan, csvPath: node.csvPath, csvOptions: node.csvOptions, schema: node.schema}, nil
 		}
+		if node.parquetPath != "" {
+			if node.schema.Len() == 0 {
+				return nil, makePlanError(ErrorInvalidPlan, "Parquet scan requires a typed schema")
+			}
+			return &boundLogicalNode{operation: logicalScan, parquetPath: node.parquetPath, parquetOptions: node.parquetOptions, schema: node.schema}, nil
+		}
 		if !node.table.Valid() || node.table.NColumns() != node.schema.Len() {
 			return nil, makePlanError(ErrorInvalidPlan, "scan source and schema do not match")
 		}

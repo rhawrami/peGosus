@@ -6,8 +6,9 @@ import (
 	"math"
 
 	"github.com/rhawrami/peGosus/pkg/dtype"
+	"github.com/rhawrami/peGosus/pkg/io/csv"
+	"github.com/rhawrami/peGosus/pkg/io/parquet"
 	"github.com/rhawrami/peGosus/pkg/mem"
-	"github.com/rhawrami/peGosus/pkg/parse"
 	"github.com/rhawrami/peGosus/pkg/store"
 )
 
@@ -188,12 +189,21 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 				}
 				return ExecutionResult{code: ExecutionFailed, cause: err}
 			}
-			var csvError *parse.CSVError
+			var csvError *csv.CSVError
+			var parquetError *parquet.ParquetError
+			if errors.As(err, &parquetError) {
+				switch parquetError.Code() {
+				case parquet.ParquetResourceExhausted:
+					return ExecutionResult{code: ExecutionResourceExhausted, cause: err}
+				case parquet.ParquetCancelled:
+					return ExecutionResult{code: ExecutionCancelled, cause: err}
+				}
+			}
 			if errors.As(err, &csvError) {
 				switch csvError.Code() {
-				case parse.CSVResourceExhausted:
+				case csv.CSVResourceExhausted:
 					return ExecutionResult{code: ExecutionResourceExhausted, cause: err}
-				case parse.CSVCancelled:
+				case csv.CSVCancelled:
 					return ExecutionResult{code: ExecutionCancelled, cause: err}
 				}
 			}

@@ -2,7 +2,8 @@ package plan
 
 import (
 	"github.com/rhawrami/peGosus/pkg/dtype"
-	"github.com/rhawrami/peGosus/pkg/parse"
+	"github.com/rhawrami/peGosus/pkg/io/csv"
+	"github.com/rhawrami/peGosus/pkg/io/parquet"
 	"github.com/rhawrami/peGosus/pkg/store"
 )
 
@@ -22,24 +23,26 @@ type boundExpr struct {
 }
 
 type boundLogicalNode struct {
-	operation   logicalOp
-	input       *boundLogicalNode
-	right       *boundLogicalNode
-	table       *store.Table
-	csvPath     string
-	csvOptions  parse.CSVOptions
-	schema      Schema
-	predicate   boundExprID
-	projections []boundExprID
-	limit       int64
-	offset      int64
-	aggregates  []boundAggregate
-	groupKeys   []boundExprID
-	order       []boundOrderKey
-	joinKind    JoinKind
-	leftKeys    []boundExprID
-	rightKeys   []boundExprID
-	residual    boundExprID
+	operation      logicalOp
+	input          *boundLogicalNode
+	right          *boundLogicalNode
+	table          *store.Table
+	csvPath        string
+	csvOptions     csv.CSVOptions
+	parquetPath    string
+	parquetOptions parquet.ParquetOptions
+	schema         Schema
+	predicate      boundExprID
+	projections    []boundExprID
+	limit          int64
+	offset         int64
+	aggregates     []boundAggregate
+	groupKeys      []boundExprID
+	order          []boundOrderKey
+	joinKind       JoinKind
+	leftKeys       []boundExprID
+	rightKeys      []boundExprID
+	residual       boundExprID
 }
 
 type boundAggregate struct {

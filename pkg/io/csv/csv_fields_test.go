@@ -1,4 +1,4 @@
-package parse
+package csv
 
 import (
 	"math/rand/v2"
