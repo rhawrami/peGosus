@@ -52,7 +52,7 @@ jobs:
       - name: Run experimental parser SIMD tests
         env:
           GOEXPERIMENT: simd
-        run: go test -count=1 ./pkg/parse/...
+        run: go test -count=1 ./pkg/io/...
 
   generic-build:
     name: Compile linux/${{ matrix.goarch }}
