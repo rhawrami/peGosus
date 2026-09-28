@@ -393,6 +393,7 @@ type ParquetReader struct {
 	columns   []parquetColumn
 	groups    []parquetGroup
 	selected  []int
+	groupBase int
 	group     int
 	row       int64
 	cursors   []parquetCursor
@@ -456,7 +457,7 @@ func (r *ParquetReader) Next(ctx context.Context) (*store.Batch, *ParquetError) 
 	if r.cursors == nil {
 		r.cursors = make([]parquetCursor, len(r.selected))
 		for i, col := range r.selected {
-			r.cursors[i] = parquetCursor{chunk: r.groups[r.group].chunks[col], offset: r.groups[r.group].chunks[col].start, column: r.columns[col], input: r.input, a: r.allocator, options: r.options, group: r.group, columnIndex: col}
+			r.cursors[i] = parquetCursor{chunk: r.groups[r.group].chunks[col], offset: r.groups[r.group].chunks[col].start, column: r.columns[col], input: r.input, a: r.allocator, options: r.options, group: r.groupBase + r.group, columnIndex: col}
 		}
 	}
 	n := int(min(int64(r.options.BatchSize), r.groups[r.group].rows-r.row))

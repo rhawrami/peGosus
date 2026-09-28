@@ -65,6 +65,40 @@ func TestParquetMultipleRowGroups(t *testing.T) {
 	}
 }
 
+func TestParquetRowGroupReaderOwnership(t *testing.T) {
+	data, err := base64.StdEncoding.DecodeString(duckDBGroupsFixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := mem.MakeAllocatorWithProfiles([]int{16384}, []int{16384})
+	r, failure := MakeParquetReader(bytes.NewReader(data), int64(len(data)), a, ParquetOptions{})
+	if failure != nil {
+		t.Fatal(failure)
+	}
+	if r.RowGroupCount() != 2 || r.RowGroupRows(0) != 2048 || r.RowGroupRows(1) != 2 {
+		t.Fatal("unexpected row-group partition")
+	}
+	partition := r.MakeRowGroupReader(1, a)
+	if partition == nil {
+		t.Fatal("could not make independent row-group reader")
+	}
+	r.Close()
+	batch, failure := partition.Next(context.Background())
+	if failure != nil {
+		t.Fatal(failure)
+	}
+	if batch == nil || batch.Len() != 2 || batch.VectorAt(0).Strings()[0].View() != "abcdefabcdefabcdef" {
+		t.Fatal("partition lost borrowed metadata or payload")
+	}
+	retained := batch.Retain()
+	batch.Release()
+	partition.Close()
+	if retained.VectorAt(0).Strings()[0].View() != "abcdefabcdefabcdef" {
+		t.Fatal("retained partition payload did not outlive cursor")
+	}
+	retained.Release()
+}
+
 func BenchmarkParquetMultipleRowGroups(b *testing.B) {
 	fixture, err := os.ReadFile("testdata/duckdb-groups.b64")
 	if err != nil {
