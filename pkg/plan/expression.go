@@ -41,6 +41,18 @@ const (
 	exprOpClip
 	exprOpCoalesce
 	exprOpCase
+	exprOpUpper
+	exprOpLower
+	exprOpConcat
+	exprOpReplace
+	exprOpSlice
+	exprOpLike
+	exprOpContains
+	exprOpExtractYear
+	exprOpExtractMonth
+	exprOpExtractDay
+	exprOpTruncateYear
+	exprOpTruncateMonth
 )
 
 // MakeColumn returns an unresolved column expression.
@@ -178,6 +190,42 @@ func (e Expr) NotBetween(lower, upper any) Expr { return e.ternary(exprOpNotBetw
 
 // Clip returns a numeric clipping expression.
 func (e Expr) Clip(lower, upper any) Expr { return e.ternary(exprOpClip, lower, upper) }
+
+// Upper returns an ASCII-uppercase string expression.
+func (e Expr) Upper() Expr { return e.unary(exprOpUpper) }
+
+// Lower returns an ASCII-lowercase string expression.
+func (e Expr) Lower() Expr { return e.unary(exprOpLower) }
+
+// Concat appends another string to this expression.
+func (e Expr) Concat(value any) Expr { return e.binary(exprOpConcat, value) }
+
+// Like matches a bytewise SQL LIKE pattern.
+func (e Expr) Like(pattern any) Expr { return e.binary(exprOpLike, pattern) }
+
+// Contains reports whether the string contains a byte sequence.
+func (e Expr) Contains(value any) Expr { return e.binary(exprOpContains, value) }
+
+// Replace substitutes all non-overlapping occurrences of old with replacement.
+func (e Expr) Replace(old, replacement any) Expr { return e.ternary(exprOpReplace, old, replacement) }
+
+// Slice returns bytes from start (inclusive) to stop (exclusive).
+func (e Expr) Slice(start, stop any) Expr { return e.ternary(exprOpSlice, start, stop) }
+
+// ExtractYear returns the calendar year of a DATE.
+func (e Expr) ExtractYear() Expr { return e.unary(exprOpExtractYear) }
+
+// ExtractMonth returns the calendar month of a DATE.
+func (e Expr) ExtractMonth() Expr { return e.unary(exprOpExtractMonth) }
+
+// ExtractDay returns the calendar day of a DATE.
+func (e Expr) ExtractDay() Expr { return e.unary(exprOpExtractDay) }
+
+// TruncateYear returns January 1 of a DATE's year.
+func (e Expr) TruncateYear() Expr { return e.unary(exprOpTruncateYear) }
+
+// TruncateMonth returns the first day of a DATE's month.
+func (e Expr) TruncateMonth() Expr { return e.unary(exprOpTruncateMonth) }
 
 func (e Expr) unary(operation exprOp) Expr {
 	if !e.Valid() {

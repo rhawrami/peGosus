@@ -285,8 +285,15 @@ func (b *binder) bindExpr(node *exprNode, schema Schema, expected dtype.Type) (b
 
 func (b *binder) bindUnary(node *exprNode, schema Schema) (boundExprID, *PlanError) {
 	expected := dtype.Type{}
-	if (node.operation == exprOpIsNull || node.operation == exprOpIsNotNull) && needsTypeContext(node.children[0]) {
-		expected = dtype.BoolT()
+	if needsTypeContext(node.children[0]) {
+		switch node.operation {
+		case exprOpIsNull, exprOpIsNotNull:
+			expected = dtype.BoolT()
+		case exprOpUpper, exprOpLower:
+			expected = dtype.StringT()
+		case exprOpExtractYear, exprOpExtractMonth, exprOpExtractDay, exprOpTruncateYear, exprOpTruncateMonth:
+			expected = dtype.DateT()
+		}
 	}
 	child, err := b.bindExpr(node.children[0], schema, expected)
 	if err != nil {
@@ -317,6 +324,20 @@ func (b *binder) bindUnary(node *exprNode, schema Schema) (boundExprID, *PlanErr
 		result.dType, result.nullable = dtype.BoolT(), input.nullable
 	case exprOpIsNull, exprOpIsNotNull:
 		result.dType, result.nullable = dtype.BoolT(), false
+	case exprOpUpper, exprOpLower:
+		if input.dType.ID() != dtype.STRT {
+			return 0, makePlanError(ErrorTypeMismatch, "string mapping requires STRING")
+		}
+		result.dType, result.nullable = dtype.StringT(), input.nullable
+	case exprOpExtractYear, exprOpExtractMonth, exprOpExtractDay, exprOpTruncateYear, exprOpTruncateMonth:
+		if input.dType.ID() != dtype.DATET {
+			return 0, makePlanError(ErrorTypeMismatch, "date mapping requires DATE")
+		}
+		result.dType, result.nullable = dtype.Int32T(), input.nullable
+		if node.operation == exprOpTruncateYear || node.operation == exprOpTruncateMonth {
+			result.dType = dtype.DateT()
+			result.nullable = true
+		}
 	default:
 		return 0, makePlanError(ErrorInvalidExpression, "unsupported unary expression")
 	}
@@ -327,13 +348,27 @@ func (b *binder) bindBinary(node *exprNode, schema Schema, expected dtype.Type) 
 	if node.operation == exprOpCoalesce {
 		return b.bindCoalesce(node, schema, expected)
 	}
-	operands, err := b.bindOperands(node.children[:2], schema, dtype.Type{})
+	operandType := dtype.Type{}
+	if node.operation == exprOpConcat || node.operation == exprOpLike || node.operation == exprOpContains {
+		operandType = dtype.StringT()
+	}
+	operands, err := b.bindOperands(node.children[:2], schema, operandType)
 	if err != nil {
 		return 0, err
 	}
 	left, right := operands[0], operands[1]
 	lhs, rhs := b.expressions[left], b.expressions[right]
 	result := boundExpr{kind: exprBinary, operation: node.operation, children: [3]boundExprID{left, right}, childCount: 2}
+	if node.operation == exprOpConcat || node.operation == exprOpLike || node.operation == exprOpContains {
+		if lhs.dType.ID() != dtype.STRT || rhs.dType.ID() != dtype.STRT {
+			return 0, makePlanError(ErrorTypeMismatch, "string expression requires STRING operands")
+		}
+		result.dType, result.nullable = dtype.BoolT(), lhs.nullable || rhs.nullable
+		if node.operation == exprOpConcat {
+			result.dType = dtype.StringT()
+		}
+		return b.add(result), nil
+	}
 
 	if isArithmetic(node.operation) {
 		if node.operation == exprOpSub && lhs.dType.ID() == dtype.DATET && rhs.dType.ID() == dtype.DATET {
@@ -430,6 +465,37 @@ func (b *binder) bindCoalesce(node *exprNode, schema Schema, expected dtype.Type
 }
 
 func (b *binder) bindTernary(node *exprNode, schema Schema, expected dtype.Type) (boundExprID, *PlanError) {
+	if node.operation == exprOpReplace || node.operation == exprOpSlice {
+		first, err := b.bindExpr(node.children[0], schema, dtype.StringT())
+		if err != nil {
+			return 0, err
+		}
+		if b.expressions[first].dType.ID() != dtype.STRT {
+			return 0, makePlanError(ErrorTypeMismatch, "string expression requires a STRING input")
+		}
+		target := dtype.StringT()
+		if node.operation == exprOpSlice {
+			target = dtype.Int64T()
+		}
+		operands, err := b.bindOperands(node.children[1:3], schema, target)
+		if err != nil {
+			return 0, err
+		}
+		for i, id := range operands {
+			if node.operation == exprOpSlice {
+				if !b.expressions[id].dType.IsIntegral() {
+					return 0, makePlanError(ErrorTypeMismatch, "Slice bounds must be integers")
+				}
+				operands[i], err = b.addCast(id, dtype.Int64T(), true)
+				if err != nil {
+					return 0, err
+				}
+			} else if b.expressions[id].dType.ID() != dtype.STRT {
+				return 0, makePlanError(ErrorTypeMismatch, "Replace arguments must be STRING")
+			}
+		}
+		return b.add(boundExpr{kind: exprTernary, operation: node.operation, dType: dtype.StringT(), nullable: b.expressions[first].nullable || b.expressions[operands[0]].nullable || b.expressions[operands[1]].nullable, children: [3]boundExprID{first, operands[0], operands[1]}, childCount: 3}), nil
+	}
 	if node.operation == exprOpCase {
 		condition, err := b.bindExpr(node.children[0], schema, dtype.BoolT())
 		if err != nil {

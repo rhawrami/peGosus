@@ -13,7 +13,3 @@ func ToUpperASCII(src []byte, dst []byte) {
 func ToLowerASCII(src []byte, dst []byte) {
 	toLowerASCIIImpl(src, dst)
 }
-
-func toUpperASCIIFallback(src []byte, dst []byte) {}
-
-func toLowerASCIIFallback(src []byte, dst []byte) {}

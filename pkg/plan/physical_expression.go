@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"strings"
 	"unsafe"
 
 	"github.com/rhawrami/peGosus/pkg/dtype"
@@ -155,17 +156,17 @@ func validatePhysicalExpression(expression *boundExpr) *PlanError {
 		}
 	case exprUnary:
 		switch expression.operation {
-		case exprOpAbs, exprOpNeg, exprOpSqrt, exprOpNot, exprOpIsNull, exprOpIsNotNull:
+		case exprOpAbs, exprOpNeg, exprOpSqrt, exprOpNot, exprOpIsNull, exprOpIsNotNull, exprOpUpper, exprOpLower, exprOpExtractYear, exprOpExtractMonth, exprOpExtractDay, exprOpTruncateYear, exprOpTruncateMonth:
 			return nil
 		}
 	case exprBinary:
 		if isArithmetic(expression.operation) || isComparison(expression.operation) ||
-			expression.operation == exprOpAnd || expression.operation == exprOpOr || expression.operation == exprOpCoalesce {
+			expression.operation == exprOpAnd || expression.operation == exprOpOr || expression.operation == exprOpCoalesce || expression.operation == exprOpConcat || expression.operation == exprOpLike || expression.operation == exprOpContains {
 			return nil
 		}
 	case exprTernary:
 		switch expression.operation {
-		case exprOpBetween, exprOpNotBetween, exprOpClip, exprOpCase:
+		case exprOpBetween, exprOpNotBetween, exprOpClip, exprOpCase, exprOpReplace, exprOpSlice:
 			return nil
 		}
 	}
@@ -214,6 +215,9 @@ func executePhysicalFilter(a *mem.Allocator, batch *store.Batch, program physica
 		return false
 	}
 	mask := store.MakeBitMap(a, batch.Len())
+	if mask == nil {
+		return false
+	}
 	copy(mask.Bytes(), predicate.Bools())
 	mask.RecalcNiN()
 	if predicate.Validity() != nil {
@@ -221,6 +225,10 @@ func executePhysicalFilter(a *mem.Allocator, batch *store.Batch, program physica
 	}
 	if batch.Selection() != nil {
 		prior := batch.Selection().MakeBitMapTemp(a)
+		if prior == nil {
+			mask.Release()
+			return false
+		}
 		mask.ANDInPlaceViN(prior)
 		prior.Release()
 	}
@@ -264,6 +272,8 @@ func (p physicalExprProgram) evaluate(a *mem.Allocator, batch *store.Batch, valu
 		vector = materializeScalar(a, batch.Len(), node.literal, general)
 	case node.kind == exprTernary && node.operation == exprOpCase:
 		vector = p.evaluateCase(a, batch, values, node, general)
+	case (node.kind == exprUnary && (node.operation == exprOpUpper || node.operation == exprOpLower)) || (node.kind == exprBinary && node.operation == exprOpConcat) || (node.kind == exprTernary && (node.operation == exprOpReplace || node.operation == exprOpSlice)):
+		vector = evaluateStringMapping(a, node, values.vectors, general)
 	case node.kind == exprBinary && node.operation == exprOpCoalesce && node.dType.ID() == dtype.STRT:
 		vector = evaluateStringCoalesce(a, &values.vectors[node.children[0]], &values.vectors[node.children[1]], general, node.nullable)
 	default:
@@ -288,6 +298,9 @@ func (p physicalExprProgram) evaluate(a *mem.Allocator, batch *store.Batch, valu
 func (p physicalExprProgram) evaluateCase(a *mem.Allocator, batch *store.Batch, values *physicalExprValues, node physicalExprNode, general bool) store.Vector {
 	condition := &values.vectors[node.children[0]]
 	rows := a.AllocSegTemp(batch.Len() * 8)
+	if rows == nil {
+		return store.Vector{}
+	}
 	defer rows.Dec()
 	indices := rows.AsI64T()[:batch.Len()]
 	var result store.Vector
@@ -375,6 +388,12 @@ func (p physicalExprProgram) evaluateCase(a *mem.Allocator, batch *store.Batch, 
 				length += len(strings[rowIndex])
 			}
 			stringBacking[branch-1] = a.AllocSegTemp(length)
+			if stringBacking[branch-1] == nil {
+				branchValues.release()
+				subset.Release()
+				result.Release()
+				return store.Vector{}
+			}
 			backing := stringBacking[branch-1].AsBytes()
 			on := 0
 			for _, rowIndex := range indices[:count] {
@@ -619,6 +638,11 @@ func evaluateCast(src, dst *store.Vector) bool {
 
 func evaluateUnary(operation exprOp, src, dst *store.Vector, a *mem.Allocator) bool {
 	switch operation {
+	case exprOpExtractYear, exprOpExtractMonth, exprOpExtractDay, exprOpTruncateYear, exprOpTruncateMonth:
+		copyValidity(dst.Validity(), src.Validity())
+		if !evaluateDateMapping(operation, src, dst) {
+			return false
+		}
 	case exprOpAbs:
 		switch src.TypeID() {
 		case dtype.INT32T:
@@ -664,6 +688,15 @@ func evaluateUnary(operation exprOp, src, dst *store.Vector, a *mem.Allocator) b
 	case exprOpNot:
 		validity, release := physicalValidityBytes(a, src)
 		dstValidity, releaseDst := physicalOutputValidityBytes(a, dst)
+		if src.Len() != 0 && (validity == nil || dstValidity == nil) {
+			if release != nil {
+				release.Release()
+			}
+			if releaseDst != nil {
+				releaseDst.Release()
+			}
+			return false
+		}
 		boolop.Not(src.Bools(), validity, dst.Bools(), dstValidity, src.Len())
 		if release != nil {
 			release.Release()
@@ -688,6 +721,23 @@ func evaluateUnary(operation exprOp, src, dst *store.Vector, a *mem.Allocator) b
 }
 
 func evaluateBinary(operation exprOp, left, right *store.Vector, leftScalar, rightScalar *Scalar, dst *store.Vector, a *mem.Allocator) bool {
+	if operation == exprOpContains || operation == exprOpLike {
+		clear(dst.Bools())
+		for row := range dst.Len() {
+			l, r := left.Strings()[row].View(), right.Strings()[row].View()
+			match := false
+			if operation == exprOpContains {
+				match = strings.Contains(l, r)
+			} else {
+				match = likeMatches(l, r)
+			}
+			if match {
+				dst.Bools()[row>>3] |= 1 << (row & 7)
+			}
+		}
+		intersectBinaryValidity(dst.Validity(), left, right, leftScalar, rightScalar)
+		return true
+	}
 	if isArithmetic(operation) {
 		if !evaluateArithmetic(operation, left, right, leftScalar, rightScalar, dst) {
 			return false
@@ -706,6 +756,18 @@ func evaluateBinary(operation exprOp, left, right *store.Vector, leftScalar, rig
 		leftValidity, releaseLeft := physicalValidityBytes(a, left)
 		rightValidity, releaseRight := physicalValidityBytes(a, right)
 		dstValidity, releaseDst := physicalOutputValidityBytes(a, dst)
+		if dst.Len() != 0 && (leftValidity == nil || rightValidity == nil || dstValidity == nil) {
+			if releaseLeft != nil {
+				releaseLeft.Release()
+			}
+			if releaseRight != nil {
+				releaseRight.Release()
+			}
+			if releaseDst != nil {
+				releaseDst.Release()
+			}
+			return false
+		}
 		if operation == exprOpAnd {
 			boolop.And(left.Bools(), leftValidity, right.Bools(), rightValidity, dst.Bools(), dstValidity, dst.Len())
 		} else {
@@ -1331,6 +1393,9 @@ func physicalValidityBytes(a *mem.Allocator, vector *store.Vector) ([]byte, *sto
 		return vector.Validity().Bytes(), nil
 	}
 	validity := store.MakeBitMapTemp(a, vector.Len())
+	if validity == nil {
+		return nil, nil
+	}
 	validity.SetAll()
 	return validity.Bytes(), validity
 }
@@ -1340,6 +1405,9 @@ func physicalOutputValidityBytes(a *mem.Allocator, vector *store.Vector) ([]byte
 		return vector.Validity().Bytes(), nil
 	}
 	validity := store.MakeBitMapTemp(a, vector.Len())
+	if validity == nil {
+		return nil, nil
+	}
 	return validity.Bytes(), validity
 }
 
