@@ -1,6 +1,9 @@
 package plan
 
-import "github.com/rhawrami/peGosus/pkg/store"
+import (
+	"github.com/rhawrami/peGosus/pkg/parse"
+	"github.com/rhawrami/peGosus/pkg/store"
+)
 
 type logicalOp uint8
 
@@ -40,6 +43,8 @@ type logicalNode struct {
 	input       *logicalNode
 	right       *logicalNode
 	table       *store.Table
+	csvPath     string
+	csvOptions  parse.CSVOptions
 	schema      Schema
 	predicate   Expr
 	projections []Expr

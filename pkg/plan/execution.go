@@ -2,10 +2,12 @@ package plan
 
 import (
 	"context"
+	"errors"
 	"math"
 
 	"github.com/rhawrami/peGosus/pkg/dtype"
 	"github.com/rhawrami/peGosus/pkg/mem"
+	"github.com/rhawrami/peGosus/pkg/parse"
 	"github.com/rhawrami/peGosus/pkg/store"
 )
 
@@ -19,6 +21,7 @@ const (
 	ExecutionInvalidInvocation
 	ExecutionResourceExhausted
 	ExecutionFailed
+	ExecutionSourceFailure
 )
 
 // ExecutionResult distinguishes completion, sink termination, and failures.
@@ -123,8 +126,8 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 			distinctStates[i].setScope(scope)
 		} else if step.operation == physicalSort {
 			sortStates[i] = &sortState{compact: makeCompactSortState(step), top: makeCompactTopNState(step)}
-			if options.TryPackedSort && i == 0 {
-				packed, ok := makePackedSortState(ctx, a, p.source, step, scope)
+			if options.TryPackedSort && i == 0 && p.source.table != nil {
+				packed, ok := makePackedSortState(ctx, a, p.source.table, step, scope)
 				if err := ctx.Err(); err != nil {
 					return ExecutionResult{code: ExecutionCancelled, cause: err}
 				}
@@ -158,8 +161,10 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 			}
 		}
 	}
+	cursor := scanCursor{source: p.source}
+	defer cursor.close()
 	sourceDone := false
-	for i := range p.source.NBatches() {
+	for {
 		if err := ctx.Err(); err != nil {
 			return ExecutionResult{code: ExecutionCancelled, cause: err}
 		}
@@ -175,10 +180,33 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 		if sourceDone {
 			break
 		}
-		if p.batchReservation(p.source.BatchAt(i)) > options.MemoryBudget-aggregateReservation(aggregateStates)-aggregateUniqueReservation(aggregateUniques)-distinctReservation(distinctStates)-sortReservation(sortStates)-groupReservation(groupStates, p.steps)-joinReservation(joinStates) {
+		batch, done, err := cursor.next(ctx, a)
+		if err != nil {
+			if errors.Is(err, errScanFilter) {
+				if scope.Exhausted() {
+					return ExecutionResult{code: ExecutionResourceExhausted, cause: err}
+				}
+				return ExecutionResult{code: ExecutionFailed, cause: err}
+			}
+			var csvError *parse.CSVError
+			if errors.As(err, &csvError) {
+				switch csvError.Code() {
+				case parse.CSVResourceExhausted:
+					return ExecutionResult{code: ExecutionResourceExhausted, cause: err}
+				case parse.CSVCancelled:
+					return ExecutionResult{code: ExecutionCancelled, cause: err}
+				}
+			}
+			return ExecutionResult{code: ExecutionSourceFailure, cause: err}
+		}
+		if done {
+			break
+		}
+		if p.batchReservation(batch) > options.MemoryBudget-aggregateReservation(aggregateStates)-aggregateUniqueReservation(aggregateUniques)-distinctReservation(distinctStates)-sortReservation(sortStates)-groupReservation(groupStates, p.steps)-joinReservation(joinStates) {
+			batch.Release()
 			return ExecutionResult{code: ExecutionResourceExhausted}
 		}
-		result := p.executeSteps(ctx, a, p.source.BatchAt(i).Retain(), 0, limitLeft, offsetLeft, aggregateStates, aggregateUniques, distinctStates, sortStates, groupStates, joinStates, options.MemoryBudget, sink)
+		result := p.executeSteps(ctx, a, batch, 0, limitLeft, offsetLeft, aggregateStates, aggregateUniques, distinctStates, sortStates, groupStates, joinStates, options.MemoryBudget, sink)
 		if result.code == ExecutionFailed && scope.Exhausted() {
 			return ExecutionResult{code: ExecutionResourceExhausted}
 		}
@@ -340,6 +368,8 @@ func (p *PhysicalPlan) executeSteps(ctx context.Context, a *mem.Allocator, batch
 		}
 		step := p.steps[j]
 		switch step.operation {
+		case physicalPushedFilter:
+			continue
 		case physicalJoin:
 			joined, result := joins[j].probe(a, batch, step, budget-aggregateReservation(aggregates)-aggregateUniqueReservation(uniques)-distinctReservation(distinct)-sortReservation(sorts)-groupReservation(groups, p.steps)-joinReservation(joins)+joins[j].charged+joins[j].keys.charged)
 			if result.Code() != ExecutionCompleted {

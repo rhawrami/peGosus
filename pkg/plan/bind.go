@@ -28,7 +28,16 @@ func (b *binder) bindLogicalNode(node *logicalNode) (*boundLogicalNode, *PlanErr
 		return nil, makePlanError(ErrorInvalidPlan, "logical plan contains an empty node")
 	}
 	if node.operation == logicalScan {
-		if !node.table.Valid() || !node.schema.Valid() || node.table.NColumns() != node.schema.Len() {
+		if !node.schema.Valid() {
+			return nil, makePlanError(ErrorInvalidPlan, "scan source and schema do not match")
+		}
+		if node.csvPath != "" {
+			if node.schema.Len() == 0 {
+				return nil, makePlanError(ErrorInvalidPlan, "CSV scan requires a typed schema")
+			}
+			return &boundLogicalNode{operation: logicalScan, csvPath: node.csvPath, csvOptions: node.csvOptions, schema: node.schema}, nil
+		}
+		if !node.table.Valid() || node.table.NColumns() != node.schema.Len() {
 			return nil, makePlanError(ErrorInvalidPlan, "scan source and schema do not match")
 		}
 		for i := range node.schema.Len() {

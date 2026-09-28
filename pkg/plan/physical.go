@@ -19,6 +19,7 @@ const (
 	physicalDistinct
 	physicalSort
 	physicalJoin
+	physicalPushedFilter
 )
 
 // MakePhysicalPlan binds and lowers a supported logical plan.
@@ -40,6 +41,8 @@ func MakePhysicalPlanFromBound(bound *BoundPlan) (*PhysicalPlan, error) {
 		releaseJoinSteps(steps)
 		return nil, err
 	}
+	pruneScanProjection(source, steps)
+	pushScanFilters(source, steps)
 	return &PhysicalPlan{source: source.Retain(), schema: schema, steps: steps}, nil
 }
 
@@ -60,7 +63,7 @@ type physicalStep struct {
 // PhysicalPlan is a bound, reusable batched pipeline description. Release
 // requires all Execute and Schema calls to have completed.
 type PhysicalPlan struct {
-	source *store.Table
+	source *scanSource
 	schema Schema
 	steps  []physicalStep
 }
@@ -92,11 +95,17 @@ func (p *PhysicalPlan) Release() {
 	p.steps = nil
 }
 
-func lowerBoundNode(plan *BoundPlan, node *boundLogicalNode) (*store.Table, Schema, []physicalStep, *PlanError) {
+func lowerBoundNode(plan *BoundPlan, node *boundLogicalNode) (*scanSource, Schema, []physicalStep, *PlanError) {
 	if node == nil {
 		return nil, Schema{}, nil, makePlanError(ErrorInvalidPlan, "bound plan contains an empty node")
 	}
 	if node.operation == logicalScan {
+		if node.csvPath != "" {
+			if !node.schema.Valid() {
+				return nil, Schema{}, nil, makePlanError(ErrorInvalidPlan, "invalid CSV scan schema")
+			}
+			return &scanSource{csvPath: node.csvPath, csvOptions: node.csvOptions, schema: node.schema}, node.schema, nil, nil
+		}
 		if !node.table.Valid() || node.table.NColumns() != node.schema.Len() {
 			return nil, Schema{}, nil, makePlanError(ErrorInvalidPlan, "bound scan source is no longer valid")
 		}
@@ -108,7 +117,7 @@ func lowerBoundNode(plan *BoundPlan, node *boundLogicalNode) (*store.Table, Sche
 				return nil, Schema{}, nil, makePlanError(ErrorTypeMismatch, "bound scan source nullability changed")
 			}
 		}
-		return node.table, node.schema, nil, nil
+		return &scanSource{table: node.table, schema: node.schema}, node.schema, nil, nil
 	}
 	source, schema, steps, err := lowerBoundNode(plan, node.input)
 	if err != nil {
@@ -122,6 +131,8 @@ func lowerBoundNode(plan *BoundPlan, node *boundLogicalNode) (*store.Table, Sche
 			releaseJoinSteps(rightSteps)
 			return nil, Schema{}, steps, err
 		}
+		pruneScanProjection(rightSource, rightSteps)
+		pushScanFilters(rightSource, rightSteps)
 		spec := &physicalJoinSpec{right: &PhysicalPlan{source: rightSource.Retain(), schema: rightSchema, steps: rightSteps}, kind: node.joinKind, leftColumns: schema.Len(), rightColumns: rightSchema.Len()}
 		for i := range node.leftKeys {
 			leftProgram, err := makePhysicalExprProgram(plan, []boundExprID{node.leftKeys[i]}, schema, false)

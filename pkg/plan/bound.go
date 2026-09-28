@@ -2,6 +2,7 @@ package plan
 
 import (
 	"github.com/rhawrami/peGosus/pkg/dtype"
+	"github.com/rhawrami/peGosus/pkg/parse"
 	"github.com/rhawrami/peGosus/pkg/store"
 )
 
@@ -25,6 +26,8 @@ type boundLogicalNode struct {
 	input       *boundLogicalNode
 	right       *boundLogicalNode
 	table       *store.Table
+	csvPath     string
+	csvOptions  parse.CSVOptions
 	schema      Schema
 	predicate   boundExprID
 	projections []boundExprID
