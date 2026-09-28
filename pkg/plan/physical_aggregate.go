@@ -28,31 +28,34 @@ func (s *aggregateValue) release() {
 	}
 }
 
-func (s *aggregateValue) add(a *mem.Allocator, kind AggregateKind, value Scalar) {
+func (s *aggregateValue) add(a *mem.Allocator, kind AggregateKind, value Scalar) bool {
 	if kind == AggregateCountStar || kind == AggregateCount {
 		if kind == AggregateCountStar || !value.IsNull() {
 			s.count++
 		}
-		return
+		return true
 	}
 	if value.IsNull() {
-		return
+		return true
 	}
 	if kind == AggregateMin || kind == AggregateMax {
 		if value.Type().ID() == dtype.FLOAT32T && math.IsNaN(float64(value.f32())) || value.Type().ID() == dtype.FLOAT64T && math.IsNaN(value.f64()) {
-			return
+			return true
 		}
 		if s.count == 0 || aggregateLess(value, s.value, kind == AggregateMax) {
 			s.release()
 			if value.Type().ID() == dtype.STRT {
 				s.text = a.AllocSeg(len(value.text))
+				if s.text == nil {
+					return false
+				}
 				copy(s.text.AsBytes(), value.text)
 				value.text = unsafe.String(unsafe.SliceData(s.text.AsBytes()), s.text.Len())
 			}
 			s.value = value
 		}
 		s.count++
-		return
+		return true
 	}
 	if s.count == 0 {
 		if kind == AggregateAvg || value.Type().ID() == dtype.FLOAT32T {
@@ -90,6 +93,7 @@ func (s *aggregateValue) add(a *mem.Allocator, kind AggregateKind, value Scalar)
 		}
 		s.count++
 	}
+	return true
 }
 
 func aggregateLess(x, y Scalar, max bool) bool {
@@ -170,6 +174,9 @@ func accumulateAggregates(a *mem.Allocator, batch *store.Batch, step physicalSte
 		}
 	}()
 	selection := batch.Selection().MakeBitMapTemp(a)
+	if batch.Selection() != nil && selection == nil {
+		return false
+	}
 	if selection != nil {
 		defer selection.Release()
 	}
@@ -196,21 +203,33 @@ func accumulateAggregates(a *mem.Allocator, batch *store.Batch, step physicalSte
 				if vector.Validity() != nil && !vector.Validity().IsSet(row) {
 					continue
 				}
-				before := len(uniques[i].rows)
+				before := uniques[i].rows.length
 				_, ok := uniques[i].add(a, one, row, budget+uniques[i].charged)
 				if !ok {
 					one.Release()
 					values.release()
 					return false
 				}
-				if len(uniques[i].rows) == before {
+				if uniques[i].rows.length == before {
 					continue
 				}
 			}
 			if vector == nil {
-				local[i].add(a, aggregate.kind, Scalar{})
+				if !local[i].add(a, aggregate.kind, Scalar{}) {
+					if one != nil {
+						one.Release()
+					}
+					values.release()
+					return false
+				}
 			} else {
-				local[i].add(a, aggregate.kind, scalarAt(vector, row))
+				if !local[i].add(a, aggregate.kind, scalarAt(vector, row)) {
+					if one != nil {
+						one.Release()
+					}
+					values.release()
+					return false
+				}
 			}
 		}
 		if one != nil {

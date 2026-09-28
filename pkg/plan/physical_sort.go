@@ -22,6 +22,9 @@ type sortState struct {
 	charged int64
 	next    int64
 	order   []physicalOrderKey
+	compact *compactSortState
+	top     *compactTopNState
+	packed  *packedSortState
 }
 
 func (row *sortedRow) release() {
@@ -38,12 +41,39 @@ func (row *sortedRow) release() {
 }
 
 func (s *sortState) release() {
+	if s.packed != nil {
+		s.packed.release()
+		return
+	}
+	if s.compact != nil {
+		s.compact.release()
+		return
+	}
+	if s.top != nil {
+		s.top.release()
+		return
+	}
 	for i := range s.rows {
 		s.rows[i].release()
 	}
 }
 
 func (s *sortState) add(a *mem.Allocator, batch *store.Batch, step physicalStep, budget int64) bool {
+	if s.packed != nil {
+		ok := s.packed.add(a, batch, budget)
+		s.charged = s.packed.charged()
+		return ok
+	}
+	if s.compact != nil {
+		ok := s.compact.add(a, batch, step, budget)
+		s.charged = s.compact.charged()
+		return ok
+	}
+	if s.top != nil {
+		ok := s.top.add(a, batch, step, budget)
+		s.charged = s.top.charged()
+		return ok
+	}
 	if step.hasTopN && step.topN == 0 {
 		return true
 	}
@@ -64,6 +94,9 @@ func (s *sortState) add(a *mem.Allocator, batch *store.Batch, step physicalStep,
 		vectors[i] = &computed[i].vectors[key.program.roots[0]]
 	}
 	selection := batch.Selection().MakeBitMapTemp(a)
+	if batch.Selection() != nil && selection == nil {
+		return false
+	}
 	if selection != nil {
 		defer selection.Release()
 	}
@@ -101,10 +134,20 @@ func (s *sortState) add(a *mem.Allocator, batch *store.Batch, step physicalStep,
 		}
 		entry := sortedRow{record: distinctRow{values: make([]Scalar, batch.NVectors()), text: make([]*mem.Segment, batch.NVectors())}, keys: make([]Scalar, len(vectors)), text: make([]*mem.Segment, len(vectors)), sequence: candidate.sequence, charged: charge}
 		for column := range entry.record.values {
-			entry.record.values[column], entry.record.text[column] = ownScalar(a, scalarAt(batch.VectorAt(column), row))
+			var ok bool
+			entry.record.values[column], entry.record.text[column], ok = ownScalar(a, scalarAt(batch.VectorAt(column), row))
+			if !ok {
+				entry.release()
+				return false
+			}
 		}
 		for i, vector := range vectors {
-			entry.keys[i], entry.text[i] = ownScalar(a, scalarAt(vector, row))
+			var ok bool
+			entry.keys[i], entry.text[i], ok = ownScalar(a, scalarAt(vector, row))
+			if !ok {
+				entry.release()
+				return false
+			}
 		}
 		if evict != 0 {
 			s.rows[0].release()
@@ -236,6 +279,15 @@ func compareOrdered(x, y Scalar) int {
 }
 
 func (s *sortState) finish(a *mem.Allocator, step physicalStep) *store.Batch {
+	if s.packed != nil {
+		return s.packed.finish(a, step)
+	}
+	if s.compact != nil {
+		return s.compact.finish(a, step)
+	}
+	if s.top != nil {
+		return s.top.finish(a, step)
+	}
 	sort.SliceStable(s.rows, func(i, j int) bool {
 		return s.compare(s.rows[i], s.rows[j]) < 0
 	})

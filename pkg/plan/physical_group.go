@@ -6,12 +6,19 @@ import (
 )
 
 type groupState struct {
-	keys    distinctState
-	values  [][]aggregateValue
-	uniques [][]*distinctState
+	keys       distinctState
+	values     [][]aggregateValue
+	uniques    [][]*distinctState
+	stateBytes int64
+	compact    *compactGroupCountState
+	scope      *mem.AllocationScope
 }
 
 func (g *groupState) release() {
+	if g.compact != nil {
+		g.compact.release()
+		return
+	}
 	g.keys.release()
 	for _, group := range g.values {
 		for i := range group {
@@ -27,26 +34,17 @@ func (g *groupState) release() {
 	}
 }
 
-func (g *groupState) charged(aggregates int) int64 {
-	total := saturatingAdd(g.keys.charged, int64(len(g.values)*aggregates)*64)
-	for _, group := range g.values {
-		for _, value := range group {
-			if value.text != nil {
-				total = saturatingAdd(total, int64(value.text.Len()))
-			}
-		}
+func (g *groupState) charged(_ int) int64 {
+	if g.compact != nil {
+		return g.compact.charged()
 	}
-	for _, group := range g.uniques {
-		for _, state := range group {
-			if state != nil {
-				total = saturatingAdd(total, state.charged)
-			}
-		}
-	}
-	return total
+	return saturatingAdd(g.keys.charged, g.stateBytes)
 }
 
 func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep, budget int64) bool {
+	if g.compact != nil {
+		return g.compact.add(a, batch, step, budget)
+	}
 	keyValues := make([]physicalExprValues, len(step.groupKeys))
 	aggValues := make([]physicalExprValues, len(step.aggregates))
 	defer func() {
@@ -98,6 +96,9 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 		}
 	}()
 	selection := batch.Selection().MakeBitMapTemp(a)
+	if batch.Selection() != nil && selection == nil {
+		return false
+	}
 	if selection != nil {
 		defer selection.Release()
 	}
@@ -119,10 +120,12 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 		}
 		for len(g.values) <= index {
 			g.values = append(g.values, make([]aggregateValue, len(step.aggregates)))
+			g.stateBytes = saturatingAdd(g.stateBytes, int64(len(step.aggregates))*64)
 			uniques := make([]*distinctState, len(step.aggregates))
 			for i, aggregate := range step.aggregates {
 				if aggregate.distinct {
 					uniques[i] = &distinctState{}
+					uniques[i].setScope(g.scope)
 				}
 			}
 			g.uniques = append(g.uniques, uniques)
@@ -138,19 +141,25 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 				if v.Validity() != nil && !v.Validity().IsSet(row) {
 					continue
 				}
-				before := len(g.uniques[index][i].rows)
+				before := g.uniques[index][i].rows.length
+				priorCharge := g.uniques[index][i].charged
 				_, ok := g.uniques[index][i].add(a, uniqueBatches[i], row, budget-g.charged(len(step.aggregates))+g.uniques[index][i].charged)
 				if !ok {
 					return false
 				}
-				if len(g.uniques[index][i].rows) == before {
+				g.stateBytes = saturatingAdd(g.stateBytes, g.uniques[index][i].charged-priorCharge)
+				if g.uniques[index][i].rows.length == before {
 					continue
 				}
 			}
 			if aggregate.kind == AggregateCountStar {
-				states[i].add(a, aggregate.kind, Scalar{})
+				if !states[i].add(a, aggregate.kind, Scalar{}) {
+					return false
+				}
 			} else {
-				states[i].add(a, aggregate.kind, scalarAt(&aggValues[i].vectors[aggregate.program.roots[0]], row))
+				if !states[i].add(a, aggregate.kind, scalarAt(&aggValues[i].vectors[aggregate.program.roots[0]], row)) {
+					return false
+				}
 			}
 		}
 		if g.charged(len(step.aggregates)) > budget {
@@ -159,17 +168,31 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 	}
 	for index, states := range local {
 		for i, aggregate := range step.aggregates {
+			priorLength := 0
+			if g.values[index][i].text != nil {
+				priorLength = g.values[index][i].text.Len()
+			}
 			mergeAggregate(&g.values[index][i], &states[i], aggregate.kind)
+			if g.values[index][i].text != nil {
+				g.stateBytes += int64(g.values[index][i].text.Len() - priorLength)
+			} else {
+				g.stateBytes -= int64(priorLength)
+			}
 		}
 	}
 	return true
 }
 
 func (g *groupState) finish(a *mem.Allocator, step physicalStep) *store.Batch {
+	if g.compact != nil {
+		return g.compact.finish(a, step)
+	}
 	rows := make([]distinctRow, len(g.values))
 	for i, state := range g.values {
 		values := make([]Scalar, step.schema.Len())
-		copy(values, g.keys.rows[i].values)
+		for j := range step.groupKeys {
+			values[j] = g.keys.rows.at(i, j)
+		}
 		for j, aggregate := range step.aggregates {
 			field := step.schema.FieldAt(len(step.groupKeys) + j)
 			value := state[j].value

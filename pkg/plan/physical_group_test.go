@@ -84,3 +84,51 @@ func TestPhysicalGroupedCountDistinct(t *testing.T) {
 		t.Fatalf("grouped DISTINCT result: %v", result.Code())
 	}
 }
+
+func TestPhysicalGroupCachedChargeTracksState(t *testing.T) {
+	a := mem.MakeAllocatorWithProfiles([]int{8192}, []int{8192})
+	var batches []*store.Batch
+	for _, value := range []string{"zebra long string value", "a", "zzzzzz longer string value", "b"} {
+		key := store.MakeVector(a, 1, dtype.Int32T(), false)
+		key.I32s()[0] = 1
+		text := store.MakeStringVector(a, [][]byte{[]byte(value)}, nil)
+		batches = append(batches, store.MakeBatch([]store.Vector{key, text}))
+	}
+	table := store.MakeTable(batches)
+	plan, err := MakePhysicalPlan(MakeScan(table, MakeSchema([]string{"key", "text"}, []dtype.Type{dtype.Int32T(), dtype.StringT()})).GroupBy(
+		[]Expr{MakeColumn("key")}, MakeMin(MakeColumn("text")), MakeMax(MakeColumn("text")), MakeCountDistinct(MakeColumn("text")),
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := &groupState{}
+	for _, batch := range batches {
+		if !state.add(a, batch, plan.steps[0], math.MaxInt64) {
+			t.Fatal("grouping failed")
+		}
+		expected := saturatingAdd(state.keys.charged, int64(len(state.values)*len(plan.steps[0].aggregates))*64)
+		for _, group := range state.values {
+			for _, value := range group {
+				if value.text != nil {
+					expected = saturatingAdd(expected, int64(value.text.Len()))
+				}
+			}
+		}
+		for _, group := range state.uniques {
+			for _, unique := range group {
+				if unique != nil {
+					expected = saturatingAdd(expected, unique.charged)
+				}
+			}
+		}
+		if got := state.charged(len(plan.steps[0].aggregates)); got != expected {
+			t.Fatalf("cached group charge: got %d, want %d", got, expected)
+		}
+	}
+	state.release()
+	plan.Release()
+	table.Release()
+	for _, batch := range batches {
+		batch.Release()
+	}
+}

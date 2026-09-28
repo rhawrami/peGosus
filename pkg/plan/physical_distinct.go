@@ -16,70 +16,57 @@ type distinctRow struct {
 }
 
 type distinctState struct {
-	seen    map[string]int
-	keys    []*mem.Segment
-	rows    []distinctRow
+	index   keyIndex
+	keys    keyArena
+	rows    packedRows
 	charged int64
+	scope   *mem.AllocationScope
+}
+
+func (s *distinctState) setScope(scope *mem.AllocationScope) {
+	s.scope, s.index.scope, s.keys.scope, s.rows.scope = scope, scope, scope, scope
 }
 
 func (s *distinctState) release() {
-	for _, key := range s.keys {
-		key.Dec()
-	}
-	for _, row := range s.rows {
-		for _, text := range row.text {
-			if text != nil {
-				text.Dec()
-			}
-		}
-	}
+	s.index.release()
+	s.keys.release()
+	s.rows.release()
 }
 
 func (s *distinctState) add(a *mem.Allocator, batch *store.Batch, row int, budget int64) (int, bool) {
-	buffer, on := encodeRowKey(a, batch, row)
-	defer buffer.Dec()
-	bytes := buffer.AsBytes()
-	key := unsafe.String(unsafe.SliceData(bytes), on)
-	if index, exists := s.seen[key]; exists {
-		return index, true
-	}
-	charge := int64(on + len(bytes) + batch.NVectors()*64)
-	if s.charged > budget-charge {
+	length := encodedRowKeyLength(batch, row)
+	if int64(length) > budget-s.charged {
 		return 0, false
 	}
-	owned := a.AllocSeg(on)
-	copy(owned.AsBytes(), bytes[:on])
-	if s.seen == nil {
-		s.seen = make(map[string]int)
+	buffer, on := encodeRowKey(a, batch, row, length)
+	if buffer == nil {
+		return 0, false
 	}
-	s.seen[unsafe.String(unsafe.SliceData(owned.AsBytes()), on)] = len(s.rows)
-	s.keys = append(s.keys, owned)
-	values := make([]Scalar, batch.NVectors())
-	text := make([]*mem.Segment, batch.NVectors())
-	for column := range values {
-		values[column], text[column] = ownScalar(a, scalarAt(batch.VectorAt(column), row))
+	defer buffer.Dec()
+	bytes := buffer.AsBytes()
+	if index, exists := s.index.lookup(bytes[:on], &s.keys); exists {
+		return index, true
 	}
-	s.rows = append(s.rows, distinctRow{values: values, text: text})
-	s.charged += charge
-	return len(s.rows) - 1, true
+	priorKeyBytes, priorIndexBytes := s.keys.bytes(), s.index.bytes()
+	other := s.charged - priorKeyBytes - priorIndexBytes
+	if !s.keys.append(a, bytes[:on], budget-other-priorIndexBytes) || !s.index.put(a, bytes[:on], s.rows.length, budget-other-s.keys.bytes()) || !s.rows.append(a, batch, row, budget-s.keys.bytes()-s.index.bytes()) {
+		return 0, false
+	}
+	s.charged = saturatingAdd(saturatingAdd(s.keys.bytes(), s.index.bytes()), s.rows.bytes())
+	return s.rows.length - 1, true
 }
 
 func (s *distinctState) lookup(a *mem.Allocator, batch *store.Batch, row int) (int, bool) {
-	buffer, on := encodeRowKey(a, batch, row)
-	index, ok := s.seen[unsafe.String(unsafe.SliceData(buffer.AsBytes()), on)]
+	buffer, on := encodeRowKey(a, batch, row, encodedRowKeyLength(batch, row))
+	if buffer == nil {
+		return 0, false
+	}
+	index, ok := s.index.lookup(buffer.AsBytes()[:on], &s.keys)
 	buffer.Dec()
 	return index, ok
 }
 
-func encodeRowKey(a *mem.Allocator, batch *store.Batch, row int) (*mem.Segment, int) {
-	length := 0
-	for column := range batch.NVectors() {
-		length += 9
-		v := batch.VectorAt(column)
-		if v.TypeID() == dtype.STRT && (v.Validity() == nil || v.Validity().IsSet(row)) {
-			length += len(v.Strings()[row].View())
-		}
-	}
+func encodeRowKey(a *mem.Allocator, batch *store.Batch, row, length int) (*mem.Segment, int) {
 	buffer := a.AllocSegTemp(length)
 	bytes := buffer.AsBytes()[:length]
 	on := 0
@@ -131,15 +118,30 @@ func encodeRowKey(a *mem.Allocator, batch *store.Batch, row int) (*mem.Segment, 
 	return buffer, on
 }
 
-func ownScalar(a *mem.Allocator, value Scalar) (Scalar, *mem.Segment) {
+func encodedRowKeyLength(batch *store.Batch, row int) int {
+	length := 0
+	for column := range batch.NVectors() {
+		length += 9
+		v := batch.VectorAt(column)
+		if v.TypeID() == dtype.STRT && (v.Validity() == nil || v.Validity().IsSet(row)) {
+			length += len(v.Strings()[row].View())
+		}
+	}
+	return length
+}
+
+func ownScalar(a *mem.Allocator, value Scalar) (Scalar, *mem.Segment, bool) {
 	if value.Type().ID() != dtype.STRT || value.IsNull() {
-		return value, nil
+		return value, nil, true
 	}
 	stringBytes := borrowedStringBytes(value.text)
 	text := a.AllocSeg(len(stringBytes))
+	if text == nil {
+		return Scalar{}, nil, false
+	}
 	copy(text.AsBytes(), stringBytes)
 	value.text = unsafe.String(unsafe.SliceData(text.AsBytes()), len(stringBytes))
-	return value, text
+	return value, text, true
 }
 
 func makeDistinctBatch(a *mem.Allocator, schema Schema, rows []distinctRow) *store.Batch {

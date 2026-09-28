@@ -33,11 +33,15 @@ func (r ExecutionResult) Code() ExecutionCode { return r.code }
 // Err returns the underlying cancellation error, if any.
 func (r ExecutionResult) Err() error { return r.cause }
 
-// ExecutionOptions sets a positive budget for executor-owned batch payloads and
-// blocking state. The budget applies to live logical allocations, not unused
-// capacity in the allocator's slabs.
+// ExecutionOptions sets a positive budget for query-owned segment requests.
+// Execution uses a query-local scope plus conservative admission reservations.
+// Scoped charges exclude borrowed sources, Go metadata, and unused slab capacity;
+// admission reservations may be more conservative.
 type ExecutionOptions struct {
 	MemoryBudget int64
+	// TryPackedSort opts into exact 64-bit key packing for direct in-memory sorts.
+	// A non-packable key or unsupported plan uses the existing sort path.
+	TryPackedSort bool
 }
 
 // ExecuteWithOptions executes a plan with cooperative cancellation and
@@ -47,6 +51,8 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 	if p == nil || p.source == nil || ctx == nil || a == nil || sink == nil || options.MemoryBudget <= 0 {
 		return ExecutionResult{code: ExecutionInvalidInvocation}
 	}
+	scope := mem.MakeAllocationScope(a, options.MemoryBudget)
+	a = mem.MakeAllocatorWithScope(a, scope)
 	limitLeft := make([]int64, len(p.steps))
 	offsetLeft := make([]int64, len(p.steps))
 	for i, step := range p.steps {
@@ -100,17 +106,48 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 				for j, aggregate := range step.aggregates {
 					if aggregate.distinct {
 						aggregateUniques[i][j] = &distinctState{}
+						aggregateUniques[i][j].setScope(scope)
 					}
 				}
 			} else {
-				groupStates[i] = &groupState{}
+				groupStates[i] = &groupState{compact: makeCompactGroupCountState(step)}
+				groupStates[i].scope = scope
+				groupStates[i].keys.setScope(scope)
+				if compact := groupStates[i].compact; compact != nil {
+					compact.scope = scope
+					compact.index.scope = scope
+				}
 			}
 		} else if step.operation == physicalDistinct {
 			distinctStates[i] = &distinctState{}
+			distinctStates[i].setScope(scope)
 		} else if step.operation == physicalSort {
-			sortStates[i] = &sortState{}
+			sortStates[i] = &sortState{compact: makeCompactSortState(step), top: makeCompactTopNState(step)}
+			if options.TryPackedSort && i == 0 {
+				packed, ok := makePackedSortState(ctx, a, p.source, step, scope)
+				if err := ctx.Err(); err != nil {
+					return ExecutionResult{code: ExecutionCancelled, cause: err}
+				}
+				if !ok && scope.Exhausted() {
+					return ExecutionResult{code: ExecutionResourceExhausted}
+				}
+				if ok {
+					sortStates[i].packed = packed
+					sortStates[i].compact = nil
+					sortStates[i].top = nil
+				}
+			}
+			if sortStates[i].compact != nil {
+				sortStates[i].compact.scope = scope
+			}
+			if sortStates[i].top != nil {
+				sortStates[i].top.scope, sortStates[i].top.rows.scope = scope, scope
+			}
 		} else if step.operation == physicalJoin {
 			joinStates[i] = &joinState{}
+			joinStates[i].scope = scope
+			joinStates[i].keys.setScope(scope)
+			joinStates[i].rightRows.scope = scope
 		}
 	}
 	for i, step := range p.steps {
@@ -142,6 +179,9 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 			return ExecutionResult{code: ExecutionResourceExhausted}
 		}
 		result := p.executeSteps(ctx, a, p.source.BatchAt(i).Retain(), 0, limitLeft, offsetLeft, aggregateStates, aggregateUniques, distinctStates, sortStates, groupStates, joinStates, options.MemoryBudget, sink)
+		if result.code == ExecutionFailed && scope.Exhausted() {
+			return ExecutionResult{code: ExecutionResourceExhausted}
+		}
 		if result.code != ExecutionCompleted {
 			return result
 		}
@@ -185,18 +225,18 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 			if groupStates[i] == nil {
 				batch = finalizeAggregates(a, step, aggregateStates[i])
 			} else {
-				if len(groupStates[i].values) == 0 {
+				if groupStates[i].compact != nil && groupStates[i].compact.length == 0 || groupStates[i].compact == nil && len(groupStates[i].values) == 0 {
 					continue
 				}
 				batch = groupStates[i].finish(a, step)
 			}
 		} else if step.operation == physicalDistinct {
-			if len(distinctStates[i].rows) == 0 {
+			if distinctStates[i].rows.length == 0 {
 				continue
 			}
-			batch = makeDistinctBatch(a, step.schema, distinctStates[i].rows)
+			batch = distinctStates[i].rows.makeBatch(a, step.schema)
 		} else if step.operation == physicalSort {
-			if len(sortStates[i].rows) == 0 {
+			if sortStates[i].packed != nil && sortStates[i].packed.length == 0 || sortStates[i].compact != nil && sortStates[i].compact.length == 0 || sortStates[i].top != nil && sortStates[i].top.length == 0 || sortStates[i].packed == nil && sortStates[i].compact == nil && sortStates[i].top == nil && len(sortStates[i].rows) == 0 {
 				continue
 			}
 			batch = sortStates[i].finish(a, step)
@@ -211,9 +251,15 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 			}
 		}
 		if batch == nil {
+			if scope.Exhausted() {
+				return ExecutionResult{code: ExecutionResourceExhausted}
+			}
 			return ExecutionResult{code: ExecutionFailed}
 		}
 		result := p.executeSteps(ctx, a, batch, i+1, limitLeft, offsetLeft, aggregateStates, aggregateUniques, distinctStates, sortStates, groupStates, joinStates, options.MemoryBudget, sink)
+		if result.code == ExecutionFailed && scope.Exhausted() {
+			return ExecutionResult{code: ExecutionResourceExhausted}
+		}
 		if result.code != ExecutionCompleted {
 			return result
 		}
@@ -333,6 +379,9 @@ func (p *PhysicalPlan) executeSteps(ctx context.Context, a *mem.Allocator, batch
 			return ExecutionResult{code: ExecutionCompleted}
 		case physicalDistinct:
 			selection := batch.Selection().MakeBitMapTemp(a)
+			if batch.Selection() != nil && selection == nil {
+				return ExecutionResult{code: ExecutionResourceExhausted}
+			}
 			for row := range batch.Len() {
 				if selection != nil && !selection.IsSet(row) {
 					continue
@@ -371,9 +420,16 @@ func executePhysicalLimit(a *mem.Allocator, batch *store.Batch, remaining, skipp
 		return true
 	}
 	mask := store.MakeBitMap(a, batch.Len())
+	if mask == nil {
+		return false
+	}
 	var existing *store.BitMap
 	if batch.Selection() != nil {
 		existing = batch.Selection().MakeBitMapTemp(a)
+		if existing == nil {
+			mask.Release()
+			return false
+		}
 		defer existing.Release()
 	}
 	for row := range batch.Len() {

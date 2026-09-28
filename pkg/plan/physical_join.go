@@ -21,22 +21,56 @@ type physicalJoinSpec struct {
 
 type joinState struct {
 	keys        distinctState
-	index       map[int][]int
-	rightRows   []distinctRow
-	matched     []bool
+	rightRows   packedRows
+	scope       *mem.AllocationScope
+	head        *mem.Segment
+	next        *mem.Segment
+	matched     *mem.Segment
 	charged     int64
 	initialized bool
 }
 
 func (s *joinState) release() {
 	s.keys.release()
-	for _, row := range s.rightRows {
-		for _, text := range row.text {
-			if text != nil {
-				text.Dec()
-			}
+	s.rightRows.release()
+	for _, segment := range []*mem.Segment{s.head, s.next, s.matched} {
+		if segment != nil {
+			segment.Dec()
 		}
 	}
+}
+
+func (s *joinState) growArray(a *mem.Allocator, target **mem.Segment, length, width int, budget int64) bool {
+	capacity, oldBytes := 0, 0
+	if *target != nil {
+		oldBytes = (*target).Len()
+		capacity = oldBytes / width
+	}
+	if length <= capacity {
+		return true
+	}
+	capacity = max(16, capacity)
+	for capacity < length {
+		if capacity > int(^uint(0)>>1)/2 {
+			return false
+		}
+		capacity *= 2
+	}
+	if capacity > int(^uint(0)>>1)/width || int64(capacity)*int64(width) > budget-s.keys.charged-s.charged {
+		return false
+	}
+	segment, ok := allocOperatorSegment(a, s.scope, capacity*width)
+	if !ok {
+		return false
+	}
+	clear(segment.AsBytes())
+	if *target != nil {
+		copy(segment.AsBytes(), (*target).AsBytes())
+		(*target).Dec()
+	}
+	*target = segment
+	s.charged += int64(segment.Len() - oldBytes)
+	return true
 }
 
 func joinableKeys(batch *store.Batch, row int) bool {
@@ -94,6 +128,9 @@ func (s *joinState) build(ctx context.Context, a *mem.Allocator, spec *physicalJ
 			}
 		}()
 		selection := batch.Selection().MakeBitMapTemp(a)
+		if batch.Selection() != nil && selection == nil {
+			return false
+		}
 		if selection != nil {
 			defer selection.Release()
 		}
@@ -101,38 +138,31 @@ func (s *joinState) build(ctx context.Context, a *mem.Allocator, spec *physicalJ
 			if selection != nil && !selection.IsSet(row) {
 				continue
 			}
-			charge := int64(batch.NVectors() * 64)
-			for column := range batch.NVectors() {
-				v := batch.VectorAt(column)
-				if v.TypeID() == dtype.STRT && (v.Validity() == nil || v.Validity().IsSet(row)) {
-					charge = saturatingAdd(charge, int64(len(v.Strings()[row].View())))
-				}
-			}
-			if charge > budget-s.charged-s.keys.charged {
-				return false
-			}
-			record := distinctRow{values: make([]Scalar, batch.NVectors()), text: make([]*mem.Segment, batch.NVectors())}
-			for column := range record.values {
-				record.values[column], record.text[column] = ownScalar(a, scalarAt(batch.VectorAt(column), row))
-			}
+			index := -1
 			if joinableKeys(keyBatch, row) {
-				key, ok := s.keys.add(a, keyBatch, row, budget-s.charged)
+				var ok bool
+				index, ok = s.keys.add(a, keyBatch, row, budget-s.charged)
 				if !ok {
-					for _, text := range record.text {
-						if text != nil {
-							text.Dec()
-						}
-					}
 					return false
 				}
-				if s.index == nil {
-					s.index = make(map[int][]int)
+				if !s.growArray(a, &s.head, index+1, 8, budget) {
+					return false
 				}
-				s.index[key] = append(s.index[key], len(s.rightRows))
 			}
-			s.rightRows = append(s.rightRows, record)
-			s.matched = append(s.matched, false)
-			s.charged += charge
+			if !s.growArray(a, &s.next, s.rightRows.length+1, 8, budget) || !s.growArray(a, &s.matched, s.rightRows.length+1, 1, budget) {
+				return false
+			}
+			prior := s.rightRows.bytes()
+			if !s.rightRows.append(a, batch, row, budget-s.keys.charged-s.charged+prior) {
+				return false
+			}
+			s.charged = saturatingAdd(s.charged, s.rightRows.bytes()-prior)
+			rightIndex := s.rightRows.length - 1
+			if index >= 0 {
+				heads := s.head.AsU64T()
+				s.next.AsU64T()[rightIndex] = heads[index]
+				heads[index] = uint64(rightIndex) + 1
+			}
 		}
 		return true
 	})
@@ -155,42 +185,38 @@ func (s *joinState) probe(a *mem.Allocator, batch *store.Batch, step physicalSte
 		}
 	}()
 	selection := batch.Selection().MakeBitMapTemp(a)
+	if batch.Selection() != nil && selection == nil {
+		return nil, ExecutionResult{code: ExecutionResourceExhausted}
+	}
 	if selection != nil {
 		defer selection.Release()
 	}
-	rows := make([]distinctRow, 0)
-	outputCharge := int64(0)
-	appendRow := func(values []Scalar) bool {
-		cost := int64(len(values) * 64)
-		for _, value := range values {
-			if value.Type().ID() == dtype.STRT && !value.IsNull() {
-				cost = saturatingAdd(cost, int64(len(value.text)))
-			}
-		}
-		if cost > (budget-s.charged-s.keys.charged)/2-outputCharge {
-			return false
-		}
-		outputCharge += cost
-		rows = append(rows, distinctRow{values: values})
-		return true
-	}
+	rows := &packedRows{scope: s.scope}
+	defer rows.release()
+	full := make([]Scalar, spec.leftColumns+spec.rightColumns)
+	outputBudget := (budget - s.charged - s.keys.charged) / 2
 	for row := range batch.Len() {
 		if selection != nil && !selection.IsSet(row) {
 			continue
 		}
-		var candidates []int
+		for column := range spec.leftColumns {
+			full[column] = scalarAt(batch.VectorAt(column), row)
+		}
+		var candidate uint64
 		if joinableKeys(keyBatch, row) {
 			if index, found := s.keys.lookup(a, keyBatch, row); found {
-				candidates = s.index[index]
+				candidate = s.head.AsU64T()[index]
+			} else if s.scope != nil && s.scope.Exhausted() {
+				return nil, ExecutionResult{code: ExecutionResourceExhausted}
 			}
 		}
 		matched := false
-		for _, rightIndex := range candidates {
-			full := make([]Scalar, 0, spec.leftColumns+spec.rightColumns)
-			for column := range spec.leftColumns {
-				full = append(full, scalarAt(batch.VectorAt(column), row))
+		for candidate != 0 {
+			rightIndex := int(candidate - 1)
+			candidate = s.next.AsU64T()[rightIndex]
+			for column := range spec.rightColumns {
+				full[spec.leftColumns+column] = s.rightRows.at(rightIndex, column)
 			}
-			full = append(full, s.rightRows[rightIndex].values...)
 			if spec.residual != nil {
 				cost := int64(len(full) * 64)
 				for _, value := range full {
@@ -198,7 +224,7 @@ func (s *joinState) probe(a *mem.Allocator, batch *store.Batch, step physicalSte
 						cost = saturatingAdd(cost, int64(len(value.text)))
 					}
 				}
-				if cost > (budget-s.charged-s.keys.charged-outputCharge)/3 {
+				if cost > (budget-s.charged-s.keys.charged-rows.bytes())/3 {
 					return nil, ExecutionResult{code: ExecutionResourceExhausted}
 				}
 				one := makeJoinScalarBatch(a, full)
@@ -218,44 +244,36 @@ func (s *joinState) probe(a *mem.Allocator, batch *store.Batch, step physicalSte
 				}
 			}
 			matched = true
-			s.matched[rightIndex] = true
+			s.matched.AsBytes()[rightIndex] = 1
 			if spec.kind == JoinAnti {
 				continue
 			}
 			if spec.kind == JoinSemi {
 				break
 			}
-			if !appendRow(full) {
+			if !rows.appendScalars(a, full, outputBudget) {
 				return nil, ExecutionResult{code: ExecutionResourceExhausted}
 			}
 		}
 		if spec.kind == JoinSemi || spec.kind == JoinAnti {
 			if (spec.kind == JoinSemi && matched) || (spec.kind == JoinAnti && !matched) {
-				left := make([]Scalar, spec.leftColumns)
-				for column := range left {
-					left[column] = scalarAt(batch.VectorAt(column), row)
-				}
-				if !appendRow(left) {
+				if !rows.appendScalars(a, full[:spec.leftColumns], outputBudget) {
 					return nil, ExecutionResult{code: ExecutionResourceExhausted}
 				}
 			}
 		} else if !matched && (spec.kind == JoinLeft || spec.kind == JoinFull) {
-			full := make([]Scalar, 0, spec.leftColumns+spec.rightColumns)
-			for column := range spec.leftColumns {
-				full = append(full, scalarAt(batch.VectorAt(column), row))
-			}
 			for column := range spec.rightColumns {
-				full = append(full, MakeNullScalar(s.rightRowsType(spec, column)))
+				full[spec.leftColumns+column] = MakeNullScalar(s.rightRowsType(spec, column))
 			}
-			if !appendRow(full) {
+			if !rows.appendScalars(a, full, outputBudget) {
 				return nil, ExecutionResult{code: ExecutionResourceExhausted}
 			}
 		}
 	}
-	if len(rows) == 0 {
+	if rows.length == 0 {
 		return nil, ExecutionResult{code: ExecutionCompleted}
 	}
-	output := makeDistinctBatch(a, step.schema, rows)
+	output := rows.makeBatch(a, step.schema)
 	if output == nil {
 		return nil, ExecutionResult{code: ExecutionFailed}
 	}
@@ -285,31 +303,26 @@ func (s *joinState) finish(a *mem.Allocator, step physicalStep, budget int64) (*
 	if spec.kind != JoinFull {
 		return nil, true
 	}
-	rows := make([]distinctRow, 0)
-	var outputCharge int64
-	for index, record := range s.rightRows {
-		if s.matched[index] {
+	rows := &packedRows{scope: s.scope}
+	defer rows.release()
+	full := make([]Scalar, spec.leftColumns+spec.rightColumns)
+	for column := range spec.leftColumns {
+		full[column] = MakeNullScalar(step.schema.FieldAt(column).Type())
+	}
+	outputBudget := (budget - s.charged - s.keys.charged) / 2
+	for index := range s.rightRows.length {
+		if s.matched.AsBytes()[index] != 0 {
 			continue
 		}
-		values := make([]Scalar, 0, spec.leftColumns+spec.rightColumns)
-		for column := range spec.leftColumns {
-			values = append(values, MakeNullScalar(step.schema.FieldAt(column).Type()))
+		for column := range spec.rightColumns {
+			full[spec.leftColumns+column] = s.rightRows.at(index, column)
 		}
-		values = append(values, record.values...)
-		cost := int64(len(values) * 64)
-		for _, value := range values {
-			if value.Type().ID() == dtype.STRT && !value.IsNull() {
-				cost = saturatingAdd(cost, int64(len(value.text)))
-			}
-		}
-		if cost > (budget-s.charged-s.keys.charged)/2-outputCharge {
+		if !rows.appendScalars(a, full, outputBudget) {
 			return nil, false
 		}
-		outputCharge += cost
-		rows = append(rows, distinctRow{values: values})
 	}
-	if len(rows) == 0 {
+	if rows.length == 0 {
 		return nil, true
 	}
-	return makeDistinctBatch(a, step.schema, rows), true
+	return rows.makeBatch(a, step.schema), true
 }
