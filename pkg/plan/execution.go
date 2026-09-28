@@ -2,12 +2,9 @@ package plan
 
 import (
 	"context"
-	"errors"
 	"math"
 
 	"github.com/rhawrami/peGosus/pkg/dtype"
-	"github.com/rhawrami/peGosus/pkg/io/csv"
-	"github.com/rhawrami/peGosus/pkg/io/parquet"
 	"github.com/rhawrami/peGosus/pkg/mem"
 	"github.com/rhawrami/peGosus/pkg/store"
 )
@@ -37,7 +34,7 @@ func (r ExecutionResult) Code() ExecutionCode { return r.code }
 // Err returns the underlying cancellation error, if any.
 func (r ExecutionResult) Err() error { return r.cause }
 
-// ExecutionOptions sets a positive budget for query-owned segment requests.
+// ExecutionOptions sets a positive budget and optional worker cap for queries.
 // Execution uses a query-local scope plus conservative admission reservations.
 // Scoped charges exclude borrowed sources, Go metadata, and unused slab capacity;
 // admission reservations may be more conservative.
@@ -46,14 +43,23 @@ type ExecutionOptions struct {
 	// TryPackedSort opts into exact 64-bit key packing for direct in-memory sorts.
 	// A non-packable key or unsupported plan uses the existing sort path.
 	TryPackedSort bool
+	// Workers is a maximum per query. Zero chooses automatically; one forces
+	// serial execution. Plans with blocking or non-partitionable stages fall
+	// back to the serial pipeline.
+	Workers int
 }
 
 // ExecuteWithOptions executes a plan with cooperative cancellation and
 // conservative memory reservations. Sink-retained batches become the caller's
 // responsibility after the sink returns.
 func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator, options ExecutionOptions, sink func(*store.Batch) bool) ExecutionResult {
-	if p == nil || p.source == nil || ctx == nil || a == nil || sink == nil || options.MemoryBudget <= 0 {
+	if p == nil || p.source == nil || ctx == nil || a == nil || sink == nil || options.MemoryBudget <= 0 || options.Workers < 0 {
 		return ExecutionResult{code: ExecutionInvalidInvocation}
+	}
+	if options.Workers != 1 {
+		if result, parallel := p.executeParallel(ctx, a, options, sink); parallel {
+			return result
+		}
 	}
 	scope := mem.MakeAllocationScope(a, options.MemoryBudget)
 	a = mem.MakeAllocatorWithScope(a, scope)
@@ -183,31 +189,7 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 		}
 		batch, done, err := cursor.next(ctx, a)
 		if err != nil {
-			if errors.Is(err, errScanFilter) {
-				if scope.Exhausted() {
-					return ExecutionResult{code: ExecutionResourceExhausted, cause: err}
-				}
-				return ExecutionResult{code: ExecutionFailed, cause: err}
-			}
-			var csvError *csv.CSVError
-			var parquetError *parquet.ParquetError
-			if errors.As(err, &parquetError) {
-				switch parquetError.Code() {
-				case parquet.ParquetResourceExhausted:
-					return ExecutionResult{code: ExecutionResourceExhausted, cause: err}
-				case parquet.ParquetCancelled:
-					return ExecutionResult{code: ExecutionCancelled, cause: err}
-				}
-			}
-			if errors.As(err, &csvError) {
-				switch csvError.Code() {
-				case csv.CSVResourceExhausted:
-					return ExecutionResult{code: ExecutionResourceExhausted, cause: err}
-				case csv.CSVCancelled:
-					return ExecutionResult{code: ExecutionCancelled, cause: err}
-				}
-			}
-			return ExecutionResult{code: ExecutionSourceFailure, cause: err}
+			return scanExecutionError(err, scope)
 		}
 		if done {
 			break

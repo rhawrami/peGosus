@@ -293,10 +293,31 @@ func TestExternalParquetPruningSkipsCorruptExcludedGroup(t *testing.T) {
 		count += batch.ActiveLen()
 		return true
 	})
-	pruned.Release()
 	if result.Code() != ExecutionCompleted || count != 16387-2048 {
 		t.Fatalf("pruned result: %v/%v, %d rows", result.Code(), result.Err(), count)
 	}
+	count = 0
+	parallelResult, parallel := pruned.executeParallel(context.Background(), a, ExecutionOptions{MemoryBudget: 32 << 20, Workers: 4}, func(batch *store.Batch) bool {
+		count += batch.ActiveLen()
+		return true
+	})
+	if !parallel || parallelResult.Code() != ExecutionCompleted || count != 16387-2048 {
+		t.Fatalf("parallel pruning %t %v/%v, %d rows", parallel, parallelResult.Code(), parallelResult.Err(), count)
+	}
+	count = 0
+	autoResult, automatic := pruned.executeParallel(context.Background(), a, ExecutionOptions{MemoryBudget: 32 << 20}, func(batch *store.Batch) bool {
+		count += batch.ActiveLen()
+		return true
+	})
+	if !automatic || autoResult.Code() != ExecutionCompleted || count != 16387-2048 {
+		t.Fatalf("auto Parquet workers %t %v/%v, %d rows", automatic, autoResult.Code(), autoResult.Err(), count)
+	}
+	stopCalls := 0
+	stopped := pruned.ExecuteWithOptions(context.Background(), a, ExecutionOptions{MemoryBudget: 32 << 20, Workers: 4}, func(*store.Batch) bool { stopCalls++; return false })
+	if stopped.Code() != ExecutionStopped || stopCalls != 1 {
+		t.Fatalf("parallel Parquet sink stop %v/%v, %d calls", stopped.Code(), stopped.Err(), stopCalls)
+	}
+	pruned.Release()
 }
 
 func TestExternalSelectiveScanReference(t *testing.T) {
@@ -332,6 +353,19 @@ func TestExternalSelectiveScanReference(t *testing.T) {
 			})
 			if result.Code() != ExecutionCompleted || calls != 1 {
 				t.Fatalf("selective result %v/%v, calls %d", result.Code(), result.Err(), calls)
+			}
+			if filepath.Ext(name) == ".parquet" {
+				calls = 0
+				parallelResult, parallel := p.executeParallel(context.Background(), a, ExecutionOptions{MemoryBudget: 64 << 20, Workers: 4}, func(batch *store.Batch) bool {
+					calls++
+					if batch.VectorAt(0).I64s()[0] != int64(expected.Selective.Rows) || batch.VectorAt(1).I64s()[0] != expected.Selective.IDSum || batch.VectorAt(2).I64s()[0] != int64(expected.Selective.NonNullMessage) {
+						t.Error("parallel aggregation differs from DuckDB")
+					}
+					return true
+				})
+				if !parallel || parallelResult.Code() != ExecutionCompleted || calls != 1 {
+					t.Fatalf("parallel Parquet aggregate %t %v/%v, %d calls", parallel, parallelResult.Code(), parallelResult.Err(), calls)
+				}
 			}
 		})
 	}

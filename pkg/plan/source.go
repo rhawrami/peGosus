@@ -115,34 +115,8 @@ func (c *scanCursor) next(ctx context.Context, a *mem.Allocator) (*store.Batch, 
 		return batch, false, nil
 	}
 	if c.source.parquetPath != "" {
-		if c.parquet == nil {
-			file, err := os.Open(c.source.parquetPath)
-			if err != nil {
-				return nil, false, err
-			}
-			c.file = file
-			info, err := file.Stat()
-			if err != nil {
-				return nil, false, err
-			}
-			reader, parseErr := parquet.MakeParquetReaderProjected(file, info.Size(), a, c.source.projection, c.source.parquetOptions)
-			if parseErr != nil {
-				return nil, false, parseErr
-			}
-			if reader.ColumnCount() != c.source.schema.Len() {
-				reader.Close()
-				return nil, false, parquet.MakeParquetError(parquet.ParquetInvalid, errors.New("Parquet schema width differs from bound scan schema"))
-			}
-			for i := range c.source.schema.Len() {
-				name, typ, nullable := reader.Column(i)
-				field := c.source.schema.FieldAt(i)
-				if name != field.Name() || !typ.Equal(field.Type()) || nullable && !field.Nullable() {
-					reader.Close()
-					return nil, false, parquet.MakeParquetError(parquet.ParquetInvalid, errors.New("Parquet schema differs from bound scan schema"))
-				}
-			}
-			reader.SetPruningPredicates(makeParquetPruningPredicates(c.source))
-			c.parquet = reader
+		if err := c.openParquet(a); err != nil {
+			return nil, false, err
 		}
 		batch, parseErr := c.parquet.Next(ctx)
 		if parseErr != nil {
@@ -187,6 +161,40 @@ func (c *scanCursor) next(ctx context.Context, a *mem.Allocator) (*store.Batch, 
 		return nil, false, errScanFilter
 	}
 	return batch, false, nil
+}
+
+func (c *scanCursor) openParquet(a *mem.Allocator) error {
+	if c.parquet != nil {
+		return nil
+	}
+	file, err := os.Open(c.source.parquetPath)
+	if err != nil {
+		return err
+	}
+	c.file = file
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	reader, parseErr := parquet.MakeParquetReaderProjected(file, info.Size(), a, c.source.projection, c.source.parquetOptions)
+	if parseErr != nil {
+		return parseErr
+	}
+	if reader.ColumnCount() != c.source.schema.Len() {
+		reader.Close()
+		return parquet.MakeParquetError(parquet.ParquetInvalid, errors.New("Parquet schema width differs from bound scan schema"))
+	}
+	for i := range c.source.schema.Len() {
+		name, typ, nullable := reader.Column(i)
+		field := c.source.schema.FieldAt(i)
+		if name != field.Name() || !typ.Equal(field.Type()) || nullable && !field.Nullable() {
+			reader.Close()
+			return parquet.MakeParquetError(parquet.ParquetInvalid, errors.New("Parquet schema differs from bound scan schema"))
+		}
+	}
+	reader.SetPruningPredicates(makeParquetPruningPredicates(c.source))
+	c.parquet = reader
+	return nil
 }
 
 func (c *scanCursor) applyFilters(a *mem.Allocator, batch *store.Batch) bool {
