@@ -17,10 +17,10 @@
     JLE tradLoop                                           \
                                                            \
 vecLoop:                                                   \
-    vBrdCstOp tReg, Y1                                     \
-    vBrdCstOp tReg, Y2                                     \
-    vBrdCstOp tReg, Y3                                     \
-    vBrdCstOp tReg, Y4                                     \
+    vBrdCstOp lit+24(FP), Y1                               \
+    vBrdCstOp lit+24(FP), Y2                               \
+    vBrdCstOp lit+24(FP), Y3                               \
+    vBrdCstOp lit+24(FP), Y4                               \
     vMovOp Y1, (AX)                                        \
     vMovOp Y2, 32(AX)                                      \
     vMovOp Y3, 64(AX)                                      \

@@ -26,10 +26,11 @@
     JEQ exitFn                                             \
                                                            \
     tMovOp initVal, bReg                                   \
-    initBrdCstOp bReg, Y0                                  \
-    initBrdCstOp bReg, Y1                                  \
-    initBrdCstOp bReg, Y2                                  \
-    initBrdCstOp bReg, Y3                                  \
+    VMOVQ bReg, X0                                         \
+    initBrdCstOp X0, Y0                                    \
+    initBrdCstOp X0, Y1                                    \
+    initBrdCstOp X0, Y2                                    \
+    initBrdCstOp X0, Y3                                    \
                                                            \
     CMPQ CX, chnkSize                                      \
     JLE tradLoop                                           \
@@ -120,10 +121,10 @@ TEXT ·minF32(SB),NOSPLIT,$0-48
     JEQ exitFn                                             \ 
                                                            \
     MOVQ (AX), R8                                          \ 
-    VPBROADCASTQ R8, Y0                                    \ 
-    VPBROADCASTQ R8, Y1                                    \  
-    VPBROADCASTQ R8, Y2                                    \                                     
-    VPBROADCASTQ R8, Y3                                    \ 
+    VPBROADCASTQ (AX), Y0                                  \
+    VPBROADCASTQ (AX), Y1                                  \
+    VPBROADCASTQ (AX), Y2                                  \
+    VPBROADCASTQ (AX), Y3                                  \
                                                            \
     CMPQ CX, $16                                           \ 
     JLE tradLoop                                           \ 
@@ -209,11 +210,13 @@ TEXT ·minI64(SB),NOSPLIT,$0-48
     JEQ exitFn                                             \
                                                            \
     tMovOp initVal1, bReg                                  \
-    initBrdCstOp bReg, Y0                                  \
-    initBrdCstOp bReg, Y1                                  \
+    VMOVQ bReg, X0                                         \
+    initBrdCstOp X0, Y0                                    \
+    initBrdCstOp X0, Y1                                    \
     tMovOp initVal2, bReg                                  \
-    initBrdCstOp bReg, Y2                                  \
-    initBrdCstOp bReg, Y3                                  \
+    VMOVQ bReg, X2                                         \
+    initBrdCstOp X2, Y2                                    \
+    initBrdCstOp X2, Y3                                    \
                                                            \
     CMPQ CX, chnkSize                                      \
     JLE tradLoop                                           \
@@ -304,10 +307,10 @@ TEXT ·minMaxI64(SB),NOSPLIT,$0-48
     JEQ exitFn 
 
     MOVQ (AX), R8 
-    VPBROADCASTQ R8, Y0 
-    VPBROADCASTQ R8, Y1  
-    VPBROADCASTQ R8, Y2                                     
-    VPBROADCASTQ R8, Y3 
+    VPBROADCASTQ (AX), Y0
+    VPBROADCASTQ (AX), Y1
+    VPBROADCASTQ (AX), Y2
+    VPBROADCASTQ (AX), Y3
 
     CMPQ CX, $8
     JLE tradLoop 
@@ -382,7 +385,8 @@ exitFn:
     VPINSRQ $1, R8, X1, X1                                 \
     VINSERTI128 $1, X1, Y0, Y0                             \
     MOVL initVal, R8                                       \
-    VPBROADCASTD R8, Y1                                    \
+    VMOVD R8, X1                                           \
+    VPBROADCASTD X1, Y1                                    \
     VPXOR Y6, Y6, Y6                                       \
                                                            \
     CMPQ CX, $8                                            \
@@ -411,7 +415,8 @@ tradLoop:                                                  \
     ANDQ R9, R11                                           \
     XORQ R12, R12                                          \
     SUBQ R11, R12                                          \
-    VPBROADCASTB R12, Y4                                   \
+    VMOVQ R12, X4                                          \
+    VPBROADCASTB X4, Y4                                    \
     VPBLENDVB Y4, Y3, Y1, Y1                               \
     SHRQ $1, R9                                            \
     ADDQ $4, AX                                            \
@@ -482,8 +487,9 @@ TEXT ·minF32WithValidity(SB),NOSPLIT,$0-72
     VINSERTI128 $1, X2, Y1, Y1                             \
                                                            \
     MOVQ initVal, R8                                       \
-    VPBROADCASTQ R8, Y2                                    \
-    VPBROADCASTQ R8, Y3                                    \
+    VMOVQ R8, X2                                           \
+    VPBROADCASTQ X2, Y2                                    \
+    VPBROADCASTQ X2, Y3                                    \
     VPXOR Y10, Y10, Y10                                    \
                                                            \
     CMPQ CX, $8                                            \
@@ -517,7 +523,8 @@ tradLoop:                                                  \
     ANDQ R9, R11                                           \
     XORQ R12, R12                                          \
     SUBQ R11, R12                                          \
-    VPBROADCASTB R12, Y6                                   \
+    VMOVQ R12, X6                                          \
+    VPBROADCASTB X6, Y6                                    \
     VPBLENDVB Y6, Y8, Y2, Y2                               \
     SHRQ $1, R9                                            \
     ADDQ $8, AX                                            \
@@ -604,9 +611,11 @@ TEXT ·minF64WithValidity(SB),NOSPLIT,$0-72
     VINSERTI128 $1, X1, Y0, Y0                             \
                                                            \
     MOVL initVal1, R8                                      \
-    VPBROADCASTD R8, Y1                                    \
+    VMOVD R8, X1                                           \
+    VPBROADCASTD X1, Y1                                    \
     MOVL initVal2, R8                                      \
-    VPBROADCASTD R8, Y13                                   \
+    VMOVD R8, X13                                          \
+    VPBROADCASTD X13, Y13                                  \
     VPXOR Y6, Y6, Y6                                       \
                                                            \
     CMPQ CX, $8                                            \
@@ -638,7 +647,8 @@ tradLoop:                                                  \
     ANDQ R9, R11                                           \
     XORQ R12, R12                                          \
     SUBQ R11, R12                                          \
-    VPBROADCASTB R12, Y4                                   \
+    VMOVQ R12, X4                                          \
+    VPBROADCASTB X4, Y4                                    \
     VPBLENDVB Y4, Y3, Y1, Y1                               \
     VPBLENDVB Y4, Y14, Y13, Y13                            \
     SHRQ $1, R9                                            \
@@ -711,11 +721,13 @@ TEXT ·minMaxF32WithValidity(SB),NOSPLIT,$0-72
     VINSERTI128 $1, X2, Y1, Y1                             \
                                                            \
     MOVQ initVal1, R8                                      \
-    VPBROADCASTQ R8, Y2                                    \
-    VPBROADCASTQ R8, Y3                                    \
+    VMOVQ R8, X2                                           \
+    VPBROADCASTQ X2, Y2                                    \
+    VPBROADCASTQ X2, Y3                                    \
     MOVQ initVal2, R8                                      \
-    VPBROADCASTQ R8, Y12                                   \
-    VPBROADCASTQ R8, Y13                                   \
+    VMOVQ R8, X12                                          \
+    VPBROADCASTQ X12, Y12                                  \
+    VPBROADCASTQ X12, Y13                                  \
     VPXOR Y10, Y10, Y10                                    \
                                                            \
     CMPQ CX, $8                                            \
@@ -751,7 +763,8 @@ tradLoop:                                                  \
     ANDQ R9, R11                                           \
     XORQ R12, R12                                          \
     SUBQ R11, R12                                          \
-    VPBROADCASTB R12, Y6                                   \
+    VMOVQ R12, X6                                          \
+    VPBROADCASTB X6, Y6                                    \
     VPBLENDVB Y6, Y8, Y2, Y2                               \
     VPBLENDVB Y6, Y9, Y12, Y12                             \
     SHRQ $1, R9                                            \

@@ -21,11 +21,14 @@
     JEQ exitFn                                             \
                                                            \
     MOVQ min_ascii, R8                                     \
-    VPBROADCASTB R8, Y0                                    \
+    VMOVD R8, X0                                           \
+    VPBROADCASTB X0, Y0                                    \
     MOVQ max_ascii, R8                                     \
-    VPBROADCASTB R8, Y1                                    \
+    VMOVD R8, X1                                           \
+    VPBROADCASTB X1, Y1                                    \
     MOVQ ASCII_DIFF, R8                                    \
-    VPBROADCASTB R8, Y2                                    \
+    VMOVD R8, X2                                           \
+    VPBROADCASTB X2, Y2                                    \
                                                            \
     CMPQ CX, $64                                           \
     JLE tradLoopInit                                       \

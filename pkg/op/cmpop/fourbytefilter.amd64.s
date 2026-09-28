@@ -11,7 +11,8 @@
     SUBQ $8, SI                                            \
     vBrdCstOp lit+48(FP), Y0                               \
     MOVB $0xFF, R8                                         \
-    VPBROADCASTB R8, Y5                                    \
+    VMOVD R8, X5                                           \
+    VPBROADCASTB X5, Y5                                    \
     XORQ R8, R8                                            \ 
     MOVQ $1, R11                                           \
                                                            \

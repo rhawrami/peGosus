@@ -137,7 +137,8 @@ TEXT ·sqrtF32(SB),NOSPLIT,$0-48
     SUBQ chnkSize, SI                                      \
     iMovOp cScalar, R8                                     \
     notOp R8                                               \
-    vBrdCstOp R8, Y0                                       \
+    VMOVQ R8, X0                                           \
+    vBrdCstOp X0, Y0                                       \
                                                            \
     TESTQ CX, CX                                           \
     JEQ exitFn                                             \

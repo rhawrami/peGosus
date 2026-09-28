@@ -10,7 +10,7 @@
     XORQ DI, DI                                            \
     SUBQ chnkSize, SI                                      \
     tMovOp lit+48(FP), R9                                  \
-    vBrdCstOp R9, Y0                                       \
+    vBrdCstOp lit+48(FP), Y0                               \
                                                            \
     TESTQ CX, CX                                           \
     JEQ exitFn                                             \

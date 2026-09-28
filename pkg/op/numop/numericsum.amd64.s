@@ -240,7 +240,8 @@ tradLoop:                                                  \
     ANDQ R9, R11                                           \
     XORQ R12, R12                                          \
     SUBQ R11, R12                                          \
-    VPBROADCASTB R12, Y6                                   \
+    VMOVQ R12, X6                                          \
+    VPBROADCASTB X6, Y6                                    \
     VPBLENDVB Y6, Y4, Y10, Y4                              \
     vTradOp                                                \
     SHRQ $1, R9                                            \
