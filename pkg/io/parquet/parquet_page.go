@@ -251,6 +251,14 @@ func (c *parquetCursor) readPage(ctx context.Context) *ParquetError {
 			}
 			compressedValues := v2.field(7).kind == 0 || v2.number(7) != 0
 			if c.chunk.codec == 1 && compressedValues {
+				if compressed == defs {
+					if uncompressed != defs {
+						body.Dec()
+						return c.failure(ParquetInvalid, errors.New("missing compressed v2 values"))
+					}
+					c.data = body
+					return c.startPage(kind, header, body.AsBytes()[:defs], nil)
+				}
 				decoded, err := c.decompress(body.AsBytes()[defs:compressed], int(uncompressed-defs))
 				if err != nil {
 					body.Dec()
