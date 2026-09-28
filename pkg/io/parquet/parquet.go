@@ -112,6 +112,9 @@ type parquetChunk struct {
 	start, end int64
 	codec      int64
 	values     int64
+	min, max   int64
+	hasMinMax  bool
+	allNull    bool
 }
 type parquetGroup struct {
 	rows   int64
@@ -261,7 +264,35 @@ func MakeParquetReaderProjected(input io.ReaderAt, size int64, a *mem.Allocator,
 			if start < 4 || length < 0 || start > footerStart || length > footerStart-start {
 				return invalid(ParquetInvalid, errors.New("column chunk outside file"))
 			}
-			rowGroups[i].chunks[j] = parquetChunk{start: start, end: start + length, codec: info.number(4), values: rows}
+			column := parquetChunk{start: start, end: start + length, codec: info.number(4), values: rows}
+			stats := info.field(12)
+			if stats.kind == 12 {
+				column.allNull = rows != 0 && stats.field(3).kind != 0 && stats.number(3) == rows
+				width := 0
+				switch columns[j].typ.ID() {
+				case dtype.INT32T, dtype.DATET:
+					width = 4
+				case dtype.INT64T, dtype.TIMESTAMPTZT:
+					width = 8
+				}
+				if width == 4 || width == 8 {
+					minValue, maxValue := stats.field(6), stats.field(5)
+					if minValue.kind == 0 && maxValue.kind == 0 {
+						minValue, maxValue = stats.field(2), stats.field(1)
+					}
+					if minValue.kind == 8 && maxValue.kind == 8 && len(minValue.text) == width && len(maxValue.text) == width {
+						if width == 4 {
+							column.min = int64(int32(binary.LittleEndian.Uint32([]byte(minValue.text))))
+							column.max = int64(int32(binary.LittleEndian.Uint32([]byte(maxValue.text))))
+						} else {
+							column.min = int64(binary.LittleEndian.Uint64([]byte(minValue.text)))
+							column.max = int64(binary.LittleEndian.Uint64([]byte(maxValue.text)))
+						}
+						column.hasMinMax = column.min <= column.max
+					}
+				}
+			}
+			rowGroups[i].chunks[j] = column
 		}
 	}
 	if total != meta.number(3) {
@@ -366,6 +397,7 @@ type ParquetReader struct {
 	row       int64
 	cursors   []parquetCursor
 	closed    bool
+	pruning   []PruningPredicate
 }
 
 // ColumnCount returns the number of columns in the file schema.
@@ -401,7 +433,10 @@ func (r *ParquetReader) Next(ctx context.Context) (*store.Batch, *ParquetError) 
 	if err := ctx.Err(); err != nil {
 		return nil, &ParquetError{code: ParquetCancelled, cause: err}
 	}
-	for r.group < len(r.groups) && r.row == r.groups[r.group].rows {
+	for r.group < len(r.groups) && (r.row == r.groups[r.group].rows || r.row == 0 && r.groupCannotMatch(r.groups[r.group])) {
+		if err := ctx.Err(); err != nil {
+			return nil, MakeParquetError(ParquetCancelled, err)
+		}
 		for i := range r.cursors {
 			c := &r.cursors[i]
 			if c.rows != c.chunk.values || c.offset != c.chunk.end || c.pagePos != c.pageRows || c.nonNull != 0 || c.encoding == 0 && (c.column.typ.ID() != dtype.BOOLT && c.valuePos != len(c.values) || c.column.typ.ID() == dtype.BOOLT && (c.valuePos+7)/8 != len(c.values)) {

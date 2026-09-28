@@ -141,6 +141,7 @@ func (c *scanCursor) next(ctx context.Context, a *mem.Allocator) (*store.Batch, 
 					return nil, false, parquet.MakeParquetError(parquet.ParquetInvalid, errors.New("Parquet schema differs from bound scan schema"))
 				}
 			}
+			reader.SetPruningPredicates(makeParquetPruningPredicates(c.source))
 			c.parquet = reader
 		}
 		batch, parseErr := c.parquet.Next(ctx)
