@@ -10,28 +10,38 @@ import (
 	"github.com/rhawrami/peGosus/pkg/store"
 )
 
+const compactTopNItemBytes = int(unsafe.Sizeof(compactTopNItem{}))
+
 func makeCompactTopNState(step physicalStep) *compactTopNState {
-	if !step.hasTopN || len(step.order) != 1 || step.topN > int64(int(^uint(0)>>1)) {
+	if !step.hasTopN || len(step.order) == 0 || len(step.order) > 2 || step.topN > int64(int(^uint(0)>>1)) {
 		return nil
 	}
-	keyType := step.order[0].program.nodes[step.order[0].program.roots[0]].dType.ID()
-	switch keyType {
-	case dtype.INT32T, dtype.INT64T, dtype.FLOAT32T, dtype.FLOAT64T, dtype.DATET, dtype.TIMESTAMPTZT:
-	default:
-		return nil
+	for _, order := range step.order {
+		keyType := order.program.nodes[order.program.roots[0]].dType.ID()
+		switch keyType {
+		case dtype.INT32T, dtype.INT64T, dtype.FLOAT32T, dtype.FLOAT64T, dtype.DATET, dtype.TIMESTAMPTZT:
+		default:
+			return nil
+		}
 	}
 	for _, field := range step.schema.fields {
 		if !field.Type().IsFixedSize() {
 			return nil
 		}
 	}
-	return &compactTopNState{limit: int(step.topN), nullsFirst: step.order[0].nullsFirst}
+	state := &compactTopNState{limit: int(step.topN), keyCount: len(step.order)}
+	for i, order := range step.order {
+		state.nullsFirst[i] = order.nullsFirst
+	}
+	return state
 }
 
 type compactTopNItem struct {
 	key      uint64
+	key2     uint64
 	row      uint64
 	null     uint64
+	null2    uint64
 	sequence uint64
 }
 
@@ -40,7 +50,8 @@ type compactTopNState struct {
 	scope      *mem.AllocationScope
 	rows       packedRows
 	limit      int
-	nullsFirst bool
+	nullsFirst [2]bool
+	keyCount   int
 	length     int
 	capacity   int
 	next       uint64
@@ -55,7 +66,7 @@ func (s *compactTopNState) release() {
 }
 
 func (s *compactTopNState) charged() int64 {
-	return saturatingAdd(int64(s.capacity)*32, s.rows.bytes())
+	return saturatingAdd(int64(s.capacity)*int64(compactTopNItemBytes), s.rows.bytes())
 }
 
 func (s *compactTopNState) slice() []compactTopNItem {
@@ -67,15 +78,15 @@ func (s *compactTopNState) slice() []compactTopNItem {
 
 func (s *compactTopNState) grow(a *mem.Allocator, budget int64) bool {
 	capacity := min(max(16, s.capacity*2), s.limit)
-	if capacity <= s.capacity || capacity > int(^uint(0)>>1)/32 || int64(capacity)*32 > budget-s.charged() {
+	if capacity <= s.capacity || capacity > int(^uint(0)>>1)/compactTopNItemBytes || int64(capacity)*int64(compactTopNItemBytes) > budget-s.charged() {
 		return false
 	}
-	items, ok := allocOperatorSegment(a, s.scope, capacity*32)
+	items, ok := allocOperatorSegment(a, s.scope, capacity*compactTopNItemBytes)
 	if !ok {
 		return false
 	}
 	if s.items != nil {
-		copy(items.AsBytes(), s.items.AsBytes()[:s.length*32])
+		copy(items.AsBytes(), s.items.AsBytes()[:s.length*compactTopNItemBytes])
 		s.items.Dec()
 	}
 	s.items, s.capacity = items, capacity
@@ -83,17 +94,28 @@ func (s *compactTopNState) grow(a *mem.Allocator, budget int64) bool {
 }
 
 func (s *compactTopNState) compare(left, right compactTopNItem) int {
-	if left.null != right.null {
-		if (left.null != 0) == s.nullsFirst {
+	for i := range s.keyCount {
+		l, r := left.key, right.key
+		ln, rn := left.null, right.null
+		if i == 1 {
+			l, r = left.key2, right.key2
+			ln, rn = left.null2, right.null2
+		}
+		if ln != rn {
+			if (ln != 0) == s.nullsFirst[i] {
+				return -1
+			}
+			return 1
+		}
+		if ln != 0 {
+			continue
+		}
+		if l < r {
 			return -1
 		}
-		return 1
-	}
-	if left.key < right.key {
-		return -1
-	}
-	if left.key > right.key {
-		return 1
+		if l > r {
+			return 1
+		}
 	}
 	if left.sequence < right.sequence {
 		return -1
@@ -138,12 +160,21 @@ func (s *compactTopNState) add(a *mem.Allocator, batch *store.Batch, step physic
 	if s.limit == 0 {
 		return true
 	}
-	values, ok := executePhysicalExprProgram(a, batch, step.order[0].program)
-	if !ok {
-		return false
+	var values [2]physicalExprValues
+	var keys [2]*store.Vector
+	defer func() {
+		for i := range s.keyCount {
+			values[i].release()
+		}
+	}()
+	for i := range s.keyCount {
+		var ok bool
+		values[i], ok = executePhysicalExprProgram(a, batch, step.order[i].program)
+		if !ok {
+			return false
+		}
+		keys[i] = &values[i].vectors[step.order[i].program.roots[0]]
 	}
-	defer values.release()
-	key := &values.vectors[step.order[0].program.roots[0]]
 	selection := batch.Selection().MakeBitMapTemp(a)
 	if batch.Selection() != nil && selection == nil {
 		return false
@@ -155,8 +186,11 @@ func (s *compactTopNState) add(a *mem.Allocator, batch *store.Batch, step physic
 		if selection != nil && !selection.IsSet(row) {
 			continue
 		}
-		encoded, null := encodeNumericOrderKey(key, row, step.order[0].descending)
+		encoded, null := encodeNumericOrderKey(keys[0], row, step.order[0].descending)
 		item := compactTopNItem{key: encoded, null: null, sequence: s.next}
+		if s.keyCount == 2 {
+			item.key2, item.null2 = encodeNumericOrderKey(keys[1], row, step.order[1].descending)
+		}
 		s.next++
 		if s.length == s.limit {
 			worst := s.slice()[0]
@@ -175,7 +209,7 @@ func (s *compactTopNState) add(a *mem.Allocator, batch *store.Batch, step physic
 			return false
 		}
 		item.row = uint64(s.rows.length)
-		if !s.rows.append(a, batch, row, budget-int64(s.capacity)*32) {
+		if !s.rows.append(a, batch, row, budget-int64(s.capacity)*int64(compactTopNItemBytes)) {
 			return false
 		}
 		s.slice()[s.length] = item

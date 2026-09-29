@@ -104,7 +104,11 @@ func (s *sortState) add(a *mem.Allocator, batch *store.Batch, step physicalStep,
 		if selection != nil && !selection.IsSet(row) {
 			continue
 		}
-		keys := make([]Scalar, len(vectors))
+		var inline [4]Scalar
+		keys := inline[:min(len(vectors), len(inline))]
+		if len(vectors) > len(inline) {
+			keys = make([]Scalar, len(vectors))
+		}
 		for i, vector := range vectors {
 			keys[i] = scalarAt(vector, row)
 		}
