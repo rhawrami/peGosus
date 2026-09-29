@@ -58,8 +58,11 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 	for i, step := range p.steps {
 		switch step.operation {
 		case physicalPushedFilter, physicalFilter, physicalProject:
+			if aggregateAt >= 0 {
+				return ExecutionResult{}, false
+			}
 		case physicalAggregate:
-			if i != len(p.steps)-1 {
+			if aggregateAt >= 0 {
 				return ExecutionResult{}, false
 			}
 			for _, aggregate := range step.aggregates {
@@ -68,6 +71,14 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 				}
 			}
 			aggregateAt = i
+		case physicalSort:
+			if aggregateAt < 0 || i != aggregateAt+1 {
+				return ExecutionResult{}, false
+			}
+		case physicalLimit:
+			if aggregateAt < 0 || i != aggregateAt+2 || p.steps[i-1].operation != physicalSort {
+				return ExecutionResult{}, false
+			}
 		default:
 			return ExecutionResult{}, false
 		}
@@ -303,9 +314,17 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 	}
 	if aggregateAt >= 0 {
 		step := p.steps[aggregateAt]
+		tail := makeParallelAggregateTail(ctx, scoped, scope, p.steps, aggregateAt, options.MemoryBudget, sink)
+		defer tail.release()
 		if len(step.groupKeys) != 0 {
-			if result, partitioned := p.executeGroupedShards(ctx, scoped, scope, step, workerGroups, options.MemoryBudget, totalRows, sink); partitioned {
-				return result, true
+			if result, partitioned := p.executeGroupedShards(ctx, scoped, scope, step, workerGroups, options.MemoryBudget, totalRows, tail.consume); partitioned {
+				if result.code == ExecutionStopped {
+					return tail.stopped(), true
+				}
+				if result.code != ExecutionCompleted {
+					return result, true
+				}
+				return tail.finish(), true
 			}
 			var remaining int64
 			for _, state := range workerGroups {
@@ -341,7 +360,7 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 				workerGroups[i] = nil
 			}
 			if merged == nil {
-				return ExecutionResult{code: ExecutionCompleted}, true
+				return tail.finish(), true
 			}
 			defer merged.release()
 			length := len(merged.values)
@@ -349,7 +368,7 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 				length = merged.compact.length
 			}
 			if length == 0 {
-				return ExecutionResult{code: ExecutionCompleted}, true
+				return tail.finish(), true
 			}
 			if merged.charged(len(step.aggregates)) > options.MemoryBudget-merged.charged(len(step.aggregates)) {
 				return ExecutionResult{code: ExecutionResourceExhausted}, true
@@ -365,10 +384,10 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 			if err := ctx.Err(); err != nil {
 				return ExecutionResult{code: ExecutionCancelled, cause: err}, true
 			}
-			if !sink(batch) {
-				return ExecutionResult{code: ExecutionStopped}, true
+			if !tail.consume(batch) {
+				return tail.stopped(), true
 			}
-			return ExecutionResult{code: ExecutionCompleted}, true
+			return tail.finish(), true
 		}
 		merged := make([]aggregateValue, len(step.aggregates))
 		defer func() {
@@ -392,9 +411,10 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 		if err := ctx.Err(); err != nil {
 			return ExecutionResult{code: ExecutionCancelled, cause: err}, true
 		}
-		if !sink(batch) {
-			return ExecutionResult{code: ExecutionStopped}, true
+		if !tail.consume(batch) {
+			return tail.stopped(), true
 		}
+		return tail.finish(), true
 	}
 	return ExecutionResult{code: ExecutionCompleted}, true
 }
