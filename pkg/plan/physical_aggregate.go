@@ -2,6 +2,7 @@ package plan
 
 import (
 	"math"
+	"math/bits"
 	"unsafe"
 
 	"github.com/rhawrami/peGosus/pkg/dtype"
@@ -170,27 +171,44 @@ func accumulateAggregates(a *mem.Allocator, batch *store.Batch, step physicalSte
 			local[i].release()
 		}
 	}()
-	selection := batch.Selection().MakeBitMapTemp(a)
-	if batch.Selection() != nil && selection == nil {
-		return false
+	needsBitmap := false
+	for _, aggregate := range step.aggregates {
+		if aggregate.distinct || aggregate.kind != AggregateCount && aggregate.kind != AggregateCountStar {
+			needsBitmap = true
+			break
+		}
+	}
+	var selection *store.BitMap
+	if needsBitmap {
+		selection = batch.Selection().MakeBitMapTemp(a)
+		if batch.Selection() != nil && selection == nil {
+			return false
+		}
 	}
 	if selection != nil {
 		defer selection.Release()
 	}
 	for i, aggregate := range step.aggregates {
+		if aggregate.kind == AggregateCountStar {
+			local[i].count = int64(batch.ActiveLen())
+			continue
+		}
 		var vector *store.Vector
 		var values physicalExprValues
 		var one *store.Batch
-		if aggregate.kind != AggregateCountStar {
-			var ok bool
-			values, ok = executePhysicalExprProgram(a, batch, aggregate.program)
-			if !ok {
-				return false
-			}
-			vector = &values.vectors[aggregate.program.roots[0]]
-			if aggregate.distinct {
-				one = store.MakeBatchRetained([]store.Vector{*vector})
-			}
+		var ok bool
+		values, ok = executePhysicalExprProgram(a, batch, aggregate.program)
+		if !ok {
+			return false
+		}
+		vector = &values.vectors[aggregate.program.roots[0]]
+		if aggregate.distinct {
+			one = store.MakeBatchRetained([]store.Vector{*vector})
+		}
+		if aggregate.kind == AggregateCount && !aggregate.distinct {
+			local[i].count = countValidSelected(batch, vector)
+			values.release()
+			continue
 		}
 		if !aggregate.distinct && vector != nil && (accumulateIntegerKernel(a, vector, selection, aggregate.kind, &local[i]) || accumulateFloatKernel(a, vector, selection, aggregate.kind, &local[i])) {
 			values.release()
@@ -242,6 +260,32 @@ func accumulateAggregates(a *mem.Allocator, batch *store.Batch, step physicalSte
 		mergeAggregate(&merged[i], &local[i], aggregate.kind)
 	}
 	return true
+}
+
+func countValidSelected(batch *store.Batch, vector *store.Vector) int64 {
+	validity := vector.Validity()
+	selection := batch.Selection()
+	if validity == nil {
+		return int64(batch.ActiveLen())
+	}
+	if selection == nil {
+		return int64(validity.ViN())
+	}
+	if bitmap, ok := selection.AsBitMap(); ok {
+		count := 0
+		for i, mask := range bitmap.Bytes() {
+			count += bits.OnesCount8(mask & validity.Bytes()[i])
+		}
+		return int64(count)
+	}
+	selected, _ := selection.AsSelVec()
+	count := int64(0)
+	for _, row := range selected.Offsets() {
+		if validity.IsSet(int(row)) {
+			count++
+		}
+	}
+	return count
 }
 
 func accumulateIntegerKernel(a *mem.Allocator, vector *store.Vector, selection *store.BitMap, kind AggregateKind, state *aggregateValue) bool {

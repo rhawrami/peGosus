@@ -277,3 +277,80 @@ func TestPhysicalGroupedFloatReductionsSkipNaN(t *testing.T) {
 		t.Fatalf("grouped float result: %v, keys %v", result.Code(), seen)
 	}
 }
+
+func TestGlobalCountsComposeSelectionsAndValidity(t *testing.T) {
+	a := mem.MakeAllocatorWithProfiles([]int{1 << 16}, []int{1 << 16})
+	for _, length := range []int{0, 1, 7, 8, 9, 257} {
+		for _, selectionKind := range []int{0, 1, 2} {
+			for _, nullable := range []bool{false, true} {
+				var batches []*store.Batch
+				wantRows, wantValues := int64(0), int64(0)
+				for part := range 2 {
+					v := store.MakeVector(a, length, dtype.Int32T(), nullable)
+					var offsets []uint32
+					var mask *store.BitMap
+					if selectionKind == 1 {
+						mask = store.MakeBitMap(a, length)
+					}
+					for row := range length {
+						v.I32s()[row] = int32(part*length + row)
+						valid := !nullable || row%5 != 0
+						if !valid {
+							v.Validity().Clear(row)
+						}
+						selected := selectionKind == 0 || row%3 != 0
+						if selected {
+							wantRows++
+							if valid {
+								wantValues++
+							}
+							if mask != nil {
+								mask.Set(row)
+							}
+							if selectionKind == 2 {
+								offsets = append(offsets, uint32(row))
+							}
+						}
+					}
+					batch := store.MakeBatch([]store.Vector{v})
+					if mask != nil {
+						batch.SetSelection(store.MakeRowSelectionFromBitMap(mask))
+					}
+					if selectionKind == 2 {
+						batch.SetSelection(store.MakeRowSelectionFromSelVec(store.MakeSelVecFromOffsets(a, length, offsets)))
+					}
+					batches = append(batches, batch)
+				}
+				table := store.MakeTable(batches)
+				for _, batch := range batches {
+					batch.Release()
+				}
+				for _, aggregates := range [][]Aggregate{
+					{MakeCountStar()},
+					{MakeCountStar(), MakeCount(MakeColumn("x")), MakeCount(MakeColumn("x").Gt(0))},
+				} {
+					p, err := MakePhysicalPlan(MakeScan(table, MakeSchemaWithNullability([]string{"x"}, []dtype.Type{dtype.Int32T()}, []bool{nullable})).Aggregate(aggregates...))
+					if err != nil {
+						t.Fatal(err)
+					}
+					result := p.ExecuteWithOptions(context.Background(), a, ExecutionOptions{MemoryBudget: 1 << 16}, func(output *store.Batch) bool {
+						if output.Len() != 1 || output.VectorAt(0).I64s()[0] != wantRows {
+							t.Fatalf("length %d selection %d nullable %t: COUNT(*) got %d want %d", length, selectionKind, nullable, output.VectorAt(0).I64s()[0], wantRows)
+						}
+						for i := 1; i < len(aggregates); i++ {
+							if output.VectorAt(i).I64s()[0] != wantValues {
+								t.Fatalf("length %d selection %d nullable %t: COUNT(expr %d) got %d want %d", length, selectionKind, nullable, i, output.VectorAt(i).I64s()[0], wantValues)
+							}
+						}
+						return true
+					})
+					p.Release()
+					if result.Code() != ExecutionCompleted {
+						t.Fatalf("COUNT execution: %v/%v", result.Code(), result.Err())
+					}
+				}
+				table.Release()
+			}
+		}
+	}
+}
