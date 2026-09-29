@@ -194,6 +194,61 @@ func TestCSVScanProjectionPushdownPreservesFields(t *testing.T) {
 	}
 }
 
+func TestCSVScanAggregatePrunesUnusedColumns(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "aggregate.csv")
+	if err := os.WriteFile(path, []byte("id,bad,category\n1,not-an-integer,east\n2,still-invalid,east\n3,also-invalid,west\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	a := mem.MakeAllocatorWithProfiles([]int{8192}, []int{8192})
+	schema := MakeSchema([]string{"id", "bad", "category"}, []dtype.Type{dtype.Int32T(), dtype.Int32T(), dtype.StringT()})
+	scan := MakeCSVScan(path, schema, csv.CSVOptions{HasHeader: true, BatchSize: 2})
+	query := scan.Filter(MakeColumn("id").Ge(2)).GroupBy([]Expr{MakeColumn("category")}, MakeCountStar(), MakeSum(MakeColumn("id")))
+	bound, err := BindLogicalPlan(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	physical, err := MakePhysicalPlanFromBound(bound)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := physical.source.projection; len(got) != 2 || got[0] != 0 || got[1] != 2 {
+		t.Fatalf("aggregate needed source columns %v, want [0 2]", got)
+	}
+	for i := range bound.Schema().Len() {
+		if bound.Schema().FieldAt(i).ID() != physical.Schema().FieldAt(i).ID() {
+			t.Fatal("aggregate pruning changed field IDs")
+		}
+	}
+	seen := make(map[string][2]int64)
+	result := physical.ExecuteWithOptions(context.Background(), a, ExecutionOptions{MemoryBudget: 8192}, func(batch *store.Batch) bool {
+		for row := range batch.Len() {
+			seen[batch.VectorAt(0).Strings()[row].View()] = [2]int64{batch.VectorAt(1).I64s()[row], batch.VectorAt(2).I64s()[row]}
+		}
+		return true
+	})
+	physical.Release()
+	if result.Code() != ExecutionCompleted || len(seen) != 2 || seen["east"] != [2]int64{1, 2} || seen["west"] != [2]int64{1, 3} {
+		t.Fatalf("aggregate after pruning: %v/%v, results %v", result.Code(), result.Err(), seen)
+	}
+	count, err := MakePhysicalPlan(scan.Aggregate(MakeCountStar()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := count.source.projection; len(got) != 1 || got[0] != 0 {
+		t.Fatalf("COUNT(*) source projection %v, want [0]", got)
+	}
+	result = count.ExecuteWithOptions(context.Background(), a, ExecutionOptions{MemoryBudget: 8192}, func(batch *store.Batch) bool {
+		if batch.VectorAt(0).I64s()[0] != 3 {
+			t.Fatal("COUNT(*) after pruning returned the wrong row count")
+		}
+		return true
+	})
+	count.Release()
+	if result.Code() != ExecutionCompleted {
+		t.Fatalf("COUNT(*) after pruning: %v/%v", result.Code(), result.Err())
+	}
+}
+
 func TestTableProjectionPushdownRetainsPayload(t *testing.T) {
 	a := mem.MakeAllocatorWithProfiles([]int{4096}, []int{4096})
 	x := store.MakeVector(a, 2, dtype.Int32T(), false)
