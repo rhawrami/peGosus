@@ -98,12 +98,12 @@ var (
 	castI64ToF32Impl = castI64ToF32
 	castF64ToI32Impl = castF64ToI32
 
-	clipF64WithF64BoundsImpl = clipF64WithF64Bounds
-	clipF32WithF32BoundsImpl = clipF32WithF32Bounds
+	clipF64WithF64BoundsImpl = clipF64WithF64BoundsChecked
+	clipF32WithF32BoundsImpl = clipF32WithF32BoundsChecked
 	clipI32WithI32BoundsImpl = clipI32WithI32Bounds
 	clipI64WithI64BoundsImpl = clipI64WithI64Bounds
-	clipI64WithF64BoundsImpl = clipI64WithF64Bounds
-	clipI32WithF32BoundsImpl = clipI32WithF32Bounds
+	clipI64WithF64BoundsImpl = clipI64WithF64BoundsChecked
+	clipI32WithF32BoundsImpl = clipI32WithF32BoundsChecked
 
 	sumI64Impl             = sumI64
 	sumI32Impl             = sumI32
