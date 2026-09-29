@@ -6,6 +6,7 @@ import (
 
 	"github.com/rhawrami/peGosus/pkg/dtype"
 	"github.com/rhawrami/peGosus/pkg/mem"
+	"github.com/rhawrami/peGosus/pkg/op/numop"
 	"github.com/rhawrami/peGosus/pkg/store"
 )
 
@@ -38,10 +39,10 @@ func (s *aggregateValue) add(a *mem.Allocator, kind AggregateKind, value Scalar)
 	if value.IsNull() {
 		return true
 	}
+	if (value.Type().ID() == dtype.FLOAT32T && math.IsNaN(float64(value.f32()))) || (value.Type().ID() == dtype.FLOAT64T && math.IsNaN(value.f64())) {
+		return true
+	}
 	if kind == AggregateMin || kind == AggregateMax {
-		if value.Type().ID() == dtype.FLOAT32T && math.IsNaN(float64(value.f32())) || value.Type().ID() == dtype.FLOAT64T && math.IsNaN(value.f64()) {
-			return true
-		}
 		if s.count == 0 || aggregateLess(value, s.value, kind == AggregateMax) {
 			s.release()
 			if value.Type().ID() == dtype.STRT {
@@ -58,7 +59,7 @@ func (s *aggregateValue) add(a *mem.Allocator, kind AggregateKind, value Scalar)
 		return true
 	}
 	if s.count == 0 {
-		if kind == AggregateAvg || value.Type().ID() == dtype.FLOAT32T {
+		if kind == AggregateAvg || value.Type().IsFloating() {
 			s.value = MakeF64Scalar(0)
 		} else if value.Type().ID() == dtype.INT32T {
 			s.value = MakeI64Scalar(0)
@@ -85,11 +86,7 @@ func (s *aggregateValue) add(a *mem.Allocator, kind AggregateKind, value Scalar)
 		case dtype.FLOAT32T:
 			s.value = MakeF64Scalar(s.value.f64() + float64(value.f32()))
 		case dtype.FLOAT64T:
-			if s.count == 0 && kind == AggregateSum {
-				s.value = value
-			} else {
-				s.value = MakeF64Scalar(s.value.f64() + value.f64())
-			}
+			s.value = MakeF64Scalar(s.value.f64() + value.f64())
 		}
 		s.count++
 	}
@@ -195,6 +192,10 @@ func accumulateAggregates(a *mem.Allocator, batch *store.Batch, step physicalSte
 				one = store.MakeBatchRetained([]store.Vector{*vector})
 			}
 		}
+		if !aggregate.distinct && vector != nil && (accumulateIntegerKernel(a, vector, selection, aggregate.kind, &local[i]) || accumulateFloatKernel(a, vector, selection, aggregate.kind, &local[i])) {
+			values.release()
+			continue
+		}
 		for row := range batch.Len() {
 			if selection != nil && !selection.IsSet(row) {
 				continue
@@ -240,6 +241,212 @@ func accumulateAggregates(a *mem.Allocator, batch *store.Batch, step physicalSte
 	for i, aggregate := range step.aggregates {
 		mergeAggregate(&merged[i], &local[i], aggregate.kind)
 	}
+	return true
+}
+
+func accumulateIntegerKernel(a *mem.Allocator, vector *store.Vector, selection *store.BitMap, kind AggregateKind, state *aggregateValue) bool {
+	t := vector.TypeID()
+	if kind == AggregateSum {
+		if t != dtype.INT32T && t != dtype.INT64T {
+			return false
+		}
+	} else if kind != AggregateMin && kind != AggregateMax || t != dtype.INT32T && t != dtype.INT64T && t != dtype.DATET && t != dtype.TIMESTAMPTZT {
+		return false
+	}
+	include := selection
+	if include == nil {
+		include = vector.Validity()
+	} else if vector.Validity() != nil {
+		combined := store.MakeBitMapTemp(a, vector.Len())
+		if combined == nil {
+			return false
+		}
+		defer combined.Release()
+		copy(combined.Bytes(), selection.Bytes())
+		combined.ANDInPlaceViN(vector.Validity())
+		include = combined
+	}
+	count := vector.Len()
+	if include != nil {
+		count = include.ViN()
+	}
+	if count == 0 {
+		return true
+	}
+	state.count = int64(count)
+	if t == dtype.INT32T || t == dtype.DATET {
+		if kind == AggregateSum {
+			var result [1]int64
+			if include == nil {
+				numop.SumI32(vector.I32s(), result[:])
+			} else {
+				numop.SumI32WithValidity(vector.I32s(), result[:], include.Bytes())
+			}
+			state.value = MakeI64Scalar(result[0])
+		} else {
+			var result [1]int32
+			if kind == AggregateMin {
+				if include == nil {
+					numop.MinI32(vector.I32s(), result[:])
+				} else {
+					numop.MinI32WithValidity(vector.I32s(), result[:], include.Bytes())
+				}
+			} else {
+				if include == nil {
+					numop.MaxI32(vector.I32s(), result[:])
+				} else {
+					numop.MaxI32WithValidity(vector.I32s(), result[:], include.Bytes())
+				}
+			}
+			if t == dtype.DATET {
+				state.value = MakeDateScalar(result[0])
+			} else {
+				state.value = MakeI32Scalar(result[0])
+			}
+		}
+	} else {
+		var result [1]int64
+		if kind == AggregateSum {
+			if include == nil {
+				numop.SumI64(vector.I64s(), result[:])
+			} else {
+				numop.SumI64WithValidity(vector.I64s(), result[:], include.Bytes())
+			}
+			state.value = MakeI64Scalar(result[0])
+		} else {
+			if kind == AggregateMin {
+				if include == nil {
+					numop.MinI64(vector.I64s(), result[:])
+				} else {
+					numop.MinI64WithValidity(vector.I64s(), result[:], include.Bytes())
+				}
+			} else {
+				if include == nil {
+					numop.MaxI64(vector.I64s(), result[:])
+				} else {
+					numop.MaxI64WithValidity(vector.I64s(), result[:], include.Bytes())
+				}
+			}
+			if t == dtype.TIMESTAMPTZT {
+				state.value = MakeTimestampTZScalar(result[0])
+			} else {
+				state.value = MakeI64Scalar(result[0])
+			}
+		}
+	}
+	return true
+}
+
+func accumulateFloatKernel(a *mem.Allocator, vector *store.Vector, selection *store.BitMap, kind AggregateKind, state *aggregateValue) bool {
+	t := vector.TypeID()
+	if (t != dtype.FLOAT32T && t != dtype.FLOAT64T) || (kind != AggregateSum && kind != AggregateAvg && kind != AggregateMin && kind != AggregateMax) {
+		return false
+	}
+	include := selection
+	if include == nil {
+		include = vector.Validity()
+	} else if vector.Validity() != nil {
+		combined := store.MakeBitMapTemp(a, vector.Len())
+		if combined == nil {
+			return false
+		}
+		defer combined.Release()
+		copy(combined.Bytes(), selection.Bytes())
+		combined.ANDInPlaceViN(vector.Validity())
+		include = combined
+	}
+	negativeZero, positiveZero := false, false
+	for row := range vector.Len() {
+		if include != nil && !include.IsSet(row) {
+			continue
+		}
+		var value float64
+		if t == dtype.FLOAT32T {
+			value = float64(vector.F32s()[row])
+		} else {
+			value = vector.F64s()[row]
+		}
+		if math.IsNaN(value) {
+			continue
+		}
+		state.count++
+		if value == 0 && (kind == AggregateMin || kind == AggregateMax) {
+			if math.Signbit(value) {
+				negativeZero = true
+			} else {
+				positiveZero = true
+			}
+		}
+	}
+	if state.count == 0 {
+		return true
+	}
+	if t == dtype.FLOAT32T {
+		var result [1]float32
+		switch kind {
+		case AggregateMin:
+			if include == nil {
+				numop.MinF32(vector.F32s(), result[:])
+			} else {
+				numop.MinF32WithValidity(vector.F32s(), result[:], include.Bytes())
+			}
+		case AggregateMax:
+			if include == nil {
+				numop.MaxF32(vector.F32s(), result[:])
+			} else {
+				numop.MaxF32WithValidity(vector.F32s(), result[:], include.Bytes())
+			}
+		default:
+			var sum [1]float64
+			if include == nil {
+				numop.SumF32(vector.F32s(), sum[:])
+			} else {
+				numop.SumF32WithValidity(vector.F32s(), sum[:], include.Bytes())
+			}
+			state.value = MakeF64Scalar(sum[0])
+			return true
+		}
+		if result[0] == 0 {
+			if kind == AggregateMin && negativeZero || kind == AggregateMax && !positiveZero {
+				result[0] = float32(math.Copysign(0, -1))
+			} else {
+				result[0] = 0
+			}
+		}
+		state.value = MakeF32Scalar(result[0])
+		return true
+	}
+	var result [1]float64
+	switch kind {
+	case AggregateMin:
+		if include == nil {
+			numop.MinF64(vector.F64s(), result[:])
+		} else {
+			numop.MinF64WithValidity(vector.F64s(), result[:], include.Bytes())
+		}
+	case AggregateMax:
+		if include == nil {
+			numop.MaxF64(vector.F64s(), result[:])
+		} else {
+			numop.MaxF64WithValidity(vector.F64s(), result[:], include.Bytes())
+		}
+	default:
+		if include == nil {
+			numop.SumF64(vector.F64s(), result[:])
+		} else {
+			numop.SumF64WithValidity(vector.F64s(), result[:], include.Bytes())
+		}
+		state.value = MakeF64Scalar(result[0])
+		return true
+	}
+	if result[0] == 0 {
+		if kind == AggregateMin && negativeZero || kind == AggregateMax && !positiveZero {
+			result[0] = math.Copysign(0, -1)
+		} else {
+			result[0] = 0
+		}
+	}
+	state.value = MakeF64Scalar(result[0])
 	return true
 }
 

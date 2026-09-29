@@ -60,8 +60,8 @@ func (s *distinctState) add(a *mem.Allocator, batch *store.Batch, row int, budge
 	return s.rows.length - 1, true
 }
 
-func (s *distinctState) addEncoded(a *mem.Allocator, encoded []byte, rows *packedRows, row int, budget int64) (int, bool) {
-	if int64(len(encoded)) > budget-s.charged {
+func (s *distinctState) addEncoded(a *mem.Allocator, encoded []byte, rows *packedRows, row int, values []Scalar, budget int64) (int, bool) {
+	if len(values) != len(rows.types) || int64(len(encoded)) > budget-s.charged {
 		return 0, false
 	}
 	if index, exists := s.index.lookup(encoded, &s.keys); exists {
@@ -72,7 +72,6 @@ func (s *distinctState) addEncoded(a *mem.Allocator, encoded []byte, rows *packe
 	if !s.keys.append(a, encoded, budget-other-priorIndexBytes) || !s.index.put(a, encoded, s.rows.length, budget-other-s.keys.bytes()) {
 		return 0, false
 	}
-	values := make([]Scalar, len(rows.types))
 	for i := range values {
 		values[i] = rows.at(row, i)
 	}

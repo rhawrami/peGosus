@@ -1,6 +1,8 @@
 package plan
 
 import (
+	"math"
+	"runtime"
 	"strings"
 	"unsafe"
 
@@ -17,6 +19,8 @@ type physicalExprNode struct {
 	operation  exprOp
 	dType      dtype.Type
 	nullable   bool
+	square     bool
+	clipI64F64 bool
 	children   [3]int
 	childCount uint8
 	column     int
@@ -75,6 +79,19 @@ func makePhysicalExprProgram(plan *BoundPlan, roots []boundExprID, schema Schema
 			}
 			node.children[i] = child
 		}
+		if node.kind == exprBinary && node.operation == exprOpMul && node.childCount == 2 {
+			left := plan.expression(expression.children[0])
+			right := plan.expression(expression.children[1])
+			node.square = expression.square || left.kind == exprColumn && right.kind == exprColumn && left.field == right.field
+		}
+		if node.kind == exprTernary && node.operation == exprOpClip && node.dType.ID() == dtype.FLOAT64T && program.nodes[node.children[0]].kind == exprCast &&
+			program.nodes[node.children[1]].kind == exprLiteral && program.nodes[node.children[2]].kind == exprLiteral &&
+			!math.IsNaN(program.nodes[node.children[1]].literal.f64()) && !math.IsNaN(program.nodes[node.children[2]].literal.f64()) {
+			cast := plan.expression(expression.children[0])
+			if cast.implicit && plan.expression(cast.children[0]).dType.ID() == dtype.INT64T && program.nodes[program.nodes[node.children[0]].children[0]].kind != exprLiteral {
+				node.clipI64F64 = true
+			}
+		}
 		index := len(program.nodes)
 		program.nodes = append(program.nodes, node)
 		compiled[id] = index
@@ -92,6 +109,12 @@ func makePhysicalExprProgram(plan *BoundPlan, roots []boundExprID, schema Schema
 		program.materialize[root] = true
 	}
 	for _, node := range program.nodes {
+		if node.square {
+			if program.nodes[node.children[0]].kind == exprLiteral {
+				program.materialize[node.children[0]] = true
+			}
+			continue
+		}
 		literalChildren := 0
 		for i := range int(node.childCount) {
 			if program.nodes[node.children[i]].kind == exprLiteral {
@@ -99,6 +122,18 @@ func makePhysicalExprProgram(plan *BoundPlan, roots []boundExprID, schema Schema
 			}
 		}
 		useScalar := literalChildren == 1 && physicalBinaryScalarSupported(node, program.nodes)
+		if node.kind == exprTernary && (node.operation == exprOpBetween || node.operation == exprOpNotBetween || node.operation == exprOpClip) {
+			if program.nodes[node.children[0]].kind == exprLiteral {
+				program.materialize[node.children[0]] = true
+			}
+			continue
+		}
+		if node.kind == exprTernary && (node.operation == exprOpReplace || node.operation == exprOpSlice) || node.kind == exprBinary && node.operation == exprOpConcat {
+			if program.nodes[node.children[0]].kind == exprLiteral {
+				program.materialize[node.children[0]] = true
+			}
+			continue
+		}
 		if useScalar {
 			continue
 		}
@@ -115,6 +150,9 @@ func physicalBinaryScalarSupported(node physicalExprNode, nodes []physicalExprNo
 	if node.kind != exprBinary {
 		return false
 	}
+	if node.operation == exprOpLike || node.operation == exprOpContains {
+		return true
+	}
 	if isArithmetic(node.operation) {
 		left, right := nodes[node.children[0]].dType, nodes[node.children[1]].dType
 		return (left.IsNumericType() && right.IsNumericType()) ||
@@ -123,7 +161,7 @@ func physicalBinaryScalarSupported(node physicalExprNode, nodes []physicalExprNo
 	if isComparison(node.operation) {
 		left := nodes[node.children[0]].dType.ID()
 		return left == dtype.INT32T || left == dtype.INT64T || left == dtype.FLOAT32T || left == dtype.FLOAT64T ||
-			left == dtype.DATET || left == dtype.TIMESTAMPTZT
+			left == dtype.DATET || left == dtype.TIMESTAMPTZT || left == dtype.STRT || left == dtype.BOOLT
 	}
 	return false
 }
@@ -254,6 +292,15 @@ func (p physicalExprProgram) evaluate(a *mem.Allocator, batch *store.Batch, valu
 	if node.kind != exprTernary || node.operation != exprOpCase {
 		for i := range int(node.childCount) {
 			child := node.children[i]
+			if node.square && i == 1 {
+				continue
+			}
+			if node.clipI64F64 && i == 0 {
+				child = p.nodes[child].children[0]
+			}
+			if node.kind == exprTernary && i != 0 && (node.operation == exprOpBetween || node.operation == exprOpNotBetween || node.operation == exprOpClip) && p.nodes[child].kind == exprLiteral {
+				continue
+			}
 			if p.nodes[child].kind == exprLiteral && !p.materialize[child] {
 				continue
 			}
@@ -273,7 +320,7 @@ func (p physicalExprProgram) evaluate(a *mem.Allocator, batch *store.Batch, valu
 	case node.kind == exprTernary && node.operation == exprOpCase:
 		vector = p.evaluateCase(a, batch, values, node, general)
 	case (node.kind == exprUnary && (node.operation == exprOpUpper || node.operation == exprOpLower)) || (node.kind == exprBinary && node.operation == exprOpConcat) || (node.kind == exprTernary && (node.operation == exprOpReplace || node.operation == exprOpSlice)):
-		vector = evaluateStringMapping(a, node, values.vectors, general)
+		vector = evaluateStringMapping(a, node, p.nodes, values.vectors, general)
 	case node.kind == exprBinary && node.operation == exprOpCoalesce && node.dType.ID() == dtype.STRT:
 		vector = evaluateStringCoalesce(a, &values.vectors[node.children[0]], &values.vectors[node.children[1]], general, node.nullable)
 	default:
@@ -554,6 +601,13 @@ func evaluatePhysicalExprNode(node physicalExprNode, nodes []physicalExprNode, v
 	case exprUnary:
 		return evaluateUnary(node.operation, children[0], dst, a)
 	case exprBinary:
+		if node.square {
+			if !evaluateSquare(children[0], dst) {
+				return false
+			}
+			copyValidity(dst.Validity(), children[0].Validity())
+			return true
+		}
 		var leftScalar, rightScalar *Scalar
 		if nodes[node.children[0]].kind == exprLiteral {
 			leftScalar = &nodes[node.children[0]].literal
@@ -563,10 +617,49 @@ func evaluatePhysicalExprNode(node physicalExprNode, nodes []physicalExprNode, v
 		}
 		return evaluateBinary(node.operation, children[0], children[1], leftScalar, rightScalar, dst, a)
 	case exprTernary:
-		return evaluateTernary(node.operation, children[0], children[1], children[2], dst)
+		var bounds [2]*Scalar
+		if node.operation == exprOpBetween || node.operation == exprOpNotBetween || node.operation == exprOpClip {
+			for i := 1; i <= 2; i++ {
+				if nodes[node.children[i]].kind == exprLiteral {
+					bounds[i-1] = &nodes[node.children[i]].literal
+				}
+			}
+		}
+		if node.clipI64F64 {
+			source := &values[nodes[node.children[0]].children[0]]
+			numop.ClipI64WithF64Bounds(source.I64s(), dst.F64s(), bounds[0].f64(), bounds[1].f64())
+			copyValidity(dst.Validity(), source.Validity())
+			if bounds[0].IsNull() || bounds[1].IsNull() {
+				dst.Validity().ClearAll()
+			}
+			return true
+		}
+		return evaluateTernary(node.operation, children[0], children[1], children[2], dst, bounds)
 	default:
 		return false
 	}
+}
+
+func evaluateSquare(src, dst *store.Vector) bool {
+	switch src.TypeID() {
+	case dtype.INT32T:
+		numop.SqI32(src.I32s(), dst.I32s())
+	case dtype.INT64T:
+		if runtime.GOARCH == "arm64" {
+			for i, value := range src.I64s() {
+				dst.I64s()[i] = value * value
+			}
+		} else {
+			numop.SqI64(src.I64s(), dst.I64s())
+		}
+	case dtype.FLOAT32T:
+		numop.SqF32(src.F32s(), dst.F32s())
+	case dtype.FLOAT64T:
+		numop.SqF64(src.F64s(), dst.F64s())
+	default:
+		return false
+	}
+	return true
 }
 
 func evaluateCast(src, dst *store.Vector) bool {
@@ -724,7 +817,17 @@ func evaluateBinary(operation exprOp, left, right *store.Vector, leftScalar, rig
 	if operation == exprOpContains || operation == exprOpLike {
 		clear(dst.Bools())
 		for row := range dst.Len() {
-			l, r := left.Strings()[row].View(), right.Strings()[row].View()
+			var l, r string
+			if leftScalar != nil {
+				l = leftScalar.stringValue()
+			} else {
+				l = left.Strings()[row].View()
+			}
+			if rightScalar != nil {
+				r = rightScalar.stringValue()
+			} else {
+				r = right.Strings()[row].View()
+			}
 			match := false
 			if operation == exprOpContains {
 				match = strings.Contains(l, r)
@@ -822,7 +925,13 @@ func evaluateArithmetic(operation exprOp, left, right *store.Vector, leftScalar,
 		case exprOpSub:
 			numop.SubI64Vec(left.I64s(), right.I64s(), dst.I64s())
 		case exprOpMul:
-			numop.MulI64Vec(left.I64s(), right.I64s(), dst.I64s())
+			if runtime.GOARCH == "arm64" {
+				for i, value := range left.I64s() {
+					dst.I64s()[i] = value * right.I64s()[i]
+				}
+			} else {
+				numop.MulI64Vec(left.I64s(), right.I64s(), dst.I64s())
+			}
 		case exprOpDiv:
 			numop.DivI64Vec(left.I64s(), right.I64s(), dst.F64s())
 		}
@@ -890,7 +999,13 @@ func evaluateArithmeticLiteral(operation exprOp, src, dst *store.Vector, literal
 				numop.SubI64Lit(src.I64s(), dst.I64s(), value)
 			}
 		case exprOpMul:
-			numop.MulI64Lit(src.I64s(), dst.I64s(), value)
+			if runtime.GOARCH == "arm64" {
+				for i, input := range src.I64s() {
+					dst.I64s()[i] = input * value
+				}
+			} else {
+				numop.MulI64Lit(src.I64s(), dst.I64s(), value)
+			}
 		case exprOpDiv:
 			if literalLeft {
 				numop.DivI64LitLeft(src.I64s(), dst.F64s(), float64(value))
@@ -970,6 +1085,25 @@ func evaluateComparisonLiteral(operation exprOp, src *store.Vector, dst []byte, 
 		evaluateF32ComparisonLiteral(src.F32s(), dst, operation, literal.f32())
 	case dtype.FLOAT64T:
 		evaluateF64ComparisonLiteral(src.F64s(), dst, operation, literal.f64())
+	case dtype.STRT:
+		clear(dst)
+		for i := range src.Len() {
+			if comparisonMatches(compareStrings(src.Strings()[i].View(), literal.stringValue()), operation) {
+				dst[i>>3] |= 1 << (i & 7)
+			}
+		}
+	case dtype.BOOLT:
+		for i := range dst {
+			if literal.boolean() {
+				dst[i] = src.Bools()[i]
+			} else {
+				dst[i] = ^src.Bools()[i]
+			}
+			if operation == exprOpNE {
+				dst[i] = ^dst[i]
+			}
+		}
+		maskBitmapTail(dst, src.Len())
 	default:
 		return false
 	}
@@ -1240,53 +1374,143 @@ func evaluateStringCoalesce(a *mem.Allocator, left, right *store.Vector, general
 	return store.MakeStringVectorTemp(a, values, valid)
 }
 
-func evaluateTernary(operation exprOp, value, lower, upper, dst *store.Vector) bool {
+func evaluateTernary(operation exprOp, value, lower, upper, dst *store.Vector, bounds [2]*Scalar) bool {
 	if operation == exprOpClip {
-		if !evaluateClip(value, lower, upper, dst) {
+		if !evaluateClip(value, lower, upper, dst, bounds) {
 			return false
 		}
 	} else if operation == exprOpBetween || operation == exprOpNotBetween {
-		if !evaluateBetween(operation, value, lower, upper, dst) {
+		if !evaluateBetween(operation, value, lower, upper, dst, bounds) {
 			return false
 		}
 	} else {
 		return false
 	}
 	intersectValidity(dst.Validity(), value.Validity(), lower.Validity(), upper.Validity())
+	if (bounds[0] != nil && bounds[0].IsNull()) || (bounds[1] != nil && bounds[1].IsNull()) {
+		dst.Validity().ClearAll()
+	}
 	return true
 }
 
-func evaluateBetween(operation exprOp, value, lower, upper, dst *store.Vector) bool {
+func evaluateBetween(operation exprOp, value, lower, upper, dst *store.Vector, bounds [2]*Scalar) bool {
+	if bounds[0] != nil && bounds[1] != nil && value.Len() != 0 {
+		switch value.TypeID() {
+		case dtype.INT32T, dtype.DATET:
+			if operation == exprOpBetween {
+				cmpop.BetI32(value.I32s(), dst.Bools(), bounds[0].i32(), bounds[1].i32())
+			} else {
+				cmpop.NBetI32(value.I32s(), dst.Bools(), bounds[0].i32(), bounds[1].i32())
+			}
+			return true
+		case dtype.INT64T, dtype.TIMESTAMPTZT:
+			if operation == exprOpBetween {
+				cmpop.BetI64(value.I64s(), dst.Bools(), bounds[0].i64(), bounds[1].i64())
+			} else {
+				cmpop.NBetI64(value.I64s(), dst.Bools(), bounds[0].i64(), bounds[1].i64())
+			}
+			return true
+		case dtype.FLOAT32T:
+			if operation == exprOpBetween {
+				cmpop.BetF32(value.F32s(), dst.Bools(), bounds[0].f32(), bounds[1].f32())
+			} else {
+				cmpop.NBetF32(value.F32s(), dst.Bools(), bounds[0].f32(), bounds[1].f32())
+			}
+			return true
+		case dtype.FLOAT64T:
+			if operation == exprOpBetween {
+				cmpop.BetF64(value.F64s(), dst.Bools(), bounds[0].f64(), bounds[1].f64())
+			} else {
+				cmpop.NBetF64(value.F64s(), dst.Bools(), bounds[0].f64(), bounds[1].f64())
+			}
+			return true
+		}
+	}
 	clear(dst.Bools())
 	for i := range value.Len() {
 		var match bool
 		switch value.TypeID() {
 		case dtype.INT32T, dtype.DATET:
-			x, lo, hi := value.I32s()[i], lower.I32s()[i], upper.I32s()[i]
+			x := value.I32s()[i]
+			var lo, hi int32
+			if bounds[0] != nil {
+				lo = bounds[0].i32()
+			} else {
+				lo = lower.I32s()[i]
+			}
+			if bounds[1] != nil {
+				hi = bounds[1].i32()
+			} else {
+				hi = upper.I32s()[i]
+			}
 			match = x >= lo && x <= hi
 			if operation == exprOpNotBetween {
 				match = x < lo || x > hi
 			}
 		case dtype.INT64T, dtype.TIMESTAMPTZT:
-			x, lo, hi := value.I64s()[i], lower.I64s()[i], upper.I64s()[i]
+			x := value.I64s()[i]
+			var lo, hi int64
+			if bounds[0] != nil {
+				lo = bounds[0].i64()
+			} else {
+				lo = lower.I64s()[i]
+			}
+			if bounds[1] != nil {
+				hi = bounds[1].i64()
+			} else {
+				hi = upper.I64s()[i]
+			}
 			match = x >= lo && x <= hi
 			if operation == exprOpNotBetween {
 				match = x < lo || x > hi
 			}
 		case dtype.FLOAT32T:
-			x, lo, hi := value.F32s()[i], lower.F32s()[i], upper.F32s()[i]
+			x := value.F32s()[i]
+			var lo, hi float32
+			if bounds[0] != nil {
+				lo = bounds[0].f32()
+			} else {
+				lo = lower.F32s()[i]
+			}
+			if bounds[1] != nil {
+				hi = bounds[1].f32()
+			} else {
+				hi = upper.F32s()[i]
+			}
 			match = x >= lo && x <= hi
 			if operation == exprOpNotBetween {
 				match = x < lo || x > hi
 			}
 		case dtype.FLOAT64T:
-			x, lo, hi := value.F64s()[i], lower.F64s()[i], upper.F64s()[i]
+			x := value.F64s()[i]
+			var lo, hi float64
+			if bounds[0] != nil {
+				lo = bounds[0].f64()
+			} else {
+				lo = lower.F64s()[i]
+			}
+			if bounds[1] != nil {
+				hi = bounds[1].f64()
+			} else {
+				hi = upper.F64s()[i]
+			}
 			match = x >= lo && x <= hi
 			if operation == exprOpNotBetween {
 				match = x < lo || x > hi
 			}
 		case dtype.STRT:
-			x, lo, hi := value.Strings()[i].View(), lower.Strings()[i].View(), upper.Strings()[i].View()
+			x := value.Strings()[i].View()
+			var lo, hi string
+			if bounds[0] != nil {
+				lo = bounds[0].stringValue()
+			} else {
+				lo = lower.Strings()[i].View()
+			}
+			if bounds[1] != nil {
+				hi = bounds[1].stringValue()
+			} else {
+				hi = upper.Strings()[i].View()
+			}
 			match = x >= lo && x <= hi
 			if operation == exprOpNotBetween {
 				match = x < lo || x > hi
@@ -1301,11 +1525,46 @@ func evaluateBetween(operation exprOp, value, lower, upper, dst *store.Vector) b
 	return true
 }
 
-func evaluateClip(value, lower, upper, dst *store.Vector) bool {
+func evaluateClip(value, lower, upper, dst *store.Vector, bounds [2]*Scalar) bool {
+	constant := bounds[0] != nil && bounds[1] != nil && value.Len() != 0
+	if constant && value.Type().IsFloating() {
+		if value.TypeID() == dtype.FLOAT32T {
+			constant = !math.IsNaN(float64(bounds[0].f32())) && !math.IsNaN(float64(bounds[1].f32()))
+		} else {
+			constant = !math.IsNaN(bounds[0].f64()) && !math.IsNaN(bounds[1].f64())
+		}
+	}
+	if constant {
+		switch value.TypeID() {
+		case dtype.INT32T:
+			numop.ClipI32WithI32Bounds(value.I32s(), dst.I32s(), bounds[0].i32(), bounds[1].i32())
+			return true
+		case dtype.INT64T:
+			numop.ClipI64WithI64Bounds(value.I64s(), dst.I64s(), bounds[0].i64(), bounds[1].i64())
+			return true
+		case dtype.FLOAT32T:
+			numop.ClipF32WithF32Bounds(value.F32s(), dst.F32s(), bounds[0].f32(), bounds[1].f32())
+			return true
+		case dtype.FLOAT64T:
+			numop.ClipF64WithF64Bounds(value.F64s(), dst.F64s(), bounds[0].f64(), bounds[1].f64())
+			return true
+		}
+	}
 	for i := range value.Len() {
 		switch value.TypeID() {
 		case dtype.INT32T:
-			x, lo, hi := value.I32s()[i], lower.I32s()[i], upper.I32s()[i]
+			x := value.I32s()[i]
+			var lo, hi int32
+			if bounds[0] != nil {
+				lo = bounds[0].i32()
+			} else {
+				lo = lower.I32s()[i]
+			}
+			if bounds[1] != nil {
+				hi = bounds[1].i32()
+			} else {
+				hi = upper.I32s()[i]
+			}
 			if x < lo {
 				x = lo
 			}
@@ -1314,7 +1573,18 @@ func evaluateClip(value, lower, upper, dst *store.Vector) bool {
 			}
 			dst.I32s()[i] = x
 		case dtype.INT64T:
-			x, lo, hi := value.I64s()[i], lower.I64s()[i], upper.I64s()[i]
+			x := value.I64s()[i]
+			var lo, hi int64
+			if bounds[0] != nil {
+				lo = bounds[0].i64()
+			} else {
+				lo = lower.I64s()[i]
+			}
+			if bounds[1] != nil {
+				hi = bounds[1].i64()
+			} else {
+				hi = upper.I64s()[i]
+			}
 			if x < lo {
 				x = lo
 			}
@@ -1323,7 +1593,18 @@ func evaluateClip(value, lower, upper, dst *store.Vector) bool {
 			}
 			dst.I64s()[i] = x
 		case dtype.FLOAT32T:
-			x, lo, hi := value.F32s()[i], lower.F32s()[i], upper.F32s()[i]
+			x := value.F32s()[i]
+			var lo, hi float32
+			if bounds[0] != nil {
+				lo = bounds[0].f32()
+			} else {
+				lo = lower.F32s()[i]
+			}
+			if bounds[1] != nil {
+				hi = bounds[1].f32()
+			} else {
+				hi = upper.F32s()[i]
+			}
 			if x < lo {
 				x = lo
 			}
@@ -1332,7 +1613,18 @@ func evaluateClip(value, lower, upper, dst *store.Vector) bool {
 			}
 			dst.F32s()[i] = x
 		case dtype.FLOAT64T:
-			x, lo, hi := value.F64s()[i], lower.F64s()[i], upper.F64s()[i]
+			x := value.F64s()[i]
+			var lo, hi float64
+			if bounds[0] != nil {
+				lo = bounds[0].f64()
+			} else {
+				lo = lower.F64s()[i]
+			}
+			if bounds[1] != nil {
+				hi = bounds[1].f64()
+			} else {
+				hi = upper.F64s()[i]
+			}
 			if x < lo {
 				x = lo
 			}

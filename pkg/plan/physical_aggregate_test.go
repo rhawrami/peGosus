@@ -55,8 +55,8 @@ func TestPhysicalGlobalAggregation(t *testing.T) {
 	if output.Len() != 1 || output.VectorAt(0).I64s()[0] != 6 || output.VectorAt(1).I64s()[0] != 5 {
 		t.Fatalf("incorrect counts: %d/%d", output.VectorAt(0).I64s()[0], output.VectorAt(1).I64s()[0])
 	}
-	if !math.IsNaN(output.VectorAt(2).F64s()[0]) || !math.IsNaN(output.VectorAt(3).F64s()[0]) {
-		t.Fatal("NaN must propagate through SUM and AVG")
+	if gotSum, gotAvg := output.VectorAt(2).F64s()[0], output.VectorAt(3).F64s()[0]; gotSum != 4 || gotAvg != 4.0/3.0 {
+		t.Fatalf("SUM/AVG must skip input NaNs: %v/%v", gotSum, gotAvg)
 	}
 	if min, max := output.VectorAt(4).F64s()[0], output.VectorAt(5).F64s()[0]; min != 0 || !math.Signbit(min) || max != 4 {
 		t.Fatalf("min/max: got %v/%v", min, max)
@@ -195,5 +195,85 @@ func TestPhysicalFloatBoundsIgnoreNaNAndPreferSignedZero(t *testing.T) {
 	table.Release()
 	if result.Code() != ExecutionCompleted {
 		t.Fatalf("empty bound result: %v", result.Code())
+	}
+}
+
+func TestPhysicalGroupedFloatReductionsSkipNaN(t *testing.T) {
+	a := mem.MakeAllocatorWithProfiles([]int{1 << 16}, []int{1 << 16})
+	var batches []*store.Batch
+	for index, values := range [][]float64{{math.NaN(), math.NaN(), math.Copysign(0, -1), math.NaN()}, {2, 3, 0, math.NaN()}} {
+		keys := store.MakeVector(a, len(values), dtype.Int32T(), false)
+		data := store.MakeVector(a, len(values), dtype.Float64T(), false)
+		copy(data.F64s(), values)
+		for row := range values {
+			keys.I32s()[row] = int32(row + 1)
+		}
+		batch := store.MakeBatch([]store.Vector{keys, data})
+		if index == 1 {
+			batch.SetSelection(store.MakeRowSelectionFromSelVec(store.MakeSelVecFromOffsets(a, len(values), []uint32{0, 2, 3})))
+		}
+		batches = append(batches, batch)
+	}
+	table := store.MakeTable(batches)
+	for _, batch := range batches {
+		batch.Release()
+	}
+	physical, err := MakePhysicalPlan(MakeScan(table, MakeSchemaWithNullability(
+		[]string{"key", "value"}, []dtype.Type{dtype.Int32T(), dtype.Float64T()}, []bool{false, false},
+	)).GroupBy([]Expr{MakeColumn("key")},
+		MakeCountStar(), MakeCount(MakeColumn("value")), MakeSum(MakeColumn("value")),
+		MakeAvg(MakeColumn("value")), MakeMin(MakeColumn("value")), MakeMax(MakeColumn("value")),
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+	table.Release()
+	seen := make(map[int32]bool)
+	result := physical.ExecuteWithOptions(context.Background(), a, ExecutionOptions{MemoryBudget: 1 << 16}, func(output *store.Batch) bool {
+		for row := range output.Len() {
+			key := output.VectorAt(0).I32s()[row]
+			if seen[key] {
+				t.Fatalf("duplicate group %d", key)
+			}
+			seen[key] = true
+			star, count := output.VectorAt(1).I64s()[row], output.VectorAt(2).I64s()[row]
+			if key == 2 || key == 4 {
+				want := int64(1)
+				if key == 4 {
+					want = 2
+				}
+				if star != want || count != want {
+					t.Fatalf("NaN group %d counts %d/%d", key, star, count)
+				}
+				for col := 3; col <= 6; col++ {
+					if output.VectorAt(col).Validity().IsSet(row) {
+						t.Fatalf("NaN group %d aggregate %d must be NULL", key, col)
+					}
+				}
+				continue
+			}
+			if star != 2 || count != 2 {
+				t.Fatalf("group %d counts %d/%d", key, star, count)
+			}
+			for col := 3; col <= 6; col++ {
+				if !output.VectorAt(col).Validity().IsSet(row) {
+					t.Fatalf("group %d aggregate %d is NULL", key, col)
+				}
+			}
+			if key == 1 {
+				if output.VectorAt(3).F64s()[row] != 2 || output.VectorAt(4).F64s()[row] != 2 {
+					t.Fatal("SUM/AVG did not skip NaN")
+				}
+			} else if key == 3 {
+				if !math.Signbit(output.VectorAt(5).F64s()[row]) || math.Signbit(output.VectorAt(6).F64s()[row]) {
+					t.Fatal("grouped Min/Max lost signed-zero ordering")
+				}
+			}
+		}
+		return true
+	})
+	physical.Release()
+	if result.Code() != ExecutionCompleted || len(seen) != 4 {
+		t.Fatalf("grouped float result: %v, keys %v", result.Code(), seen)
 	}
 }

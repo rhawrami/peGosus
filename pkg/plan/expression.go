@@ -132,6 +132,9 @@ func (e Expr) Sub(value any) Expr { return e.binary(exprOpSub, value) }
 // Mul returns a multiplication expression.
 func (e Expr) Mul(value any) Expr { return e.binary(exprOpMul, value) }
 
+// Sq returns the square of this expression, with the semantics of Mul(e, e).
+func (e Expr) Sq() Expr { return e.binary(exprOpMul, e) }
+
 // Div returns a division expression.
 func (e Expr) Div(value any) Expr { return e.binary(exprOpDiv, value) }
 

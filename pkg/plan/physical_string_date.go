@@ -45,14 +45,23 @@ func evaluateDateMapping(operation exprOp, src, dst *store.Vector) bool {
 	return true
 }
 
-func evaluateStringMapping(a *mem.Allocator, node physicalExprNode, vectors []store.Vector, general bool) store.Vector {
+func evaluateStringMapping(a *mem.Allocator, node physicalExprNode, nodes []physicalExprNode, vectors []store.Vector, general bool) store.Vector {
 	first := &vectors[node.children[0]]
 	var second, third *store.Vector
+	var secondScalar, thirdScalar *Scalar
 	if node.childCount >= 2 {
-		second = &vectors[node.children[1]]
+		if nodes[node.children[1]].kind == exprLiteral {
+			secondScalar = &nodes[node.children[1]].literal
+		} else {
+			second = &vectors[node.children[1]]
+		}
 	}
 	if node.childCount >= 3 {
-		third = &vectors[node.children[2]]
+		if nodes[node.children[2]].kind == exprLiteral {
+			thirdScalar = &nodes[node.children[2]].literal
+		} else {
+			third = &vectors[node.children[2]]
+		}
 	}
 	lengths := make([]int, first.Len())
 	var valid []bool
@@ -61,7 +70,7 @@ func evaluateStringMapping(a *mem.Allocator, node physicalExprNode, vectors []st
 	}
 	total := 0
 	for row := range first.Len() {
-		if first.Validity() != nil && !first.Validity().IsSet(row) || second != nil && second.Validity() != nil && !second.Validity().IsSet(row) || third != nil && third.Validity() != nil && !third.Validity().IsSet(row) {
+		if first.Validity() != nil && !first.Validity().IsSet(row) || second != nil && second.Validity() != nil && !second.Validity().IsSet(row) || third != nil && third.Validity() != nil && !third.Validity().IsSet(row) || secondScalar != nil && secondScalar.IsNull() || thirdScalar != nil && thirdScalar.IsNull() {
 			continue
 		}
 		if valid != nil {
@@ -71,9 +80,23 @@ func evaluateStringMapping(a *mem.Allocator, node physicalExprNode, vectors []st
 		length := uint64(len(x))
 		switch node.operation {
 		case exprOpConcat:
-			length += uint64(len(second.Strings()[row].View()))
+			if secondScalar != nil {
+				length += uint64(len(secondScalar.stringValue()))
+			} else {
+				length += uint64(len(second.Strings()[row].View()))
+			}
 		case exprOpReplace:
-			old, replacement := second.Strings()[row].View(), third.Strings()[row].View()
+			var old, replacement string
+			if secondScalar != nil {
+				old = secondScalar.stringValue()
+			} else {
+				old = second.Strings()[row].View()
+			}
+			if thirdScalar != nil {
+				replacement = thirdScalar.stringValue()
+			} else {
+				replacement = third.Strings()[row].View()
+			}
 			occurrences := uint64(len(x)) + 1
 			if old != "" {
 				occurrences = uint64(strings.Count(x, old))
@@ -92,7 +115,18 @@ func evaluateStringMapping(a *mem.Allocator, node physicalExprNode, vectors []st
 				length -= decrease
 			}
 		case exprOpSlice:
-			start, stop := stringSliceBounds(len(x), second.I64s()[row], third.I64s()[row])
+			var startAt, stopAt int64
+			if secondScalar != nil {
+				startAt = secondScalar.i64()
+			} else {
+				startAt = second.I64s()[row]
+			}
+			if thirdScalar != nil {
+				stopAt = thirdScalar.i64()
+			} else {
+				stopAt = third.I64s()[row]
+			}
+			start, stop := stringSliceBounds(len(x), startAt, stopAt)
 			length = uint64(stop - start)
 		}
 		if length > math.MaxUint32 || length > uint64(int(^uint(0)>>1)-total) {
@@ -126,9 +160,23 @@ func evaluateStringMapping(a *mem.Allocator, node physicalExprNode, vectors []st
 			}
 		case exprOpConcat:
 			n := copy(out, x)
-			copy(out[n:], second.Strings()[row].View())
+			if secondScalar != nil {
+				copy(out[n:], secondScalar.stringValue())
+			} else {
+				copy(out[n:], second.Strings()[row].View())
+			}
 		case exprOpReplace:
-			old, replacement := second.Strings()[row].View(), third.Strings()[row].View()
+			var old, replacement string
+			if secondScalar != nil {
+				old = secondScalar.stringValue()
+			} else {
+				old = second.Strings()[row].View()
+			}
+			if thirdScalar != nil {
+				replacement = thirdScalar.stringValue()
+			} else {
+				replacement = third.Strings()[row].View()
+			}
 			if old == "" {
 				pos := copy(out, replacement)
 				for i := range len(x) {
@@ -150,7 +198,18 @@ func evaluateStringMapping(a *mem.Allocator, node physicalExprNode, vectors []st
 				}
 			}
 		case exprOpSlice:
-			start, stop := stringSliceBounds(len(x), second.I64s()[row], third.I64s()[row])
+			var startAt, stopAt int64
+			if secondScalar != nil {
+				startAt = secondScalar.i64()
+			} else {
+				startAt = second.I64s()[row]
+			}
+			if thirdScalar != nil {
+				stopAt = thirdScalar.i64()
+			} else {
+				stopAt = third.I64s()[row]
+			}
+			start, stop := stringSliceBounds(len(x), startAt, stopAt)
 			copy(out, x[start:stop])
 		}
 		result[row] = out

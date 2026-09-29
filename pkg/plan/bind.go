@@ -404,6 +404,7 @@ func (b *binder) bindBinary(node *exprNode, schema Schema, expected dtype.Type) 
 			return 0, err
 		}
 		result.children = [3]boundExprID{left, right}
+		result.square = node.operation == exprOpMul && node.children[0] == node.children[1]
 		result.dType = common
 		if node.operation == exprOpDiv && common.IsIntegral() {
 			if common.ID() == dtype.INT32T {

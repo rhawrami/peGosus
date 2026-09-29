@@ -75,11 +75,9 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 	if options.Workers == 0 && p.source.table != nil && aggregateAt < 0 {
 		return ExecutionResult{}, false
 	}
-	if options.Workers == 0 && aggregateAt >= 0 {
-		step := p.steps[aggregateAt]
-		if len(step.groupKeys) != 0 && makeCompactGroupCountState(step) == nil {
-			return ExecutionResult{}, false
-		}
+	sampleGroup := options.Workers == 0 && aggregateAt >= 0 && len(p.steps[aggregateAt].groupKeys) != 0 && makeCompactGroupCountState(p.steps[aggregateAt]) == nil
+	if sampleGroup && p.source.table == nil {
+		return ExecutionResult{}, false
 	}
 	workers := runtime.GOMAXPROCS(0)
 	if options.Workers > 1 {
@@ -147,6 +145,9 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 		workers = int(budgetWorkers)
 	}
 	if workers < 2 {
+		return ExecutionResult{}, false
+	}
+	if sampleGroup && !p.sampleGroupCardinality(scoped, aggregateAt) {
 		return ExecutionResult{}, false
 	}
 
@@ -303,6 +304,9 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 	if aggregateAt >= 0 {
 		step := p.steps[aggregateAt]
 		if len(step.groupKeys) != 0 {
+			if result, partitioned := p.executeGroupedShards(ctx, scoped, scope, step, workerGroups, options.MemoryBudget, totalRows, sink); partitioned {
+				return result, true
+			}
 			var remaining int64
 			for _, state := range workerGroups {
 				if state != nil {

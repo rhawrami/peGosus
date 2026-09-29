@@ -337,3 +337,132 @@ func TestParallelGroupedResourceStopAndCancellation(t *testing.T) {
 		t.Fatalf("grouped cancellation %v/%v", result.Code(), result.Err())
 	}
 }
+
+func TestParallelGeneralGroupAutoCardinality(t *testing.T) {
+	if runtime.GOMAXPROCS(0) < 2 {
+		t.Skip("requires at least two GOMAXPROCS")
+	}
+	for _, cardinality := range []int{16, 16384} {
+		t.Run(fmt.Sprintf("groups=%d", cardinality), func(t *testing.T) {
+			a := mem.MakeAllocatorWithProfiles([]int{1 << 20}, []int{1 << 20})
+			batches := make([]*store.Batch, 16)
+			for chunk := range batches {
+				key := store.MakeVector(a, 1024, dtype.Int32T(), false)
+				stringsIn := make([][]byte, 1024)
+				for row := range 1024 {
+					value := (chunk*1024 + row) % cardinality
+					key.I32s()[row] = int32(value)
+					stringsIn[row] = []byte(fmt.Sprintf("long group sample key %06d", value))
+				}
+				text := store.MakeStringVector(a, stringsIn, nil)
+				batches[chunk] = store.MakeBatch([]store.Vector{key, text})
+			}
+			table := store.MakeTable(batches)
+			for _, batch := range batches {
+				batch.Release()
+			}
+			defer table.Release()
+			schema := MakeSchemaWithNullability([]string{"key", "text"}, []dtype.Type{dtype.Int32T(), dtype.StringT()}, []bool{false, false})
+			p, err := MakePhysicalPlan(MakeScan(table, schema).GroupBy([]Expr{MakeColumn("key"), MakeColumn("text")}, MakeCountStar()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer p.Release()
+			count := int64(0)
+			result, parallel := p.executeParallel(context.Background(), a, ExecutionOptions{MemoryBudget: 64 << 20}, func(batch *store.Batch) bool {
+				for _, n := range batch.VectorAt(2).I64s() {
+					count += n
+				}
+				return true
+			})
+			if cardinality == 16 {
+				if !parallel || result.Code() != ExecutionCompleted || count != 16384 {
+					t.Fatalf("low-cardinality auto %t %v/%v, %d rows", parallel, result.Code(), result.Err(), count)
+				}
+			} else if parallel {
+				t.Fatalf("high-cardinality sample selected workers: %v", result.Code())
+			}
+		})
+	}
+}
+
+func TestParallelShardedHighCardinalityGrouping(t *testing.T) {
+	if runtime.GOMAXPROCS(0) < 2 {
+		t.Skip("requires at least two GOMAXPROCS")
+	}
+	a := mem.MakeAllocatorWithProfiles([]int{1 << 20}, []int{1 << 20})
+	batches := make([]*store.Batch, 8)
+	for chunk := range batches {
+		key := store.MakeVector(a, 4096, dtype.Int32T(), false)
+		stringsIn := make([][]byte, 4096)
+		for row := range 4096 {
+			id := chunk*4096 + row
+			key.I32s()[row] = int32(id)
+			stringsIn[row] = []byte(fmt.Sprintf("long shared high cardinality key %05d", id))
+		}
+		text := store.MakeStringVector(a, stringsIn, nil)
+		batches[chunk] = store.MakeBatch([]store.Vector{key, text})
+	}
+	table := store.MakeTable(batches)
+	for _, batch := range batches {
+		batch.Release()
+	}
+	schema := MakeSchemaWithNullability([]string{"key", "text"}, []dtype.Type{dtype.Int32T(), dtype.StringT()}, []bool{false, false})
+	p, err := MakePhysicalPlan(MakeScan(table, schema).GroupBy([]Expr{MakeColumn("key"), MakeColumn("text")}, MakeCountStar()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var retained []*store.Batch
+	result, parallel := p.executeParallel(context.Background(), a, ExecutionOptions{MemoryBudget: 512 << 20, Workers: min(4, runtime.GOMAXPROCS(0))}, func(batch *store.Batch) bool {
+		retained = append(retained, batch.Retain())
+		return true
+	})
+	p.Release()
+	table.Release()
+	if !parallel || result.Code() != ExecutionCompleted || len(retained) < 2 {
+		t.Fatalf("partitioned merge %t %v/%v, batches %d", parallel, result.Code(), result.Err(), len(retained))
+	}
+	seen := make(map[int32]bool)
+	for _, batch := range retained {
+		for row, key := range batch.VectorAt(0).I32s() {
+			if seen[key] || batch.VectorAt(1).Strings()[row].View() != fmt.Sprintf("long shared high cardinality key %05d", key) || batch.VectorAt(2).I64s()[row] != 1 {
+				t.Errorf("incorrect merged group %d", key)
+			}
+			seen[key] = true
+		}
+		batch.Release()
+	}
+	if len(seen) != 32768 {
+		t.Fatalf("got %d groups", len(seen))
+	}
+}
+
+func TestParallelGroupedAllFilteredOut(t *testing.T) {
+	if runtime.GOMAXPROCS(0) < 2 {
+		t.Skip("requires at least two GOMAXPROCS")
+	}
+	a := mem.MakeAllocatorWithProfiles([]int{16384}, []int{16384})
+	batches := make([]*store.Batch, 4)
+	for chunk := range batches {
+		key := store.MakeVector(a, 257, dtype.Int32T(), false)
+		for row := range 257 {
+			key.I32s()[row] = int32(chunk*257 + row)
+		}
+		batches[chunk] = store.MakeBatch([]store.Vector{key})
+	}
+	table := store.MakeTable(batches)
+	for _, batch := range batches {
+		batch.Release()
+	}
+	defer table.Release()
+	p, err := MakePhysicalPlan(MakeScan(table, MakeSchemaWithNullability([]string{"key"}, []dtype.Type{dtype.Int32T()}, []bool{false})).Filter(MakeColumn("key").Lt(0)).GroupBy([]Expr{MakeColumn("key")}, MakeCountStar()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Release()
+	called := false
+	result, parallel := p.executeParallel(context.Background(), a, ExecutionOptions{MemoryBudget: 8 << 20, Workers: 4}, func(*store.Batch) bool { called = true; return true })
+	if !parallel || result.Code() != ExecutionCompleted || called {
+		t.Fatalf("empty grouped output %t %v/%v sink called=%t", parallel, result.Code(), result.Err(), called)
+	}
+}

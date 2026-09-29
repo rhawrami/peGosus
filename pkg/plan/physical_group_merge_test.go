@@ -1,6 +1,8 @@
 package plan
 
 import (
+	"context"
+	"fmt"
 	"math"
 	"testing"
 
@@ -96,5 +98,60 @@ func TestGeneralGroupStateMergeRetainsStrings(t *testing.T) {
 		if !ok || output.VectorAt(1).I64s()[row] != counts[0] || output.VectorAt(2).I64s()[row] != counts[1] {
 			t.Fatalf("merged string %q incorrectly", key)
 		}
+	}
+}
+
+func TestShardedGroupMergeCombinesCrossWorkerKeys(t *testing.T) {
+	a := mem.MakeAllocatorWithProfiles([]int{1 << 20}, []int{1 << 20})
+	batches := make([]*store.Batch, 2)
+	for worker := range batches {
+		keys := store.MakeVector(a, 4096, dtype.Int32T(), false)
+		stringsIn := make([][]byte, 4096)
+		values := store.MakeVector(a, 4096, dtype.Int32T(), false)
+		for row := range 4096 {
+			keys.I32s()[row] = int32(row)
+			stringsIn[row] = []byte(fmt.Sprintf("long cross-worker group key %05d", row))
+			values.I32s()[row] = int32(worker + 1)
+		}
+		batches[worker] = store.MakeBatch([]store.Vector{keys, store.MakeStringVector(a, stringsIn, nil), values})
+	}
+	table := store.MakeTable(batches)
+	schema := MakeSchemaWithNullability([]string{"key", "text", "value"}, []dtype.Type{dtype.Int32T(), dtype.StringT(), dtype.Int32T()}, []bool{false, false, false})
+	p, err := MakePhysicalPlan(MakeScan(table, schema).GroupBy([]Expr{MakeColumn("key"), MakeColumn("text")}, MakeCountStar(), MakeSum(MakeColumn("value"))))
+	if err != nil {
+		t.Fatal(err)
+	}
+	step := p.steps[0]
+	scope := mem.MakeAllocationScope(a, 128<<20)
+	scoped := mem.MakeAllocatorWithScope(a, scope)
+	states := []*groupState{makeGroupState(step, scope), makeGroupState(step, scope)}
+	for i, batch := range batches {
+		if !states[i].add(scoped, batch, step, 128<<20) {
+			t.Fatal("local group build failed")
+		}
+		batch.Release()
+	}
+	var retained []*store.Batch
+	result, sharded := p.executeGroupedShards(context.Background(), scoped, scope, step, states, 128<<20, 8192, func(batch *store.Batch) bool {
+		retained = append(retained, batch.Retain())
+		return true
+	})
+	table.Release()
+	p.Release()
+	if !sharded || result.Code() != ExecutionCompleted || len(retained) != 2 {
+		t.Fatalf("sharded duplicate merge %t %v/%v, %d batches", sharded, result.Code(), result.Err(), len(retained))
+	}
+	seen := make(map[int32]bool)
+	for _, batch := range retained {
+		for row, key := range batch.VectorAt(0).I32s() {
+			if seen[key] || batch.VectorAt(1).Strings()[row].View() != fmt.Sprintf("long cross-worker group key %05d", key) || batch.VectorAt(2).I64s()[row] != 2 || batch.VectorAt(3).I64s()[row] != 3 {
+				t.Errorf("incorrect merged key %d", key)
+			}
+			seen[key] = true
+		}
+		batch.Release()
+	}
+	if len(seen) != 4096 {
+		t.Fatalf("got %d groups", len(seen))
 	}
 }

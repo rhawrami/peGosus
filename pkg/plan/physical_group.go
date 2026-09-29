@@ -112,14 +112,6 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 	if selection != nil {
 		defer selection.Release()
 	}
-	local := make(map[int][]aggregateValue)
-	defer func() {
-		for _, values := range local {
-			for i := range values {
-				values[i].release()
-			}
-		}
-	}()
 	for row := range batch.Len() {
 		if selection != nil && !selection.IsSet(row) {
 			continue
@@ -140,11 +132,7 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 			}
 			g.uniques = append(g.uniques, uniques)
 		}
-		states, exists := local[index]
-		if !exists {
-			states = make([]aggregateValue, len(step.aggregates))
-			local[index] = states
-		}
+		states := g.values[index]
 		for i, aggregate := range step.aggregates {
 			if aggregate.distinct {
 				v := uniqueBatches[i].VectorAt(0)
@@ -162,6 +150,10 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 					continue
 				}
 			}
+			before := 0
+			if states[i].text != nil {
+				before = states[i].text.Len()
+			}
 			if aggregate.kind == AggregateCountStar {
 				if !states[i].add(a, aggregate.kind, Scalar{}) {
 					return false
@@ -171,23 +163,14 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 					return false
 				}
 			}
+			after := 0
+			if states[i].text != nil {
+				after = states[i].text.Len()
+			}
+			g.stateBytes += int64(after - before)
 		}
 		if g.charged(len(step.aggregates)) > budget {
 			return false
-		}
-	}
-	for index, states := range local {
-		for i, aggregate := range step.aggregates {
-			priorLength := 0
-			if g.values[index][i].text != nil {
-				priorLength = g.values[index][i].text.Len()
-			}
-			mergeAggregate(&g.values[index][i], &states[i], aggregate.kind)
-			if g.values[index][i].text != nil {
-				g.stateBytes += int64(g.values[index][i].text.Len() - priorLength)
-			} else {
-				g.stateBytes -= int64(priorLength)
-			}
 		}
 	}
 	return true
@@ -197,34 +180,39 @@ func (g *groupState) merge(a *mem.Allocator, src *groupState, step physicalStep,
 	if g.compact != nil || src.compact != nil {
 		return g.compact != nil && src.compact != nil && g.compact.merge(a, src.compact, budget)
 	}
-	for row, states := range src.values {
-		key := src.keys.keys.key(row)
-		index, ok := g.keys.addEncoded(a, key, &src.keys.rows, row, budget-g.charged(len(step.aggregates))+g.keys.charged)
-		if !ok {
-			return false
-		}
-		for len(g.values) <= index {
-			g.values = append(g.values, make([]aggregateValue, len(step.aggregates)))
-			g.uniques = append(g.uniques, make([]*distinctState, len(step.aggregates)))
-			g.stateBytes = saturatingAdd(g.stateBytes, int64(len(step.aggregates))*64)
-		}
-		for i, aggregate := range step.aggregates {
-			before := 0
-			if text := g.values[index][i].text; text != nil {
-				before = text.Len()
-			}
-			mergeAggregate(&g.values[index][i], &states[i], aggregate.kind)
-			after := 0
-			if text := g.values[index][i].text; text != nil {
-				after = text.Len()
-			}
-			g.stateBytes += int64(after - before)
-		}
-		if g.charged(len(step.aggregates)) > budget {
+	keyValues := make([]Scalar, len(src.keys.rows.types))
+	for row := range src.values {
+		if !g.mergeRow(a, src, step, budget, row, keyValues) {
 			return false
 		}
 	}
 	return true
+}
+
+func (g *groupState) mergeRow(a *mem.Allocator, src *groupState, step physicalStep, budget int64, row int, keyValues []Scalar) bool {
+	key := src.keys.keys.key(row)
+	index, ok := g.keys.addEncoded(a, key, &src.keys.rows, row, keyValues, budget-g.charged(len(step.aggregates))+g.keys.charged)
+	if !ok {
+		return false
+	}
+	for len(g.values) <= index {
+		g.values = append(g.values, make([]aggregateValue, len(step.aggregates)))
+		g.uniques = append(g.uniques, make([]*distinctState, len(step.aggregates)))
+		g.stateBytes = saturatingAdd(g.stateBytes, int64(len(step.aggregates))*64)
+	}
+	for i, aggregate := range step.aggregates {
+		before := 0
+		if text := g.values[index][i].text; text != nil {
+			before = text.Len()
+		}
+		mergeAggregate(&g.values[index][i], &src.values[row][i], aggregate.kind)
+		after := 0
+		if text := g.values[index][i].text; text != nil {
+			after = text.Len()
+		}
+		g.stateBytes += int64(after - before)
+	}
+	return g.charged(len(step.aggregates)) <= budget
 }
 
 func (g *groupState) finish(a *mem.Allocator, step physicalStep) *store.Batch {

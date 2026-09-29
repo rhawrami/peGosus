@@ -20,6 +20,7 @@ type boundExpr struct {
 	literal    Scalar
 	target     dtype.Type
 	implicit   bool
+	square     bool
 }
 
 type boundLogicalNode struct {
