@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"unicode/utf8"
+	"unsafe"
 
 	"github.com/rhawrami/peGosus/pkg/dtype"
 	"github.com/rhawrami/peGosus/pkg/mem"
@@ -524,35 +525,60 @@ func (r *ParquetReader) Next(ctx context.Context) (*store.Batch, *ParquetError) 
 }
 
 func makeParquetStringVector(ctx context.Context, c *parquetCursor, n int) (store.Vector, *ParquetError) {
-	values := make([][]byte, n)
-	lengths := make([]int, n)
-	var scratch *mem.Segment
-	var copied []byte
-	var valid []bool
-	if c.column.optional {
-		valid = make([]bool, n)
+	if n < 0 || n > (math.MaxInt-7)/(dtype.StringSize*8) {
+		return store.Vector{}, c.failure(ParquetResourceExhausted, errors.New("string vector overflow"))
 	}
+	data := c.a.AllocSeg(n * dtype.StringSize)
+	if data == nil {
+		return store.Vector{}, c.failure(ParquetResourceExhausted, errors.New("string descriptor allocation failed"))
+	}
+	clear(data.AsBytes())
+	var validity *store.BitMap
+	var scratch, backing *mem.Segment
+	var copied []byte
 	defer func() {
+		if data != nil {
+			data.Dec()
+		}
+		if validity != nil {
+			validity.Release()
+		}
 		if scratch != nil {
 			scratch.Dec()
 		}
+		if backing != nil {
+			backing.Dec()
+		}
 	}()
-	for j := range values {
-		v, yes, err := c.next(ctx)
+	if c.column.optional {
+		validity = store.MakeBitMap(c.a, n)
+		if validity == nil {
+			return store.Vector{}, c.failure(ParquetResourceExhausted, errors.New("string validity allocation failed"))
+		}
+	}
+	descriptors := unsafe.Slice((*dtype.String)(unsafe.Pointer(unsafe.SliceData(data.AsBytes()))), n)
+	for j := range descriptors {
+		value, yes, err := c.next(ctx)
 		if err != nil {
 			return store.Vector{}, err
 		}
 		if !yes {
 			continue
 		}
-		lengths[j] = len(v)
-		if len(v) > cap(copied)-len(copied) {
-			if len(v) > math.MaxInt-len(copied) {
-				return store.Vector{}, c.failure(ParquetResourceExhausted, errors.New("string scratch overflow"))
-			}
-			size := max(4096, cap(copied)*2, len(copied)+len(v))
-			if size < len(copied) || size < len(v) {
-				return store.Vector{}, c.failure(ParquetResourceExhausted, errors.New("string scratch overflow"))
+		if validity != nil {
+			validity.Set(j)
+		}
+		descriptors[j] = dtype.MakeString(value)
+		if len(value) <= dtype.StringInlineSize {
+			continue
+		}
+		if len(value) > math.MaxInt-len(copied) {
+			return store.Vector{}, c.failure(ParquetResourceExhausted, errors.New("string scratch overflow"))
+		}
+		if len(value) > cap(copied)-len(copied) {
+			size := max(min(4096, n*dtype.StringSize), len(copied)+len(value))
+			if cap(copied) <= math.MaxInt/2 {
+				size = max(size, cap(copied)*2)
 			}
 			next := c.a.AllocSegTemp(size)
 			if next == nil {
@@ -565,20 +591,27 @@ func makeParquetStringVector(ctx context.Context, c *parquetCursor, n int) (stor
 			}
 			scratch, copied = next, grown
 		}
-		copied = append(copied, v...)
-		if valid != nil {
-			valid[j] = true
+		copied = append(copied, value...)
+	}
+	if len(copied) != 0 {
+		backing = c.a.AllocSeg(len(copied))
+		if backing == nil {
+			return store.Vector{}, c.failure(ParquetResourceExhausted, errors.New("string backing allocation failed"))
+		}
+		copy(backing.AsBytes(), copied)
+		// Only lengths from borrowed long descriptors survive page changes.
+		// Replace every borrowed address before publishing the vector.
+		on := 0
+		for j := range descriptors {
+			length := descriptors[j].Len()
+			if length > dtype.StringInlineSize {
+				descriptors[j] = dtype.MakeString(backing.AsBytes()[on : on+length])
+				on += length
+			}
 		}
 	}
-	on := 0
-	for j := range values {
-		if valid != nil && !valid[j] {
-			continue
-		}
-		values[j] = copied[on : on+lengths[j]]
-		on += lengths[j]
-	}
-	v := store.MakeStringVector(c.a, values, valid)
+	v := store.MakeVectorFromOwnedSegments(dtype.StringT(), n, data, validity, backing)
+	data, validity, backing = nil, nil, nil
 	if v.Kind() == store.VectorInvalid {
 		return v, c.failure(ParquetResourceExhausted, errors.New("string allocation failed"))
 	}
