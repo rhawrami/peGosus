@@ -55,14 +55,15 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 		return ExecutionResult{}, false
 	}
 	aggregateAt := -1
+	topNAt := -1
 	for i, step := range p.steps {
 		switch step.operation {
 		case physicalPushedFilter, physicalFilter, physicalProject:
-			if aggregateAt >= 0 {
+			if aggregateAt >= 0 || topNAt >= 0 {
 				return ExecutionResult{}, false
 			}
 		case physicalAggregate:
-			if aggregateAt >= 0 {
+			if aggregateAt >= 0 || topNAt >= 0 {
 				return ExecutionResult{}, false
 			}
 			for _, aggregate := range step.aggregates {
@@ -72,18 +73,23 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 			}
 			aggregateAt = i
 		case physicalSort:
-			if aggregateAt < 0 || i != aggregateAt+1 {
+			if aggregateAt < 0 {
+				if topNAt >= 0 || i+2 != len(p.steps) || p.steps[i+1].operation != physicalLimit || makeCompactTopNState(step) == nil {
+					return ExecutionResult{}, false
+				}
+				topNAt = i
+			} else if i != aggregateAt+1 {
 				return ExecutionResult{}, false
 			}
 		case physicalLimit:
-			if aggregateAt < 0 || i != aggregateAt+2 || p.steps[i-1].operation != physicalSort {
+			if topNAt < 0 && (aggregateAt < 0 || i != aggregateAt+2 || p.steps[i-1].operation != physicalSort) {
 				return ExecutionResult{}, false
 			}
 		default:
 			return ExecutionResult{}, false
 		}
 	}
-	if options.Workers == 0 && p.source.table != nil && aggregateAt < 0 {
+	if options.Workers == 0 && p.source.table != nil && aggregateAt < 0 && topNAt < 0 {
 		return ExecutionResult{}, false
 	}
 	sampleGroup := options.Workers == 0 && aggregateAt >= 0 && len(p.steps[aggregateAt].groupKeys) != 0 && makeCompactGroupCountState(p.steps[aggregateAt]) == nil
@@ -161,6 +167,19 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 	if sampleGroup && !p.sampleGroupCardinality(scoped, aggregateAt) {
 		return ExecutionResult{}, false
 	}
+	var taskSequences []uint64
+	if topNAt >= 0 {
+		taskSequences = make([]uint64, tasks)
+		var sequence uint64
+		for i := range tasks {
+			taskSequences[i] = sequence
+			if p.source.table != nil {
+				sequence += uint64(p.source.table.BatchAt(i).Len())
+			} else {
+				sequence += uint64(cursor.parquet.RowGroupRows(i))
+			}
+		}
+	}
 
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -181,6 +200,7 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 	var sinkMu sync.Mutex
 	workerStates := make([][]aggregateValue, workers)
 	workerGroups := make([]*groupState, workers)
+	workerSorts := make([]*sortState, workers)
 	defer func() {
 		for _, states := range workerStates {
 			for i := range states {
@@ -188,6 +208,11 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 			}
 		}
 		for _, state := range workerGroups {
+			if state != nil {
+				state.release()
+			}
+		}
+		for _, state := range workerSorts {
 			if state != nil {
 				state.release()
 			}
@@ -220,6 +245,13 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 				distinct = make([]*distinctState, len(p.steps))
 				sorts = make([]*sortState, len(p.steps))
 				joins = make([]*joinState, len(p.steps))
+			}
+			if topNAt >= 0 {
+				top := makeCompactTopNState(p.steps[topNAt])
+				top.scope, top.rows.scope = scope, scope
+				workerSorts[worker] = &sortState{top: top}
+				sorts = make([]*sortState, len(p.steps))
+				sorts[topNAt] = workerSorts[worker]
 			}
 			consume := func(batch *store.Batch) bool {
 				if err := ctx.Err(); err != nil {
@@ -262,6 +294,9 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 				at := int(next.Add(1) - 1)
 				if at >= tasks {
 					return
+				}
+				if topNAt >= 0 {
+					workerSorts[worker].top.next = taskSequences[at]
 				}
 				if p.source.table != nil {
 					local := scanCursor{source: p.source, index: at}
@@ -311,6 +346,9 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 	}
 	if err := ctx.Err(); err != nil {
 		return ExecutionResult{code: ExecutionCancelled, cause: err}, true
+	}
+	if topNAt >= 0 {
+		return p.finishParallelTopN(ctx, scoped, scope, workerSorts, topNAt, options.MemoryBudget, sink), true
 	}
 	if aggregateAt >= 0 {
 		step := p.steps[aggregateAt]

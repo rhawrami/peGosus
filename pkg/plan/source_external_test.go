@@ -281,7 +281,7 @@ func TestExternalParquetPruningSkipsCorruptExcludedGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := unpruned.ExecuteWithOptions(context.Background(), a, ExecutionOptions{MemoryBudget: 32 << 20}, func(*store.Batch) bool { t.Fatal("corrupt page reached sink"); return true })
+	result := unpruned.ExecuteWithOptions(context.Background(), a, ExecutionOptions{MemoryBudget: 32 << 20, Workers: 1}, func(*store.Batch) bool { t.Fatal("corrupt page reached sink"); return true })
 	unpruned.Release()
 	if result.Code() != ExecutionSourceFailure {
 		t.Fatalf("unpruned corrupt group: %v/%v", result.Code(), result.Err())
