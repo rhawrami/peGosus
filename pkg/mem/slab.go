@@ -262,14 +262,14 @@ func (s *Slab) SimpleCoalesce() bool {
 
 func (s *Slab) simpleCoalesceLocked() bool {
 	var yay bool
-	if s.holes < 2 {
+	if s.holes == 0 {
 		return yay
 	}
 
 	// # segments can change during loop
 	l := len(s.segments) - 1
 	for i := 0; i < l; i++ {
-		if len(s.segments) < 3 {
+		if len(s.segments) < 2 {
 			break
 		}
 		if left := s.segments[i]; left.refCount.Load() == 0 {
@@ -284,11 +284,13 @@ func (s *Slab) simpleCoalesceLocked() bool {
 			}
 		}
 	}
+	s.on = s.segments[len(s.segments)-1].base
 	return yay
 }
 
 // FullCoalesce attempts to coalesce all adjacent free segments;
-// returns true if at least one coalesce attempt was successful.
+// returns true if at least one coalesce attempt was successful. Live segments
+// and payload addresses remain unchanged.
 func (s *Slab) FullCoalesce() bool {
 	owner := s.lockOwner()
 	defer unlockSlabOwner(owner)
@@ -299,66 +301,23 @@ func (s *Slab) fullCoalesceLocked() bool {
 	if s.holes == 0 {
 		return false
 	}
-	// if N holes == N segments - 1 (e.g, all holes) -> just clear
-	// this is also safe in the case of N segments == 1 (e.g., just edge)
-	if s.holes == len(s.segments)-1 {
-		s.clearLocked()
-		return true
-	}
-
-	pos := make([]int, 0, s.holes>>1)
-	var start, stop, adjust int
-	var startCtr bool
-	// pass 1: find hole postions and "widths"
-	for i, v := range s.segments {
-		if v.IsFree() {
-			if !startCtr {
-				startCtr = true
-				start = i
-			}
-			stop = i
+	segments := s.segments
+	kept, merged := 0, 0
+	for _, segment := range segments {
+		if kept > 0 && segment.IsFree() && segments[kept-1].IsFree() {
+			segments[kept-1].capacity += segment.capacity
+			s.takeSeg(segment)
+			merged++
 		} else {
-			startCtr = false
-			if start != stop {
-				// append start AND stop pairs
-				pos = append(pos, start-adjust, stop-adjust)
-				// set adjust for next set of adjacent pairs
-				adjust += (stop - start)
-				// reset range
-				start, stop = i, i
-			}
+			segments[kept] = segment
+			kept++
 		}
 	}
-	// if adjacent pairs at end of group
-	if start != stop {
-		pos = append(pos, start-adjust, stop-adjust)
-	}
-
-	if len(pos) == 0 {
-		return false
-	}
-
-	// pass 2: merge segments
-	var on int
-	for on < len(pos) {
-		start, stop := pos[on], pos[on+1]
-		diff := stop - start
-		// get new cap
-		var c int
-		for i := start; i < stop+1; i++ {
-			c += s.segments[i].capacity
-		}
-		s.segments[start].capacity = c
-		// shift segments over, set new len
-		copy(s.segments[start+1:], s.segments[stop+1:])
-		s.segments = s.segments[:len(s.segments)-diff]
-		// update hole count
-		s.holes -= diff
-
-		on += 2
-	}
-
-	return true
+	clear(segments[kept:])
+	s.segments = segments[:kept]
+	s.holes -= merged
+	s.on = segments[kept-1].base
+	return merged != 0
 }
 
 // MakeSegment returns a Segment with at least `length` bytes; returns
@@ -439,7 +398,7 @@ func (s *Slab) MakeSegmentWithCoalesce(length int) (*Segment, bool) {
 }
 
 func (s *Slab) makeSegmentWithCoalesceLocked(length int) (*Segment, bool) {
-	if s.holes > 1 {
+	if s.holes != 0 {
 		_ = s.fullCoalesceLocked()
 	}
 	return s.makeSegmentLocked(length)

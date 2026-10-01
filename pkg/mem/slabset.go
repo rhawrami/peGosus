@@ -185,7 +185,7 @@ func (s *SlabSet) setOnLocked() {
 }
 
 // MakeSegment attempts to allocate a segment with at least `l`
-// bytes of capacity; returns false if unable to allocate.
+// bytes of capacity, coalescing adjacent free segments before returning false.
 func (s *SlabSet) MakeSegment(l int) (*Segment, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -200,6 +200,17 @@ func (s *SlabSet) makeSegmentLocked(l int) (*Segment, bool) {
 	if !ok {
 		for _, v := range s.slabs {
 			g, ok = v.makeSegmentLocked(l)
+			if ok {
+				break
+			}
+		}
+	}
+	if !ok {
+		for _, slab := range s.slabs {
+			if l > slab.capacity-slab.used || !slab.fullCoalesceLocked() {
+				continue
+			}
+			g, ok = slab.makeSegmentLocked(l)
 			if ok {
 				break
 			}
