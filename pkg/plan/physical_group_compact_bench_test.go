@@ -61,7 +61,7 @@ func BenchmarkGroupedCountState(b *testing.B) {
 					for range b.N {
 						var output *store.Batch
 						if compact {
-							state := makeCompactGroupCountState(step)
+							state := makeCompactGroupState(step)
 							for _, batch := range batches {
 								if !state.add(a, batch, step, math.MaxInt64) {
 									b.Fatal("compact grouping failed")

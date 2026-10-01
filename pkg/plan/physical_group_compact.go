@@ -8,7 +8,7 @@ import (
 	"github.com/rhawrami/peGosus/pkg/store"
 )
 
-func makeCompactGroupCountState(step physicalStep) *compactGroupCountState {
+func makeCompactGroupState(step physicalStep) *compactGroupState {
 	if len(step.groupKeys) != 1 || len(step.aggregates) == 0 {
 		return nil
 	}
@@ -18,19 +18,47 @@ func makeCompactGroupCountState(step physicalStep) *compactGroupCountState {
 		return nil
 	}
 	for _, aggregate := range step.aggregates {
-		if aggregate.distinct || aggregate.kind != AggregateCount && aggregate.kind != AggregateCountStar {
+		if aggregate.distinct {
+			return nil
+		}
+		switch aggregate.kind {
+		case AggregateCount, AggregateCountStar:
+		case AggregateSum:
+			if len(aggregate.program.roots) != 1 || len(aggregate.program.nodes) == 0 {
+				return nil
+			}
+			switch aggregate.program.nodes[aggregate.program.roots[0]].dType.ID() {
+			case dtype.INT32T, dtype.INT64T, dtype.FLOAT32T, dtype.FLOAT64T:
+			default:
+				return nil
+			}
+		default:
 			return nil
 		}
 	}
-	return &compactGroupCountState{keyType: step.schema.FieldAt(0).Type(), aggregateCount: len(step.aggregates), nullIndex: -1}
+	g := &compactGroupState{keyType: step.schema.FieldAt(0).Type(), aggregateCount: len(step.aggregates), nullIndex: -1}
+	for _, aggregate := range step.aggregates {
+		if aggregate.kind == AggregateSum {
+			g.sumTypes = make([]dtype.TID, len(step.aggregates))
+			for i, aggregate := range step.aggregates {
+				if aggregate.kind == AggregateSum {
+					g.sumTypes[i] = aggregate.program.nodes[aggregate.program.roots[0]].dType.ID()
+				}
+			}
+			break
+		}
+	}
+	return g
 }
 
-// compactGroupCountState stores fixed-width group keys and COUNT accumulators
+// compactGroupState stores fixed-width group keys and COUNT/SUM accumulators
 // in allocator-backed columns, indexed by a single group-ID map.
-type compactGroupCountState struct {
+type compactGroupState struct {
 	index          u64Index
 	keys           *mem.Segment
 	counts         *mem.Segment
+	sums           *mem.Segment
+	sumTypes       []dtype.TID
 	keyType        dtype.Type
 	aggregateCount int
 	nullIndex      int
@@ -39,7 +67,7 @@ type compactGroupCountState struct {
 	scope          *mem.AllocationScope
 }
 
-func (g *compactGroupCountState) release() {
+func (g *compactGroupState) release() {
 	g.index.release()
 	if g.keys != nil {
 		g.keys.Dec()
@@ -47,14 +75,21 @@ func (g *compactGroupCountState) release() {
 	if g.counts != nil {
 		g.counts.Dec()
 	}
-	*g = compactGroupCountState{}
+	if g.sums != nil {
+		g.sums.Dec()
+	}
+	*g = compactGroupState{}
 }
 
-func (g *compactGroupCountState) charged() int64 {
-	return int64(g.capacity)*int64(g.aggregateCount+1)*8 + g.index.bytes()
+func (g *compactGroupState) charged() int64 {
+	width := g.aggregateCount + 1
+	if g.sumTypes != nil {
+		width += g.aggregateCount
+	}
+	return int64(g.capacity)*int64(width)*8 + g.index.bytes()
 }
 
-func (g *compactGroupCountState) grow(a *mem.Allocator, budget int64) bool {
+func (g *compactGroupState) grow(a *mem.Allocator, budget int64) bool {
 	if g.capacity > int(^uint(0)>>1)/2 {
 		return false
 	}
@@ -63,36 +98,45 @@ func (g *compactGroupCountState) grow(a *mem.Allocator, budget int64) bool {
 		capacity = 16
 	}
 	width := int64(g.aggregateCount+1) * 8
+	if g.sumTypes != nil {
+		width += int64(g.aggregateCount) * 8
+	}
 	if width <= 0 || int64(capacity) > int64(int(^uint(0)>>1))/width || int64(capacity) > (budget-g.index.bytes())/width-int64(g.capacity) {
 		return false
 	}
-	var newKeys, newCounts *mem.Segment
-	if g.scope != nil {
-		var ok bool
-		newKeys, ok = g.scope.AllocSeg(capacity * 8)
-		if !ok {
-			return false
-		}
-		newCounts, ok = g.scope.AllocSeg(capacity * g.aggregateCount * 8)
+	newKeys, ok := allocOperatorSegment(a, g.scope, capacity*8)
+	if !ok {
+		return false
+	}
+	newCounts, ok := allocOperatorSegment(a, g.scope, capacity*g.aggregateCount*8)
+	if !ok {
+		newKeys.Dec()
+		return false
+	}
+	var newSums *mem.Segment
+	if g.sumTypes != nil {
+		newSums, ok = allocOperatorSegment(a, g.scope, capacity*g.aggregateCount*8)
 		if !ok {
 			newKeys.Dec()
+			newCounts.Dec()
 			return false
 		}
-	} else {
-		newKeys = a.AllocSeg(capacity * 8)
-		newCounts = a.AllocSeg(capacity * g.aggregateCount * 8)
 	}
 	if g.keys != nil {
 		copy(newKeys.AsBytes(), g.keys.AsBytes())
 		g.keys.Dec()
 		copy(newCounts.AsBytes(), g.counts.AsBytes())
 		g.counts.Dec()
+		if g.sums != nil {
+			copy(newSums.AsBytes(), g.sums.AsBytes())
+			g.sums.Dec()
+		}
 	}
-	g.keys, g.counts, g.capacity = newKeys, newCounts, capacity
+	g.keys, g.counts, g.sums, g.capacity = newKeys, newCounts, newSums, capacity
 	return true
 }
 
-func (g *compactGroupCountState) add(a *mem.Allocator, batch *store.Batch, step physicalStep, budget int64) bool {
+func (g *compactGroupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep, budget int64) bool {
 	keyValues, ok := executePhysicalExprProgram(a, batch, step.groupKeys[0])
 	if !ok {
 		return false
@@ -109,7 +153,7 @@ func (g *compactGroupCountState) add(a *mem.Allocator, batch *store.Batch, step 
 		}
 	}()
 	for i, aggregate := range step.aggregates {
-		if aggregate.kind != AggregateCount {
+		if aggregate.kind == AggregateCountStar {
 			continue
 		}
 		values[i], ok = executePhysicalExprProgram(a, batch, aggregate.program)
@@ -159,35 +203,67 @@ func (g *compactGroupCountState) add(a *mem.Allocator, batch *store.Batch, step 
 				return false
 			}
 			index = g.length
-			if !isNull && !g.index.put(a, lookup, index, budget-int64(g.capacity)*int64(g.aggregateCount+1)*8) {
+			if !isNull && !g.index.put(a, lookup, index, budget-g.charged()+g.index.bytes()) {
 				return false
 			}
 			g.length++
 			g.keys.AsU64T()[index] = original
 			counts := g.counts.AsI64T()[index*g.aggregateCount : (index+1)*g.aggregateCount]
 			clear(counts)
+			if g.sums != nil {
+				clear(g.sums.AsU64T()[index*g.aggregateCount : (index+1)*g.aggregateCount])
+			}
 			if isNull {
 				g.nullIndex = index
 			}
 		}
 		counts := g.counts.AsI64T()[index*g.aggregateCount : (index+1)*g.aggregateCount]
+		var sums []uint64
+		if g.sums != nil {
+			sums = g.sums.AsU64T()[index*g.aggregateCount : (index+1)*g.aggregateCount]
+		}
 		for i, aggregate := range step.aggregates {
 			if aggregate.kind == AggregateCountStar {
 				counts[i]++
 			} else {
 				v := &values[i].vectors[aggregate.program.roots[0]]
-				if v.Validity() == nil || v.Validity().IsSet(row) {
-					counts[i]++
+				if v.Validity() != nil && !v.Validity().IsSet(row) {
+					continue
 				}
+				if aggregate.kind == AggregateSum {
+					switch g.sumTypes[i] {
+					case dtype.INT32T:
+						sums[i] += uint64(int64(v.I32s()[row]))
+					case dtype.INT64T:
+						sums[i] += uint64(v.I64s()[row])
+					case dtype.FLOAT32T, dtype.FLOAT64T:
+						var value float64
+						if g.sumTypes[i] == dtype.FLOAT32T {
+							value = float64(v.F32s()[row])
+						} else {
+							value = v.F64s()[row]
+						}
+						if math.IsNaN(value) {
+							continue
+						}
+						sums[i] = math.Float64bits(math.Float64frombits(sums[i]) + value)
+					}
+				}
+				counts[i]++
 			}
 		}
 	}
 	return true
 }
 
-func (g *compactGroupCountState) merge(a *mem.Allocator, src *compactGroupCountState, budget int64) bool {
-	if !g.keyType.Equal(src.keyType) || g.aggregateCount != src.aggregateCount {
+func (g *compactGroupState) merge(a *mem.Allocator, src *compactGroupState, budget int64) bool {
+	if !g.keyType.Equal(src.keyType) || g.aggregateCount != src.aggregateCount || len(g.sumTypes) != len(src.sumTypes) {
 		return false
+	}
+	for i, typ := range g.sumTypes {
+		if typ != src.sumTypes[i] {
+			return false
+		}
 	}
 	for row := range src.length {
 		key := src.keys.AsU64T()[row]
@@ -220,7 +296,7 @@ func (g *compactGroupCountState) merge(a *mem.Allocator, src *compactGroupCountS
 					return false
 				}
 				index = g.length
-				if !g.index.put(a, lookup, index, budget-int64(g.capacity)*int64(g.aggregateCount+1)*8) {
+				if !g.index.put(a, lookup, index, budget-g.charged()+g.index.bytes()) {
 					return false
 				}
 			}
@@ -236,8 +312,22 @@ func (g *compactGroupCountState) merge(a *mem.Allocator, src *compactGroupCountS
 			g.length++
 			g.keys.AsU64T()[index] = key
 			clear(g.counts.AsI64T()[index*g.aggregateCount : (index+1)*g.aggregateCount])
+			if g.sums != nil {
+				clear(g.sums.AsU64T()[index*g.aggregateCount : (index+1)*g.aggregateCount])
+			}
 		}
 		for i, count := range src.counts.AsI64T()[row*src.aggregateCount : (row+1)*src.aggregateCount] {
+			if g.sums != nil && count != 0 {
+				at := index*g.aggregateCount + i
+				sum := src.sums.AsU64T()[row*src.aggregateCount+i]
+				if g.counts.AsI64T()[at] == 0 {
+					g.sums.AsU64T()[at] = sum
+				} else if g.sumTypes[i] == dtype.FLOAT32T || g.sumTypes[i] == dtype.FLOAT64T {
+					g.sums.AsU64T()[at] = math.Float64bits(math.Float64frombits(g.sums.AsU64T()[at]) + math.Float64frombits(sum))
+				} else {
+					g.sums.AsU64T()[at] += sum
+				}
+			}
 			g.counts.AsI64T()[index*g.aggregateCount+i] += count
 		}
 		if g.charged() > budget {
@@ -247,7 +337,7 @@ func (g *compactGroupCountState) merge(a *mem.Allocator, src *compactGroupCountS
 	return true
 }
 
-func (g *compactGroupCountState) finish(a *mem.Allocator, step physicalStep) *store.Batch {
+func (g *compactGroupState) finish(a *mem.Allocator, step physicalStep) *store.Batch {
 	vectors := make([]store.Vector, 1+g.aggregateCount)
 	vectors[0] = store.MakeVector(a, g.length, g.keyType, step.schema.FieldAt(0).Nullable())
 	if vectors[0].Kind() == store.VectorInvalid {
@@ -274,8 +364,9 @@ func (g *compactGroupCountState) finish(a *mem.Allocator, step physicalStep) *st
 			}
 		}
 	}
-	for j := range step.aggregates {
-		vectors[j+1] = store.MakeVector(a, g.length, dtype.Int64T(), false)
+	for j, aggregate := range step.aggregates {
+		field := step.schema.FieldAt(j + 1)
+		vectors[j+1] = store.MakeVector(a, g.length, field.Type(), field.Nullable())
 		if vectors[j+1].Kind() == store.VectorInvalid {
 			for i := range vectors {
 				vectors[i].Release()
@@ -283,7 +374,16 @@ func (g *compactGroupCountState) finish(a *mem.Allocator, step physicalStep) *st
 			return nil
 		}
 		for i := range g.length {
-			vectors[j+1].I64s()[i] = g.counts.AsI64T()[i*g.aggregateCount+j]
+			at := i*g.aggregateCount + j
+			if aggregate.kind != AggregateSum {
+				vectors[j+1].I64s()[i] = g.counts.AsI64T()[at]
+			} else if g.counts.AsI64T()[at] == 0 {
+				vectors[j+1].Validity().Clear(i)
+			} else if field.Type().ID() == dtype.FLOAT64T {
+				vectors[j+1].F64s()[i] = math.Float64frombits(g.sums.AsU64T()[at])
+			} else {
+				vectors[j+1].I64s()[i] = int64(g.sums.AsU64T()[at])
+			}
 		}
 	}
 	result := store.MakeBatch(vectors)

@@ -9,7 +9,7 @@ import (
 )
 
 func makeGroupState(step physicalStep, scope *mem.AllocationScope) *groupState {
-	g := &groupState{compact: makeCompactGroupCountState(step), scope: scope}
+	g := &groupState{compact: makeCompactGroupState(step), scope: scope}
 	if g.compact == nil && len(step.groupKeys) == 1 && step.schema.FieldAt(0).Type().ID() == dtype.STRT {
 		g.stringGroups = make(map[uint64][]int, 16)
 		g.stringSeed = maphash.MakeSeed()
@@ -27,7 +27,7 @@ type groupState struct {
 	values       [][]aggregateValue
 	uniques      [][]*distinctState
 	stateBytes   int64
-	compact      *compactGroupCountState
+	compact      *compactGroupState
 	scope        *mem.AllocationScope
 	stringGroups map[uint64][]int
 	stringSeed   maphash.Seed

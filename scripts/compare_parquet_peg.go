@@ -11,8 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rhawrami/peGosus/pkg/io/parquet"
 	"github.com/rhawrami/peGosus/pkg/mem"
 	"github.com/rhawrami/peGosus/pkg/peg"
+	"github.com/rhawrami/peGosus/pkg/store"
 )
 
 type measurement struct {
@@ -28,6 +30,8 @@ type measurement struct {
 
 type report struct {
 	Engine     string        `json:"engine"`
+	Source     string        `json:"source"`
+	LoadNS     int64         `json:"load_ns,omitempty"`
 	Version    string        `json:"version"`
 	Workers    int           `json:"workers"`
 	GOOS       string        `json:"goos"`
@@ -129,27 +133,75 @@ func main() {
 	runs := flag.Int("runs", 7, "timed runs per query")
 	warmup := flag.Int("warmup", 2, "untimed runs per query")
 	workers := flag.Int("workers", 1, "query workers")
+	source := flag.String("source", "parquet", "scan source: parquet or retained table (loading excluded from timings)")
 	only := flag.String("only", "", "run one named query for profiling")
 	profile := flag.String("cpuprofile", "", "write a CPU profile")
 	memory := flag.Bool("memory", false, "measure heap allocations in separate release, streaming, and retained-result passes")
 	retained := flag.Int("retain", 4, "result retention window in the separate memory pass")
 	flag.Parse()
-	if *path == "" || *rows <= 0 || *runs < 1 || *warmup < 0 || *workers < 1 || *retained < 1 {
+	if *path == "" || *rows <= 0 || *runs < 1 || *warmup < 0 || *workers < 1 || *retained < 1 || (*source != "parquet" && *source != "table") {
 		panic("invalid benchmark arguments")
 	}
 	engine := peg.MakeEngine(peg.EngineOptions{MemoryBudget: 512 << 20, Workers: *workers})
+	scan := engine.ScanParquet(*path)
+	var loadNS int64
+	if *source == "table" {
+		start := time.Now()
+		input, err := os.Open(*path)
+		if err != nil {
+			panic(err)
+		}
+		info, err := input.Stat()
+		if err != nil {
+			panic(err)
+		}
+		a := mem.MakeAllocatorWithProfiles([]int{1 << 20}, []int{1 << 20})
+		defer func() { runtime.KeepAlive(a) }()
+		reader, failure := parquet.MakeParquetReader(input, info.Size(), a, parquet.ParquetOptions{})
+		if failure != nil {
+			panic(failure)
+		}
+		names := make([]string, reader.ColumnCount())
+		for i := range names {
+			names[i], _, _ = reader.Column(i)
+		}
+		var batches []*store.Batch
+		count := 0
+		for {
+			batch, failure := reader.Next(context.Background())
+			if failure != nil {
+				panic(failure)
+			}
+			if batch == nil {
+				break
+			}
+			batches = append(batches, batch)
+			count += batch.Len()
+		}
+		reader.Close()
+		input.Close()
+		if count != *rows {
+			panic(fmt.Errorf("table loaded %d rows, expected %d", count, *rows))
+		}
+		table := store.MakeTable(batches)
+		for _, batch := range batches {
+			batch.Release()
+		}
+		defer table.Release()
+		scan = engine.ScanTable(table, names)
+		loadNS = time.Since(start).Nanoseconds()
+		runtime.GC()
+	}
+	var profileOutput *os.File
 	if *profile != "" {
 		output, err := os.Create(*profile)
 		if err != nil {
 			panic(err)
 		}
 		defer output.Close()
-		if err := pprof.StartCPUProfile(output); err != nil {
-			panic(err)
-		}
-		defer pprof.StopCPUProfile()
+		profileOutput = output
 	}
-	scan := engine.ScanParquet(*path)
+	profileStarted := false
 	queries := []struct {
 		name  string
 		query peg.Query
@@ -161,7 +213,13 @@ func main() {
 		{"string_filter_sum", scan.Filter(peg.C("category").Eq("north"), peg.C("score").Gt(-23.0)).Select(peg.C("id")).Agg(peg.C("id").Sum().Alias("total"))},
 		{"square_sum", scan.Filter(peg.C("score").IsNotNull()).Select(peg.C("score")).Agg(peg.C("score").Sq().Sum().Alias("total"))},
 	}
-	output := report{Engine: "peGosus", Version: runtime.Version(), Workers: *workers,
+	if *only == "group_day_sum" {
+		queries = append(queries, struct {
+			name  string
+			query peg.Query
+		}{"group_day_sum", scan.Filter(peg.C("id").Ge(*rows/4)).Select(peg.C("id"), peg.C("day")).GroupBy(peg.C("day")).Agg(peg.C("id").Sum().Alias("total")).OrderBy(peg.C("day").Asc().NullsLast())})
+	}
+	output := report{Engine: "peGosus", Source: *source, LoadNS: loadNS, Version: runtime.Version(), Workers: *workers,
 		GOOS: runtime.GOOS, GOARCH: runtime.GOARCH, GOMAXPROCS: runtime.GOMAXPROCS(0), Experiment: os.Getenv("GOEXPERIMENT")}
 	for _, item := range queries {
 		if *only != "" && item.name != *only {
@@ -174,6 +232,13 @@ func main() {
 		}
 		entry := measurement{Name: item.name, PrepareNS: time.Since(start).Nanoseconds()}
 		for i := 0; i < *warmup+*runs; i++ {
+			if i == *warmup && profileOutput != nil && !profileStarted {
+				if err := pprof.StartCPUProfile(profileOutput); err != nil {
+					panic(err)
+				}
+				defer pprof.StopCPUProfile()
+				profileStarted = true
+			}
 			start = time.Now()
 			result, err := prepared.Exec()
 			if err != nil {

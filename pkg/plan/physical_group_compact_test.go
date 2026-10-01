@@ -125,7 +125,7 @@ func TestCompactGroupCountDifferential(t *testing.T) {
 					t.Fatal(err)
 				}
 				step := plan.steps[0]
-				compact := makeCompactGroupCountState(step)
+				compact := makeCompactGroupState(step)
 				if compact == nil {
 					t.Fatal("COUNT plan was not supported")
 				}
@@ -181,20 +181,20 @@ func TestCompactGroupCountBudgetAndUnsupported(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	state := makeCompactGroupCountState(plan.steps[0])
+	state := makeCompactGroupState(plan.steps[0])
 	if state.add(a, batch, plan.steps[0], 1) {
 		t.Fatal("accepted group state above memory budget")
 	}
 	state.release()
 	scope := mem.MakeAllocationScope(a, 255)
-	state = makeCompactGroupCountState(plan.steps[0])
+	state = makeCompactGroupState(plan.steps[0])
 	state.scope, state.index.scope = scope, scope
 	if state.add(a, batch, plan.steps[0], math.MaxInt64) || scope.Live() != 0 {
 		t.Fatal("scoped allocator accepted oversized group state")
 	}
 	state.release()
 	scope = mem.MakeAllocationScope(a, 512)
-	state = makeCompactGroupCountState(plan.steps[0])
+	state = makeCompactGroupState(plan.steps[0])
 	state.scope, state.index.scope = scope, scope
 	if !state.add(a, batch, plan.steps[0], math.MaxInt64) || scope.Live() != 512 {
 		t.Fatalf("scoped group allocation: live=%d", scope.Live())
@@ -208,13 +208,13 @@ func TestCompactGroupCountBudgetAndUnsupported(t *testing.T) {
 		manyKeys.I32s()[i] = int32(i)
 	}
 	many := store.MakeBatch([]store.Vector{manyKeys})
-	state = makeCompactGroupCountState(plan.steps[0])
+	state = makeCompactGroupState(plan.steps[0])
 	if state.add(a, many, plan.steps[0], 1200) {
 		t.Fatal("accepted growth above peak memory budget")
 	}
 	state.release()
 	many.Release()
-	if makeCompactGroupCountState(physicalStep{groupKeys: plan.steps[0].groupKeys, schema: plan.steps[0].schema, aggregates: []physicalAggregateExpr{{kind: AggregateSum}}}) != nil {
+	if makeCompactGroupState(physicalStep{groupKeys: plan.steps[0].groupKeys, schema: plan.steps[0].schema, aggregates: []physicalAggregateExpr{{kind: AggregateAvg}}}) != nil {
 		t.Fatal("accepted unsupported aggregate")
 	}
 	plan.Release()

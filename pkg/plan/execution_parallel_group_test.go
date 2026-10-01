@@ -68,7 +68,7 @@ func TestParallelCompactGroupedCount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.steps[0].operation != physicalAggregate || makeCompactGroupCountState(p.steps[0]) == nil {
+	if p.steps[0].operation != physicalAggregate || makeCompactGroupState(p.steps[0]) == nil {
 		t.Fatal("COUNT grouping did not select compact path")
 	}
 	for _, workers := range []int{1, 4} {
@@ -198,8 +198,8 @@ func TestParallelGeneralGroupedAggregation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if makeCompactGroupCountState(p.steps[0]) != nil {
-		t.Fatal("non-COUNT grouping selected compact path")
+	if makeCompactGroupState(p.steps[0]) != nil {
+		t.Fatal("unsupported grouping selected compact path")
 	}
 	for _, workers := range []int{1, 4} {
 		seen := make(map[string]bool)
