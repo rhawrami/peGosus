@@ -80,9 +80,16 @@ func BenchmarkParallelGroupedAggregation(b *testing.B) {
 					b.Run(mode.name, func(b *testing.B) {
 						b.ReportAllocs()
 						b.ResetTimer()
+						lastOutputs := 0
 						for range b.N {
 							count := int64(0)
-							result := p.ExecuteWithOptions(context.Background(), a, ExecutionOptions{MemoryBudget: 128 << 20, Workers: mode.workers}, func(batch *store.Batch) bool {
+							outputs := 0
+							budget := int64(128 << 20)
+							if kind == "general-sum-string" && groups == rows {
+								budget = 256 << 20
+							}
+							result := p.ExecuteWithOptions(context.Background(), a, ExecutionOptions{MemoryBudget: budget, Workers: mode.workers}, func(batch *store.Batch) bool {
+								outputs++
 								for _, n := range batch.VectorAt(countColumn).I64s() {
 									count += n
 								}
@@ -91,6 +98,10 @@ func BenchmarkParallelGroupedAggregation(b *testing.B) {
 							if result.Code() != ExecutionCompleted || count != rows {
 								b.Fatalf("grouped query %v/%v count %d", result.Code(), result.Err(), count)
 							}
+							lastOutputs = outputs
+						}
+						if kind == "general-sum-string" && groups == rows {
+							b.ReportMetric(float64(lastOutputs), "output-batches")
 						}
 						b.ReportMetric(float64(rows)*float64(b.N)/b.Elapsed().Seconds(), "rows/s")
 					})
