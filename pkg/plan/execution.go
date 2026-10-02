@@ -114,7 +114,7 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 				aggregateStates[i] = make([]aggregateValue, len(step.aggregates))
 				aggregateUniques[i] = make([]*distinctState, len(step.aggregates))
 				for j, aggregate := range step.aggregates {
-					if aggregate.distinct {
+					if aggregate.distinct && (len(step.aggregateSources) == 0 || step.aggregateSources[j] == j) {
 						aggregateUniques[i][j] = &distinctState{}
 						aggregateUniques[i][j].setScope(scope)
 					}
@@ -142,7 +142,7 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 				}
 			}
 			if sortStates[i].compact != nil {
-				sortStates[i].compact.scope = scope
+				sortStates[i].compact.scope, sortStates[i].compact.ctx = scope, ctx
 			}
 			if sortStates[i].top != nil {
 				sortStates[i].top.scope, sortStates[i].top.rows.scope = scope, scope
@@ -265,6 +265,9 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 			}
 		}
 		if batch == nil {
+			if err := ctx.Err(); err != nil {
+				return ExecutionResult{code: ExecutionCancelled, cause: err}
+			}
 			if scope.Exhausted() {
 				return ExecutionResult{code: ExecutionResourceExhausted}
 			}
@@ -470,71 +473,86 @@ func executePhysicalLimit(a *mem.Allocator, batch *store.Batch, remaining, skipp
 
 func (p *PhysicalPlan) batchReservation(batch *store.Batch) int64 {
 	rows := int64(batch.Len())
-	perRow := int64(2)
+	input := int64(2)
 	maxStringLen := int64(0)
+	stringColumns := int64(0)
 	for column := range batch.NVectors() {
 		v := batch.VectorAt(column)
-		perRow = saturatingAdd(perRow, int64((v.Type().SlotBits()+7)/8)+1)
+		input = saturatingAdd(input, int64((v.Type().SlotBits()+7)/8)+1)
 		if v.TypeID() == dtype.STRT {
+			stringColumns++
 			strings := v.Strings()
 			if dictionary := v.Dictionary(); dictionary != nil {
 				strings = dictionary.Strings()
 			}
 			for _, value := range strings {
-				if n := int64(len(value.View())); n > maxStringLen {
-					maxStringLen = n
-				}
+				maxStringLen = max(maxStringLen, int64(len(value.View())))
 			}
 		}
 	}
-	caseDepth := int64(0)
-	stringNodes := int64(0)
+	input = saturatingAdd(input, saturatingMultiply(stringColumns, maxStringLen))
+	perRow := input
 	for _, step := range p.steps {
-		programs := []physicalExprProgram{step.program}
-		for _, aggregate := range step.aggregates {
-			programs = append(programs, aggregate.program)
+		stage := step.program.reservation(input, maxStringLen)
+		for _, program := range step.groupKeys {
+			stage = saturatingAdd(stage, program.reservation(input, maxStringLen))
 		}
-		programs = append(programs, step.groupKeys...)
+		// Global aggregate inputs run sequentially; grouped inputs remain live together.
+		aggregatePeak := int64(0)
+		for _, aggregate := range step.aggregates {
+			if len(step.groupKeys) == 0 {
+				aggregatePeak = max(aggregatePeak, aggregate.program.reservation(input, maxStringLen))
+			} else {
+				aggregatePeak = saturatingAdd(aggregatePeak, aggregate.program.reservation(input, maxStringLen))
+			}
+		}
+		stage = saturatingAdd(stage, aggregatePeak)
 		for _, key := range step.order {
-			programs = append(programs, key.program)
+			stage = saturatingAdd(stage, key.program.reservation(input, maxStringLen))
 		}
 		if step.join != nil {
-			programs = append(programs, step.join.leftKeys...)
+			for _, program := range step.join.leftKeys {
+				stage = saturatingAdd(stage, program.reservation(input, maxStringLen))
+			}
 			if step.join.residual != nil {
-				programs = append(programs, *step.join.residual)
+				stage = saturatingAdd(stage, step.join.residual.reservation(input, maxStringLen))
 			}
 		}
-		for _, program := range programs {
-			for _, node := range program.nodes {
-				perRow = saturatingAdd(perRow, int64((node.dType.SlotBits()+7)/8)+1)
-				if node.kind == exprTernary && node.operation == exprOpCase {
-					caseDepth++
-				}
-				if node.dType.ID() == dtype.STRT {
-					stringNodes++
-					if node.kind == exprLiteral && int64(len(node.literal.stringValue())) > maxStringLen {
-						maxStringLen = int64(len(node.literal.stringValue()))
-					}
-				}
-			}
+		perRow = saturatingAdd(perRow, stage)
+	}
+	return saturatingMultiply(rows, perRow)
+}
+
+func (p physicalExprProgram) reservation(input, maxStringLen int64) int64 {
+	depths := make([]int64, len(p.nodes))
+	depth, perRow := int64(0), int64(0)
+	for i, node := range p.nodes {
+		if node.dType.ID() == dtype.STRT && node.kind == exprLiteral {
+			maxStringLen = max(maxStringLen, int64(len(node.literal.stringValue())))
+		}
+		for child := range int(node.childCount) {
+			depths[i] = max(depths[i], depths[node.children[child]])
+		}
+		if node.kind == exprTernary && node.operation == exprOpCase {
+			depths[i]++
+		}
+		depth = max(depth, depths[i])
+	}
+	for _, node := range p.nodes {
+		perRow = saturatingAdd(perRow, int64((node.dType.SlotBits()+7)/8)+1)
+		if node.dType.ID() == dtype.STRT {
+			perRow = saturatingAdd(perRow, maxStringLen)
 		}
 	}
-	if maxStringLen != 0 {
-		if stringNodes+int64(batch.NVectors()) > math.MaxInt64/maxStringLen {
-			return math.MaxInt64
-		}
-		perRow = saturatingAdd(perRow, (stringNodes+int64(batch.NVectors()))*maxStringLen)
-	}
-	if caseDepth > 0 {
-		if perRow > math.MaxInt64/(caseDepth+2) {
-			return math.MaxInt64
-		}
-		perRow *= caseDepth + 2
-	}
-	if rows > 0 && perRow > math.MaxInt64/rows {
+	// Each nested CASE can keep a gathered input and its row indices live.
+	return saturatingAdd(saturatingMultiply(perRow, depth+1), saturatingMultiply(saturatingAdd(input, 8), depth))
+}
+
+func saturatingMultiply(a, b int64) int64 {
+	if a != 0 && b > math.MaxInt64/a {
 		return math.MaxInt64
 	}
-	return rows * perRow
+	return a * b
 }
 
 func saturatingAdd(a, b int64) int64 {

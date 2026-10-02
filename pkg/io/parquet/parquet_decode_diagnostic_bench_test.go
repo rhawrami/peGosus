@@ -43,8 +43,18 @@ func BenchmarkParquetColumnDiagnostic(b *testing.B) {
 		want += int(r.RowGroupRows(group))
 	}
 	r.Close()
-	for _, name := range []string{"footer-only", "id", "active", "day", "score", "category"} {
+	for _, name := range []string{"footer-only", "id", "active", "day", "score", "category", "customer_code", "message", "flag_text", "fiscal_year", "price", "quantity", "wide"} {
 		column, exists := columns[name]
+		projection := []int{column}
+		if name == "wide" {
+			projection = nil
+			exists = true
+			for _, field := range []string{"id", "category", "customer_code", "message", "flag_text", "fiscal_year", "price", "quantity", "score"} {
+				index, present := columns[field]
+				exists = exists && present
+				projection = append(projection, index)
+			}
+		}
 		if !exists && name != "footer-only" {
 			continue
 		}
@@ -57,7 +67,7 @@ func BenchmarkParquetColumnDiagnostic(b *testing.B) {
 				b.ReportAllocs()
 				b.ResetTimer()
 				for range b.N {
-					r, failure := MakeParquetReaderProjected(counter, int64(len(data)), a, []int{column}, ParquetOptions{})
+					r, failure := MakeParquetReaderProjected(counter, int64(len(data)), a, projection, ParquetOptions{})
 					if failure != nil {
 						b.Fatal(failure)
 					}

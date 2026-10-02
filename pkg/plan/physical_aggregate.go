@@ -189,6 +189,9 @@ func accumulateAggregates(a *mem.Allocator, batch *store.Batch, step physicalSte
 		defer selection.Release()
 	}
 	for i, aggregate := range step.aggregates {
+		if len(step.aggregateSources) != 0 && step.aggregateSources[i] != i {
+			continue
+		}
 		if aggregate.kind == AggregateCountStar {
 			local[i].count = int64(batch.ActiveLen())
 			continue
@@ -257,6 +260,9 @@ func accumulateAggregates(a *mem.Allocator, batch *store.Batch, step physicalSte
 		values.release()
 	}
 	for i, aggregate := range step.aggregates {
+		if len(step.aggregateSources) != 0 && step.aggregateSources[i] != i {
+			continue
+		}
 		mergeAggregate(&merged[i], &local[i], aggregate.kind)
 	}
 	return true
@@ -524,6 +530,9 @@ func mergeAggregate(dst, src *aggregateValue, kind AggregateKind) {
 func finalizeAggregates(a *mem.Allocator, step physicalStep, merged []aggregateValue) *store.Batch {
 	vectors := make([]store.Vector, len(merged))
 	for i, state := range merged {
+		if len(step.aggregateSources) != 0 {
+			state = merged[step.aggregateSources[i]]
+		}
 		field := step.schema.FieldAt(i)
 		if field.Type().ID() == dtype.STRT {
 			var valid []bool

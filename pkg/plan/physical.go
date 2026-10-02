@@ -46,21 +46,23 @@ func MakePhysicalPlanFromBound(bound *BoundPlan) (*PhysicalPlan, error) {
 	pruneScanProjection(source, steps)
 	selectGroupDictionaries(source, steps)
 	pushScanFilters(source, steps)
+	shareGlobalAggregates(steps)
 	return &PhysicalPlan{source: source.Retain(), schema: schema, steps: steps}, nil
 }
 
 type physicalStep struct {
-	operation  physicalOp
-	program    physicalExprProgram
-	limit      int64
-	offset     int64
-	aggregates []physicalAggregateExpr
-	groupKeys  []physicalExprProgram
-	schema     Schema
-	order      []physicalOrderKey
-	topN       int64
-	hasTopN    bool
-	join       *physicalJoinSpec
+	operation        physicalOp
+	program          physicalExprProgram
+	limit            int64
+	offset           int64
+	aggregates       []physicalAggregateExpr
+	aggregateSources []int
+	groupKeys        []physicalExprProgram
+	schema           Schema
+	order            []physicalOrderKey
+	topN             int64
+	hasTopN          bool
+	join             *physicalJoinSpec
 }
 
 // PhysicalPlan is a bound, reusable batched pipeline description. Release

@@ -197,7 +197,7 @@ func TestCompactSortDifferential(t *testing.T) {
 	}
 }
 
-func TestCompactSortFallsBackForStringsAndTopN(t *testing.T) {
+func TestCompactSortStringsAndTopNFallback(t *testing.T) {
 	a := mem.MakeAllocatorWithProfiles([]int{8192}, []int{8192})
 	strings := store.MakeStringVector(a, [][]byte{[]byte("a\x00"), []byte("z"), []byte("a"), []byte("a\x00\x00")}, nil)
 	batch := store.MakeBatch([]store.Vector{strings})
@@ -208,8 +208,8 @@ func TestCompactSortFallsBackForStringsAndTopN(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if makeCompactSortState(plan.steps[0]) != nil {
-		t.Fatal("accepted variable-width string sort")
+	if makeCompactSortState(plan.steps[0]) == nil {
+		t.Fatal("string sort did not select compact state")
 	}
 	var output *store.Batch
 	if result := plan.ExecuteWithOptions(context.Background(), a, ExecutionOptions{MemoryBudget: 8192}, func(b *store.Batch) bool { output = b.Retain(); return true }); result.Code() != ExecutionCompleted {

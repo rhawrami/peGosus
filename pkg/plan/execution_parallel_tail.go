@@ -15,7 +15,7 @@ func makeParallelAggregateTail(ctx context.Context, a *mem.Allocator, scope *mem
 	tail.step = steps[aggregateAt+1]
 	tail.sorter = &sortState{compact: makeCompactSortState(tail.step), top: makeCompactTopNState(tail.step)}
 	if tail.sorter.compact != nil {
-		tail.sorter.compact.scope = scope
+		tail.sorter.compact.scope, tail.sorter.compact.ctx = scope, ctx
 	}
 	if tail.sorter.top != nil {
 		tail.sorter.top.scope, tail.sorter.top.rows.scope = scope, scope
@@ -85,6 +85,9 @@ func (t *parallelAggregateTail) finish() ExecutionResult {
 	}
 	batch := t.sorter.finish(t.allocator, t.step)
 	if batch == nil {
+		if err := t.ctx.Err(); err != nil {
+			return ExecutionResult{code: ExecutionCancelled, cause: err}
+		}
 		if t.scope.Exhausted() {
 			return ExecutionResult{code: ExecutionResourceExhausted}
 		}
