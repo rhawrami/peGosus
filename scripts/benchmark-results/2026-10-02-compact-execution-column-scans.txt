@@ -1,0 +1,58 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/rhawrami/peGosus/pkg/io/parquet
+cpu: Apple M4
+BenchmarkParquetColumnDiagnostic/footer-only/file         	     648	    375442 ns/op	     24189 read-B/scan	         3.000 reads/scan	  982920 B/op	    4146 allocs/op
+BenchmarkParquetColumnDiagnostic/footer-only/file         	     703	    346386 ns/op	     24189 read-B/scan	         3.000 reads/scan	  982920 B/op	    4146 allocs/op
+BenchmarkParquetColumnDiagnostic/footer-only/memory       	     723	    339748 ns/op	     24189 read-B/scan	         3.000 reads/scan	  982920 B/op	    4146 allocs/op
+BenchmarkParquetColumnDiagnostic/footer-only/memory       	     700	    339126 ns/op	     24189 read-B/scan	         3.000 reads/scan	  982920 B/op	    4146 allocs/op
+BenchmarkParquetColumnDiagnostic/id/file                  	     320	    702181 ns/op	   4219216 read-B/scan	        35.00 reads/scan	 1072072 B/op	    5553 allocs/op
+BenchmarkParquetColumnDiagnostic/id/file                  	     328	    701878 ns/op	   4219216 read-B/scan	        35.00 reads/scan	 1072072 B/op	    5553 allocs/op
+BenchmarkParquetColumnDiagnostic/id/memory                	     370	    689858 ns/op	   4219216 read-B/scan	        35.00 reads/scan	 1072072 B/op	    5553 allocs/op
+BenchmarkParquetColumnDiagnostic/id/memory                	     355	    643874 ns/op	   4219216 read-B/scan	        35.00 reads/scan	 1072072 B/op	    5553 allocs/op
+BenchmarkParquetColumnDiagnostic/active/file              	      43	   5513718 ns/op	     40199 read-B/scan	        35.00 reads/scan	 1054669 B/op	    5281 allocs/op
+BenchmarkParquetColumnDiagnostic/active/file              	      43	   5464382 ns/op	     40199 read-B/scan	        35.00 reads/scan	 1054664 B/op	    5281 allocs/op
+BenchmarkParquetColumnDiagnostic/active/memory            	      44	   5503379 ns/op	     40199 read-B/scan	        35.00 reads/scan	 1054664 B/op	    5281 allocs/op
+BenchmarkParquetColumnDiagnostic/active/memory            	      43	   5569328 ns/op	     40199 read-B/scan	        35.00 reads/scan	 1054664 B/op	    5281 allocs/op
+BenchmarkParquetColumnDiagnostic/day/file                 	      57	   4042694 ns/op	    316111 read-B/scan	        67.00 reads/scan	 1095112 B/op	    5633 allocs/op
+BenchmarkParquetColumnDiagnostic/day/file                 	      60	   4019253 ns/op	    316111 read-B/scan	        67.00 reads/scan	 1095112 B/op	    5633 allocs/op
+BenchmarkParquetColumnDiagnostic/day/memory               	      60	   4052565 ns/op	    316111 read-B/scan	        67.00 reads/scan	 1095112 B/op	    5633 allocs/op
+BenchmarkParquetColumnDiagnostic/day/memory               	      58	   4001847 ns/op	    316111 read-B/scan	        67.00 reads/scan	 1095112 B/op	    5633 allocs/op
+BenchmarkParquetColumnDiagnostic/score/file               	      30	   7556214 ns/op	   4668185 read-B/scan	        35.00 reads/scan	 1072072 B/op	    5553 allocs/op
+BenchmarkParquetColumnDiagnostic/score/file               	      31	   7615251 ns/op	   4668185 read-B/scan	        35.00 reads/scan	 1072072 B/op	    5553 allocs/op
+BenchmarkParquetColumnDiagnostic/score/memory             	      28	   7571308 ns/op	   4668185 read-B/scan	        35.00 reads/scan	 1072072 B/op	    5553 allocs/op
+BenchmarkParquetColumnDiagnostic/score/memory             	      32	   7407155 ns/op	   4668185 read-B/scan	        35.00 reads/scan	 1072072 B/op	    5553 allocs/op
+BenchmarkParquetColumnDiagnostic/category/file            	      14	  15878589 ns/op	     70620 read-B/scan	        51.00 reads/scan	 1094088 B/op	    5617 allocs/op
+BenchmarkParquetColumnDiagnostic/category/file            	      14	  15948036 ns/op	     70620 read-B/scan	        51.00 reads/scan	 1094088 B/op	    5617 allocs/op
+BenchmarkParquetColumnDiagnostic/category/memory          	      14	  16030482 ns/op	     70620 read-B/scan	        51.00 reads/scan	 1094088 B/op	    5617 allocs/op
+BenchmarkParquetColumnDiagnostic/category/memory          	      14	  16028220 ns/op	     70620 read-B/scan	        51.00 reads/scan	 1094088 B/op	    5617 allocs/op
+BenchmarkParquetColumnDiagnostic/customer_code/file       	       8	  25431729 ns/op	   6832209 read-B/scan	        35.00 reads/scan	 1072144 B/op	    5553 allocs/op
+BenchmarkParquetColumnDiagnostic/customer_code/file       	       8	  25469531 ns/op	   6832209 read-B/scan	        35.00 reads/scan	 1072072 B/op	    5553 allocs/op
+BenchmarkParquetColumnDiagnostic/customer_code/memory     	       8	  25556938 ns/op	   6832209 read-B/scan	        35.00 reads/scan	 1072072 B/op	    5553 allocs/op
+BenchmarkParquetColumnDiagnostic/customer_code/memory     	       8	  25334255 ns/op	   6832209 read-B/scan	        35.00 reads/scan	 1072072 B/op	    5553 allocs/op
+BenchmarkParquetColumnDiagnostic/message/file             	      12	  19699913 ns/op	    155321 read-B/scan	        67.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/message/file             	      12	  19960670 ns/op	    155321 read-B/scan	        67.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/message/memory           	      12	  19634719 ns/op	    155321 read-B/scan	        67.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/message/memory           	      12	  19745854 ns/op	    155321 read-B/scan	        67.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/flag_text/file           	      15	  15295528 ns/op	     92387 read-B/scan	        51.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/flag_text/file           	      15	  15083689 ns/op	     92387 read-B/scan	        51.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/flag_text/memory         	      15	  14954503 ns/op	     92387 read-B/scan	        51.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/flag_text/memory         	      15	  14967233 ns/op	     92387 read-B/scan	        51.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/fiscal_year/file         	      20	  11842960 ns/op	     47885 read-B/scan	        51.00 reads/scan	 1094088 B/op	    5617 allocs/op
+BenchmarkParquetColumnDiagnostic/fiscal_year/file         	      20	  11781152 ns/op	     47885 read-B/scan	        51.00 reads/scan	 1094088 B/op	    5617 allocs/op
+BenchmarkParquetColumnDiagnostic/fiscal_year/memory       	      20	  11636767 ns/op	     47885 read-B/scan	        51.00 reads/scan	 1094088 B/op	    5617 allocs/op
+BenchmarkParquetColumnDiagnostic/fiscal_year/memory       	      20	  11639912 ns/op	     47885 read-B/scan	        51.00 reads/scan	 1094088 B/op	    5617 allocs/op
+BenchmarkParquetColumnDiagnostic/price/file               	      28	   8298912 ns/op	   1124471 read-B/scan	        67.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/price/file               	      28	   8197548 ns/op	   1124471 read-B/scan	        67.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/price/memory             	      28	   8144891 ns/op	   1124471 read-B/scan	        67.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/price/memory             	      28	   8131366 ns/op	   1124471 read-B/scan	        67.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/quantity/file            	      28	   8313808 ns/op	    126977 read-B/scan	        51.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/quantity/file            	      28	   8374774 ns/op	    126977 read-B/scan	        51.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/quantity/memory          	      28	   8220649 ns/op	    126977 read-B/scan	        51.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/quantity/memory          	      28	   8215234 ns/op	    126977 read-B/scan	        51.00 reads/scan	 1093064 B/op	    5601 allocs/op
+BenchmarkParquetColumnDiagnostic/wide/file                	       2	 110807104 ns/op	  17143759 read-B/scan	       419.0 reads/scan	 1705096 B/op	    8593 allocs/op
+BenchmarkParquetColumnDiagnostic/wide/file                	       2	 112170000 ns/op	  17143759 read-B/scan	       419.0 reads/scan	 1705096 B/op	    8593 allocs/op
+BenchmarkParquetColumnDiagnostic/wide/memory              	       2	 110239916 ns/op	  17143759 read-B/scan	       419.0 reads/scan	 1705096 B/op	    8593 allocs/op
+BenchmarkParquetColumnDiagnostic/wide/memory              	       2	 109067958 ns/op	  17143759 read-B/scan	       419.0 reads/scan	 1705096 B/op	    8593 allocs/op
+PASS
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	14.137s

@@ -1,0 +1,3265 @@
+{
+  "paper": "https://www.cs.cit.tum.de/fileadmin/w00cfj/dis/papers/getreal.pdf",
+  "limitations": [
+    "Synthetic workloads informed by the Tableau Public study, not a replay or a representative production query distribution.",
+    "Warm filesystem cache; compilation, source loading and peGosus Prepare excluded. DuckDB Python execute includes per-execution SQL planning; Polars collect includes optimization.",
+    "Native materialization: peGosus owned Result, Polars DataFrame, DuckDB Python fetchall rows. DuckDB Python conversion is included in execution and footprint; fingerprints are outside timing windows.",
+    "Output release measured separately; process startup and retained-table input loading excluded from timing and included in footprint baseline.",
+    "No collation, dirty string-to-number/date casts, window functions, percentile, spilling, many-to-many join stress, or cancellation timing; no official TPC/ClickBench score.",
+    "Dyadic numeric values permit exact fingerprints but exclude floating-point reduction rounding stress, NaN and infinity performance.",
+    "Go and DuckDB query memory budget 1 GiB; Polars has no equivalent configured hard budget. Thread counts cap runtimes but not every operator parallelizes.",
+    "Unordered wide output uses a multiset fingerprint; unordered LIMIT validates row membership and uniqueness rather than equal subsets.",
+    "peGosus has a configurable per-execution guard deadline (default 10s). Native whole-worker watchdog is 1800s. Failures and cancellations have no comparison timing; completed partial samples are not ranked."
+  ],
+  "source": "parquet",
+  "platform": "macOS-15.7.7-arm64-arm-64bit-Mach-O",
+  "processor": "arm64",
+  "warmup": 1,
+  "runs": 3,
+  "rounds": 2,
+  "peg_timeout_seconds": 10.0,
+  "source_hashes": {
+    "scripts/compare_workload_engines.py": "535b030954697d719ee936f5df14d09f2544e3a16b7177544d1ba0efbc203aea",
+    "scripts/workload_suite.py": "bbd365e7f5fd9ece6e6fe165eb540a34bb581316bb516b74353a788cb267b1de",
+    "scripts/workload_peg/main.go": "17b118edd06a1f89be15d76bc6a823a11542d6c932c0b51ccae2083503c362f9"
+  },
+  "fixtures": [
+    {
+      "case": "balanced:1048576",
+      "rows": 1048576,
+      "profile": "balanced",
+      "null_percentage": 5,
+      "customer_domain": 786433,
+      "generator_sql": "SELECT i::INTEGER AS id, CASE WHEN (i*17+3)%100 < 5 THEN NULL ELSE ((i*104729)%65536-32768)::DOUBLE/128 END AS score, CASE WHEN (i*17+7)%100 < 5 THEN NULL ELSE i%3=0 END AS active, DATE '1970-01-01' + (19000+(i*13)%365)::INTEGER AS day, CASE WHEN (i*17+11)%100 < 5 THEN NULL ELSE (['north','south','east','west','central','island','Caf\u00e9','\u6771\u4eac'])[(i%8)+1] END AS category, CASE WHEN (i*17+19)%100 < 5 THEN NULL ELSE 'Event-' || printf('%04d', i%128) || ' Caf\u00e9 \u6771\u4eac' END AS message, CASE WHEN (i*17+23)%100 < 5 THEN NULL ELSE ((i*48271)%786433)::INTEGER END AS customer_key, CASE WHEN (i*17+23)%100 < 5 THEN NULL ELSE 'cust-' || printf('%08d', (i*48271)%786433) END AS customer_code, CASE WHEN (i*17+31)%100 < 5 THEN NULL ELSE ((i*17)%536)::INTEGER END AS segment_key, CASE WHEN (i*17+31)%100 < 5 THEN NULL ELSE 'seg-' || printf('%04d', (i*17)%536) END AS segment_code, CASE WHEN (i*17+37)%100 < 5 THEN NULL ELSE CASE WHEN i%29=0 THEN '?' WHEN i%2=0 THEN 'Y' ELSE 'N' END END AS flag_text, printf('%d/%02d', 2017+i%6, (18+i%6)) AS fiscal_year, CASE WHEN (i*17+41)%100 < 5 THEN NULL ELSE (i%1024+1)::DOUBLE/8 END AS price, CASE WHEN (i*17+43)%100 < 5 THEN NULL ELSE (CASE WHEN i%127=0 THEN 0 ELSE (1 << (i%4)) END)::INTEGER END AS quantity, CASE WHEN (i*17+47)%100 < 5 THEN NULL ELSE (i%4)::DOUBLE/8 END AS discount, ((i*37)%100)::INTEGER AS selectivity FROM range(1048576) AS t(i)",
+      "dimension_sql": "SELECT i::INTEGER AS segment_key, 'seg-' || printf('%04d', i) AS segment_code, 'region-' || (i%8)::VARCHAR AS region, i%5!=0 AS enabled FROM range(512) AS t(i)",
+      "fields": [
+        {
+          "name": "id",
+          "kind": "int32",
+          "nullable": false
+        },
+        {
+          "name": "score",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "active",
+          "kind": "bool",
+          "nullable": true
+        },
+        {
+          "name": "day",
+          "kind": "date",
+          "nullable": false
+        },
+        {
+          "name": "category",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "message",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "customer_key",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "customer_code",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "segment_key",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "segment_code",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "flag_text",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "fiscal_year",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "price",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "quantity",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "discount",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "selectivity",
+          "kind": "int32",
+          "nullable": false
+        }
+      ],
+      "dimension_fields": [
+        {
+          "name": "segment_key",
+          "kind": "int32",
+          "nullable": false
+        },
+        {
+          "name": "segment_code",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "region",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "enabled",
+          "kind": "bool",
+          "nullable": false
+        }
+      ],
+      "encodings": [
+        [
+          "active",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "category",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "customer_code",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "customer_key",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "day",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "discount",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "fiscal_year",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "flag_text",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "id",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "message",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "price",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "quantity",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "score",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "segment_code",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "segment_key",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "selectivity",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ]
+      ],
+      "files": {
+        "parquet": {
+          "bytes": 22395533,
+          "sha256": "f398784e32a814d2122449473340c2d89c62b3dca94a8b6d47ae07f681cce0a4"
+        },
+        "dimension": {
+          "bytes": 4855,
+          "sha256": "d52c472a64df6c1fc17e3af8e5567b8022d67bac36ce0b1779a89acb4ccd93f4"
+        },
+        "csv": {
+          "bytes": 128048903,
+          "sha256": "06dd69aaa5a96c906e0fe2065e9f97adbb849b61543767bf07c3aa0af55f193b"
+        },
+        "dimension_csv": {
+          "bytes": 13857,
+          "sha256": "6701cac4eb6d7e5e63f3a6ace6bee2fb137d0d2ead885c29cf3972f4564f0e64"
+        }
+      },
+      "parquet": "/private/tmp/peg-expanded-workloads-v2/balanced-1048576/facts.parquet",
+      "dimension": "/private/tmp/peg-expanded-workloads-v2/balanced-1048576/dimension.parquet",
+      "csv": "/private/tmp/peg-expanded-workloads-v2/balanced-1048576/facts.csv",
+      "dimension_csv": "/private/tmp/peg-expanded-workloads-v2/balanced-1048576/dimension.csv"
+    }
+  ],
+  "records": [
+    {
+      "engine": "peGosus",
+      "workers": 4,
+      "query": "wide_materialize",
+      "version": "go1.27.1",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 7733248,
+            "phys_footprint": 5128552,
+            "interval_max_phys_footprint": 5128552,
+            "lifetime_max_phys_footprint": 5128552,
+            "diskio_bytesread": 3809280,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1048576,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 0,
+              "ScratchRequests": 2
+            },
+            "heap_alloc": 2238920,
+            "heap_sys": 12288000,
+            "held_results": 0,
+            "signature": null,
+            "stage": "ready",
+            "version": "go1.27.1"
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 7733248,
+            "phys_footprint": 5128552,
+            "interval_max_phys_footprint": 5128552,
+            "lifetime_max_phys_footprint": 5128552,
+            "diskio_bytesread": 3809280,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 205586432,
+            "phys_footprint": 202703376,
+            "interval_max_phys_footprint": 202703376,
+            "lifetime_max_phys_footprint": 202703376,
+            "diskio_bytesread": 23388160,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 181570816,
+              "ScratchCapacity": 23783360,
+              "GeneralUsed": 146202752,
+              "ScratchUsed": 0,
+              "GeneralRequests": 5120,
+              "ScratchRequests": 3811
+            },
+            "heap_alloc": 220977064,
+            "heap_sys": 230227968,
+            "held_results": 1,
+            "signature": null,
+            "stage": "cold",
+            "version": "go1.27.1"
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 205586432,
+            "phys_footprint": 202703376,
+            "interval_max_phys_footprint": 202703376,
+            "lifetime_max_phys_footprint": 202703376,
+            "diskio_bytesread": 23388160,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 205602816,
+            "phys_footprint": 202719760,
+            "interval_max_phys_footprint": 202719760,
+            "lifetime_max_phys_footprint": 202719760,
+            "diskio_bytesread": 23388160,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 181570816,
+              "ScratchCapacity": 23783360,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 5120,
+              "ScratchRequests": 3811
+            },
+            "heap_alloc": 220980368,
+            "heap_sys": 230227968,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release",
+            "version": "go1.27.1"
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 205602816,
+            "phys_footprint": 202719760,
+            "interval_max_phys_footprint": 202719760,
+            "lifetime_max_phys_footprint": 202719760,
+            "diskio_bytesread": 23388160,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 218300416,
+            "phys_footprint": 215417360,
+            "interval_max_phys_footprint": 215417360,
+            "lifetime_max_phys_footprint": 215417360,
+            "diskio_bytesread": 23633920,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 181570816,
+              "ScratchCapacity": 25383424,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 10240,
+              "ScratchRequests": 7620
+            },
+            "heap_alloc": 221972864,
+            "heap_sys": 230260736,
+            "held_results": 0,
+            "signature": null,
+            "stage": "warmup",
+            "version": "go1.27.1"
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 218300416,
+            "phys_footprint": 215417360,
+            "interval_max_phys_footprint": 215417360,
+            "lifetime_max_phys_footprint": 215417360,
+            "diskio_bytesread": 23633920,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 225443840,
+            "phys_footprint": 222577192,
+            "interval_max_phys_footprint": 222577192,
+            "lifetime_max_phys_footprint": 222577192,
+            "diskio_bytesread": 24010752,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 181570816,
+              "ScratchCapacity": 26983488,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 25600,
+              "ScratchRequests": 19047
+            },
+            "heap_alloc": 228029344,
+            "heap_sys": 234455040,
+            "held_results": 0,
+            "signature": null,
+            "stage": "steady",
+            "version": "go1.27.1"
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 225443840,
+            "phys_footprint": 222577192,
+            "interval_max_phys_footprint": 222577192,
+            "lifetime_max_phys_footprint": 222577192,
+            "diskio_bytesread": 24010752,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 386924544,
+            "phys_footprint": 384139936,
+            "interval_max_phys_footprint": 384139936,
+            "lifetime_max_phys_footprint": 384139936,
+            "diskio_bytesread": 24010752,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 354637952,
+              "ScratchCapacity": 26983488,
+              "GeneralUsed": 294302080,
+              "ScratchUsed": 0,
+              "GeneralRequests": 35840,
+              "ScratchRequests": 26665
+            },
+            "heap_alloc": 417733192,
+            "heap_sys": 427393024,
+            "held_results": 2,
+            "signature": null,
+            "stage": "retain",
+            "version": "go1.27.1"
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 386924544,
+            "phys_footprint": 384139936,
+            "interval_max_phys_footprint": 384139936,
+            "lifetime_max_phys_footprint": 384139936,
+            "diskio_bytesread": 24010752,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 386924544,
+            "phys_footprint": 384139936,
+            "interval_max_phys_footprint": 384139936,
+            "lifetime_max_phys_footprint": 384139936,
+            "diskio_bytesread": 24010752,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 354637952,
+              "ScratchCapacity": 26983488,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 35840,
+              "ScratchRequests": 26665
+            },
+            "heap_alloc": 417735448,
+            "heap_sys": 427393024,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release_all",
+            "version": "go1.27.1"
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 386924544,
+            "phys_footprint": 384139936,
+            "interval_max_phys_footprint": 384139936,
+            "lifetime_max_phys_footprint": 384139936,
+            "diskio_bytesread": 24010752,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 386973696,
+            "phys_footprint": 384189088,
+            "interval_max_phys_footprint": 384189088,
+            "lifetime_max_phys_footprint": 384189088,
+            "diskio_bytesread": 24010752,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 354637952,
+              "ScratchCapacity": 26983488,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 35840,
+              "ScratchRequests": 26665
+            },
+            "heap_alloc": 410344016,
+            "heap_sys": 427393024,
+            "held_results": 0,
+            "signature": null,
+            "stage": "gc",
+            "version": "go1.27.1"
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 386973696,
+            "phys_footprint": 384189088,
+            "interval_max_phys_footprint": 384189088,
+            "lifetime_max_phys_footprint": 384189088,
+            "diskio_bytesread": 24010752,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 510427136,
+            "phys_footprint": 507675392,
+            "interval_max_phys_footprint": 507675392,
+            "lifetime_max_phys_footprint": 507675392,
+            "diskio_bytesread": 24010752,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 354637952,
+              "ScratchCapacity": 26983488,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 40960,
+              "ScratchRequests": 30474
+            },
+            "heap_alloc": 533887232,
+            "heap_sys": 544833536,
+            "held_results": 0,
+            "signature": {
+              "rows": 1048576,
+              "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+            },
+            "stage": "validate",
+            "version": "go1.27.1"
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "wide_materialize",
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "peGosus",
+      "workers": 4,
+      "query": "full_sort_numeric",
+      "version": "go1.27.1",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 7634944,
+            "phys_footprint": 4522368,
+            "interval_max_phys_footprint": 4948352,
+            "lifetime_max_phys_footprint": 4948352,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1048576,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 0,
+              "ScratchRequests": 2
+            },
+            "heap_alloc": 2239144,
+            "heap_sys": 12320768,
+            "held_results": 0,
+            "signature": null,
+            "stage": "ready",
+            "version": "go1.27.1"
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 7634944,
+            "phys_footprint": 4522368,
+            "interval_max_phys_footprint": 4522368,
+            "lifetime_max_phys_footprint": 4948352,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 613908480,
+            "phys_footprint": 611255064,
+            "interval_max_phys_footprint": 611255064,
+            "lifetime_max_phys_footprint": 611255064,
+            "diskio_bytesread": 49152,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 18979264,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 12202944,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1028,
+              "ScratchRequests": 371
+            },
+            "heap_alloc": 582398144,
+            "heap_sys": 641433600,
+            "held_results": 1,
+            "signature": null,
+            "stage": "cold",
+            "version": "go1.27.1"
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 613908480,
+            "phys_footprint": 611255064,
+            "interval_max_phys_footprint": 611255064,
+            "lifetime_max_phys_footprint": 611255064,
+            "diskio_bytesread": 49152,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 613924864,
+            "phys_footprint": 611271448,
+            "interval_max_phys_footprint": 611271448,
+            "lifetime_max_phys_footprint": 611271448,
+            "diskio_bytesread": 49152,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 18979264,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1028,
+              "ScratchRequests": 371
+            },
+            "heap_alloc": 582401448,
+            "heap_sys": 641433600,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release",
+            "version": "go1.27.1"
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 613924864,
+            "phys_footprint": 611271448,
+            "interval_max_phys_footprint": 611271448,
+            "lifetime_max_phys_footprint": 611271448,
+            "diskio_bytesread": 49152,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 777519104,
+            "phys_footprint": 642450344,
+            "interval_max_phys_footprint": 668762976,
+            "lifetime_max_phys_footprint": 668762976,
+            "diskio_bytesread": 49152,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 30933056,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 2056,
+              "ScratchRequests": 740
+            },
+            "heap_alloc": 32202016,
+            "heap_sys": 796590080,
+            "held_results": 0,
+            "signature": null,
+            "stage": "warmup",
+            "version": "go1.27.1"
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 777519104,
+            "phys_footprint": 642450344,
+            "interval_max_phys_footprint": 642450344,
+            "lifetime_max_phys_footprint": 668762976,
+            "diskio_bytesread": 49152,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1133232128,
+            "phys_footprint": 770180272,
+            "interval_max_phys_footprint": 891765768,
+            "lifetime_max_phys_footprint": 891765768,
+            "diskio_bytesread": 49152,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 30933056,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 5140,
+              "ScratchRequests": 1847
+            },
+            "heap_alloc": 509585096,
+            "heap_sys": 1140523008,
+            "held_results": 0,
+            "signature": null,
+            "stage": "steady",
+            "version": "go1.27.1"
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 1133232128,
+            "phys_footprint": 770180272,
+            "interval_max_phys_footprint": 770180272,
+            "lifetime_max_phys_footprint": 891765768,
+            "diskio_bytesread": 49152,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1201356800,
+            "phys_footprint": 708003040,
+            "interval_max_phys_footprint": 994264240,
+            "lifetime_max_phys_footprint": 994264240,
+            "diskio_bytesread": 2146304,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 24405888,
+              "ScratchUsed": 0,
+              "GeneralRequests": 7196,
+              "ScratchRequests": 2585
+            },
+            "heap_alloc": 606326888,
+            "heap_sys": 1274740736,
+            "held_results": 2,
+            "signature": null,
+            "stage": "retain",
+            "version": "go1.27.1"
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 1201356800,
+            "phys_footprint": 708003040,
+            "interval_max_phys_footprint": 708003040,
+            "lifetime_max_phys_footprint": 994264240,
+            "diskio_bytesread": 2146304,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1201356800,
+            "phys_footprint": 708003040,
+            "interval_max_phys_footprint": 708003040,
+            "lifetime_max_phys_footprint": 994264240,
+            "diskio_bytesread": 2146304,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 7196,
+              "ScratchRequests": 2585
+            },
+            "heap_alloc": 606330192,
+            "heap_sys": 1274740736,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release_all",
+            "version": "go1.27.1"
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 1201356800,
+            "phys_footprint": 708003040,
+            "interval_max_phys_footprint": 708003040,
+            "lifetime_max_phys_footprint": 994264240,
+            "diskio_bytesread": 2146304,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1201356800,
+            "phys_footprint": 708035808,
+            "interval_max_phys_footprint": 708035808,
+            "lifetime_max_phys_footprint": 994264240,
+            "diskio_bytesread": 2146304,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 7196,
+              "ScratchRequests": 2585
+            },
+            "heap_alloc": 44165464,
+            "heap_sys": 1274740736,
+            "held_results": 0,
+            "signature": null,
+            "stage": "gc",
+            "version": "go1.27.1"
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 1201356800,
+            "phys_footprint": 708035808,
+            "interval_max_phys_footprint": 708035808,
+            "lifetime_max_phys_footprint": 994264240,
+            "diskio_bytesread": 2146304,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1201340416,
+            "phys_footprint": 581649632,
+            "interval_max_phys_footprint": 708035808,
+            "lifetime_max_phys_footprint": 994264240,
+            "diskio_bytesread": 2179072,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 8224,
+              "ScratchRequests": 2954
+            },
+            "heap_alloc": 521546952,
+            "heap_sys": 1274740736,
+            "held_results": 0,
+            "signature": {
+              "rows": 996147,
+              "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+            },
+            "stage": "validate",
+            "version": "go1.27.1"
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "workers": 4,
+      "query": "wide_materialize",
+      "version": "1.5.6",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 47693824,
+            "phys_footprint": 24936904,
+            "interval_max_phys_footprint": 24936904,
+            "lifetime_max_phys_footprint": 24936904,
+            "diskio_bytesread": 6709248,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "ready",
+            "version": "1.5.6",
+            "held_results": 0
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 47693824,
+            "phys_footprint": 24936904,
+            "interval_max_phys_footprint": 24936904,
+            "lifetime_max_phys_footprint": 24936904,
+            "diskio_bytesread": 6709248,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 595804160,
+            "phys_footprint": 543179472,
+            "interval_max_phys_footprint": 543179472,
+            "lifetime_max_phys_footprint": 543179472,
+            "diskio_bytesread": 8036352,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "cold",
+            "held_results": 1
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 595804160,
+            "phys_footprint": 543179472,
+            "interval_max_phys_footprint": 543179472,
+            "lifetime_max_phys_footprint": 543179472,
+            "diskio_bytesread": 8036352,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 102973440,
+            "phys_footprint": 50217488,
+            "interval_max_phys_footprint": 543179472,
+            "lifetime_max_phys_footprint": 543179472,
+            "diskio_bytesread": 8036352,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release",
+            "held_results": 0
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 102973440,
+            "phys_footprint": 50217488,
+            "interval_max_phys_footprint": 50217488,
+            "lifetime_max_phys_footprint": 543179472,
+            "diskio_bytesread": 8036352,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 118784000,
+            "phys_footprint": 52249200,
+            "interval_max_phys_footprint": 546390808,
+            "lifetime_max_phys_footprint": 546390808,
+            "diskio_bytesread": 8069120,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "warmup",
+            "held_results": 0
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 118784000,
+            "phys_footprint": 52249200,
+            "interval_max_phys_footprint": 52249200,
+            "lifetime_max_phys_footprint": 546390808,
+            "diskio_bytesread": 8069120,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 138510336,
+            "phys_footprint": 55738992,
+            "interval_max_phys_footprint": 548700976,
+            "lifetime_max_phys_footprint": 548700976,
+            "diskio_bytesread": 8069120,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "steady",
+            "held_results": 0
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 138510336,
+            "phys_footprint": 55738992,
+            "interval_max_phys_footprint": 55738992,
+            "lifetime_max_phys_footprint": 548700976,
+            "diskio_bytesread": 8069120,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1142767616,
+            "phys_footprint": 1052935296,
+            "interval_max_phys_footprint": 1052935296,
+            "lifetime_max_phys_footprint": 1052935296,
+            "diskio_bytesread": 8069120,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "retain",
+            "held_results": 2
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 1142767616,
+            "phys_footprint": 1052935296,
+            "interval_max_phys_footprint": 1052935296,
+            "lifetime_max_phys_footprint": 1052935296,
+            "diskio_bytesread": 8069120,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 156057600,
+            "phys_footprint": 62800568,
+            "interval_max_phys_footprint": 1052935296,
+            "lifetime_max_phys_footprint": 1052935296,
+            "diskio_bytesread": 8069120,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release_all",
+            "held_results": 0
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 156057600,
+            "phys_footprint": 62800568,
+            "interval_max_phys_footprint": 62800568,
+            "lifetime_max_phys_footprint": 1052935296,
+            "diskio_bytesread": 8069120,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 154238976,
+            "phys_footprint": 60981944,
+            "interval_max_phys_footprint": 62800568,
+            "lifetime_max_phys_footprint": 1052935296,
+            "diskio_bytesread": 8069120,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "gc",
+            "held_results": 0
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 154238976,
+            "phys_footprint": 60981944,
+            "interval_max_phys_footprint": 60981944,
+            "lifetime_max_phys_footprint": 1052935296,
+            "diskio_bytesread": 8069120,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 650231808,
+            "phys_footprint": 556680056,
+            "interval_max_phys_footprint": 556680056,
+            "lifetime_max_phys_footprint": 1052935296,
+            "diskio_bytesread": 8069120,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "validate",
+            "signature": {
+              "rows": 1048576,
+              "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+            }
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "wide_materialize",
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "workers": 4,
+      "query": "full_sort_numeric",
+      "version": "1.5.6",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 48054272,
+            "phys_footprint": 25264536,
+            "interval_max_phys_footprint": 25264536,
+            "lifetime_max_phys_footprint": 25264536,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "ready",
+            "version": "1.5.6",
+            "held_results": 0
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 48054272,
+            "phys_footprint": 25264536,
+            "interval_max_phys_footprint": 25264536,
+            "lifetime_max_phys_footprint": 25264536,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 230801408,
+            "phys_footprint": 169067048,
+            "interval_max_phys_footprint": 182567440,
+            "lifetime_max_phys_footprint": 182567440,
+            "diskio_bytesread": 1425408,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "cold",
+            "held_results": 1
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 230801408,
+            "phys_footprint": 169067048,
+            "interval_max_phys_footprint": 169067048,
+            "lifetime_max_phys_footprint": 182567440,
+            "diskio_bytesread": 1425408,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 104972288,
+            "phys_footprint": 43221520,
+            "interval_max_phys_footprint": 169067048,
+            "lifetime_max_phys_footprint": 182567440,
+            "diskio_bytesread": 1425408,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release",
+            "held_results": 0
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 104972288,
+            "phys_footprint": 43221520,
+            "interval_max_phys_footprint": 43221520,
+            "lifetime_max_phys_footprint": 182567440,
+            "diskio_bytesread": 1425408,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 117358592,
+            "phys_footprint": 44057104,
+            "interval_max_phys_footprint": 172393000,
+            "lifetime_max_phys_footprint": 182567440,
+            "diskio_bytesread": 1425408,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "warmup",
+            "held_results": 0
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 117358592,
+            "phys_footprint": 44057104,
+            "interval_max_phys_footprint": 44057104,
+            "lifetime_max_phys_footprint": 182567440,
+            "diskio_bytesread": 1425408,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 126877696,
+            "phys_footprint": 41894440,
+            "interval_max_phys_footprint": 170328616,
+            "lifetime_max_phys_footprint": 182567440,
+            "diskio_bytesread": 1425408,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "steady",
+            "held_results": 0
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 126877696,
+            "phys_footprint": 41894440,
+            "interval_max_phys_footprint": 41894440,
+            "lifetime_max_phys_footprint": 182567440,
+            "diskio_bytesread": 1425408,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 389611520,
+            "phys_footprint": 303841928,
+            "interval_max_phys_footprint": 303841928,
+            "lifetime_max_phys_footprint": 303841928,
+            "diskio_bytesread": 1425408,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "retain",
+            "held_results": 2
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 389611520,
+            "phys_footprint": 303841928,
+            "interval_max_phys_footprint": 303841928,
+            "lifetime_max_phys_footprint": 303841928,
+            "diskio_bytesread": 1425408,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 136904704,
+            "phys_footprint": 49791552,
+            "interval_max_phys_footprint": 303841928,
+            "lifetime_max_phys_footprint": 303841928,
+            "diskio_bytesread": 1425408,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release_all",
+            "held_results": 0
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 136904704,
+            "phys_footprint": 49791552,
+            "interval_max_phys_footprint": 49791552,
+            "lifetime_max_phys_footprint": 303841928,
+            "diskio_bytesread": 1425408,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 135102464,
+            "phys_footprint": 47989312,
+            "interval_max_phys_footprint": 49791552,
+            "lifetime_max_phys_footprint": 303841928,
+            "diskio_bytesread": 1425408,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "gc",
+            "held_results": 0
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 135102464,
+            "phys_footprint": 47989312,
+            "interval_max_phys_footprint": 47989312,
+            "lifetime_max_phys_footprint": 303841928,
+            "diskio_bytesread": 1425408,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 261767168,
+            "phys_footprint": 175522392,
+            "interval_max_phys_footprint": 175522392,
+            "lifetime_max_phys_footprint": 303841928,
+            "diskio_bytesread": 1425408,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "validate",
+            "signature": {
+              "rows": 996147,
+              "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+            }
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "workers": 4,
+      "query": "wide_materialize",
+      "version": "1.34.0",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 51789824,
+            "phys_footprint": 36029040,
+            "interval_max_phys_footprint": 36029040,
+            "lifetime_max_phys_footprint": 36029040,
+            "diskio_bytesread": 16637952,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "ready",
+            "version": "1.34.0",
+            "held_results": 0
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 51789824,
+            "phys_footprint": 36029040,
+            "interval_max_phys_footprint": 36029040,
+            "lifetime_max_phys_footprint": 36029040,
+            "diskio_bytesread": 16637952,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 192610304,
+            "phys_footprint": 171197184,
+            "interval_max_phys_footprint": 171197184,
+            "lifetime_max_phys_footprint": 171197184,
+            "diskio_bytesread": 27992064,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "cold",
+            "held_results": 1
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 192610304,
+            "phys_footprint": 171197184,
+            "interval_max_phys_footprint": 171197184,
+            "lifetime_max_phys_footprint": 171197184,
+            "diskio_bytesread": 27992064,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 192626688,
+            "phys_footprint": 171197184,
+            "interval_max_phys_footprint": 171197184,
+            "lifetime_max_phys_footprint": 171197184,
+            "diskio_bytesread": 27992064,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release",
+            "held_results": 0
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 192626688,
+            "phys_footprint": 171197184,
+            "interval_max_phys_footprint": 171197184,
+            "lifetime_max_phys_footprint": 171197184,
+            "diskio_bytesread": 27992064,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 205832192,
+            "phys_footprint": 184402688,
+            "interval_max_phys_footprint": 184402688,
+            "lifetime_max_phys_footprint": 184402688,
+            "diskio_bytesread": 27992064,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "warmup",
+            "held_results": 0
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 205832192,
+            "phys_footprint": 184402688,
+            "interval_max_phys_footprint": 184402688,
+            "lifetime_max_phys_footprint": 184402688,
+            "diskio_bytesread": 27992064,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 206995456,
+            "phys_footprint": 185565952,
+            "interval_max_phys_footprint": 185565976,
+            "lifetime_max_phys_footprint": 185565976,
+            "diskio_bytesread": 27992064,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "steady",
+            "held_results": 0
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 206995456,
+            "phys_footprint": 185565952,
+            "interval_max_phys_footprint": 185565952,
+            "lifetime_max_phys_footprint": 185565976,
+            "diskio_bytesread": 27992064,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 331038720,
+            "phys_footprint": 309658440,
+            "interval_max_phys_footprint": 309658440,
+            "lifetime_max_phys_footprint": 309658440,
+            "diskio_bytesread": 27992064,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "retain",
+            "held_results": 2
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 331038720,
+            "phys_footprint": 309658440,
+            "interval_max_phys_footprint": 309658440,
+            "lifetime_max_phys_footprint": 309658440,
+            "diskio_bytesread": 27992064,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 331038720,
+            "phys_footprint": 309658440,
+            "interval_max_phys_footprint": 309658440,
+            "lifetime_max_phys_footprint": 309658440,
+            "diskio_bytesread": 27992064,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release_all",
+            "held_results": 0
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 331038720,
+            "phys_footprint": 309658440,
+            "interval_max_phys_footprint": 309658440,
+            "lifetime_max_phys_footprint": 309658440,
+            "diskio_bytesread": 27992064,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 331038720,
+            "phys_footprint": 309658440,
+            "interval_max_phys_footprint": 309658440,
+            "lifetime_max_phys_footprint": 309658440,
+            "diskio_bytesread": 27992064,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "gc",
+            "held_results": 0
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 331038720,
+            "phys_footprint": 309658440,
+            "interval_max_phys_footprint": 309658440,
+            "lifetime_max_phys_footprint": 309658440,
+            "diskio_bytesread": 27992064,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 331464704,
+            "phys_footprint": 309953352,
+            "interval_max_phys_footprint": 309953352,
+            "lifetime_max_phys_footprint": 309953352,
+            "diskio_bytesread": 28123136,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "validate",
+            "signature": {
+              "rows": 1048576,
+              "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+            }
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "wide_materialize",
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "workers": 4,
+      "query": "full_sort_numeric",
+      "version": "1.34.0",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 50806784,
+            "phys_footprint": 34980536,
+            "interval_max_phys_footprint": 34980536,
+            "lifetime_max_phys_footprint": 34980536,
+            "diskio_bytesread": 81920,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "ready",
+            "version": "1.34.0",
+            "held_results": 0
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 50806784,
+            "phys_footprint": 34980536,
+            "interval_max_phys_footprint": 34980536,
+            "lifetime_max_phys_footprint": 34980536,
+            "diskio_bytesread": 81920,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 117489664,
+            "phys_footprint": 94618392,
+            "interval_max_phys_footprint": 140477232,
+            "lifetime_max_phys_footprint": 140477232,
+            "diskio_bytesread": 2801664,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "cold",
+            "held_results": 1
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 117489664,
+            "phys_footprint": 94618392,
+            "interval_max_phys_footprint": 94618392,
+            "lifetime_max_phys_footprint": 140477232,
+            "diskio_bytesread": 2801664,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 117489664,
+            "phys_footprint": 94618392,
+            "interval_max_phys_footprint": 94618392,
+            "lifetime_max_phys_footprint": 140477232,
+            "diskio_bytesread": 2801664,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release",
+            "held_results": 0
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 117489664,
+            "phys_footprint": 94618392,
+            "interval_max_phys_footprint": 94618392,
+            "lifetime_max_phys_footprint": 140477232,
+            "diskio_bytesread": 2801664,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 122781696,
+            "phys_footprint": 99926832,
+            "interval_max_phys_footprint": 161743688,
+            "lifetime_max_phys_footprint": 161743688,
+            "diskio_bytesread": 2801664,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "warmup",
+            "held_results": 0
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 122781696,
+            "phys_footprint": 99926832,
+            "interval_max_phys_footprint": 99926832,
+            "lifetime_max_phys_footprint": 161743688,
+            "diskio_bytesread": 2801664,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 131678208,
+            "phys_footprint": 108823344,
+            "interval_max_phys_footprint": 170689376,
+            "lifetime_max_phys_footprint": 170689376,
+            "diskio_bytesread": 2801664,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "steady",
+            "held_results": 0
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 131678208,
+            "phys_footprint": 108823344,
+            "interval_max_phys_footprint": 108823344,
+            "lifetime_max_phys_footprint": 170689376,
+            "diskio_bytesread": 2801664,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 140836864,
+            "phys_footprint": 117982000,
+            "interval_max_phys_footprint": 171869024,
+            "lifetime_max_phys_footprint": 171869024,
+            "diskio_bytesread": 2801664,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "retain",
+            "held_results": 2
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 140836864,
+            "phys_footprint": 117982000,
+            "interval_max_phys_footprint": 117982000,
+            "lifetime_max_phys_footprint": 171869024,
+            "diskio_bytesread": 2801664,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 140836864,
+            "phys_footprint": 117982000,
+            "interval_max_phys_footprint": 117982000,
+            "lifetime_max_phys_footprint": 171869024,
+            "diskio_bytesread": 2801664,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release_all",
+            "held_results": 0
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 140836864,
+            "phys_footprint": 117982000,
+            "interval_max_phys_footprint": 117982000,
+            "lifetime_max_phys_footprint": 171869024,
+            "diskio_bytesread": 2801664,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 140836864,
+            "phys_footprint": 117982000,
+            "interval_max_phys_footprint": 117982000,
+            "lifetime_max_phys_footprint": 171869024,
+            "diskio_bytesread": 2801664,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "gc",
+            "held_results": 0
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 140836864,
+            "phys_footprint": 117982000,
+            "interval_max_phys_footprint": 117982000,
+            "lifetime_max_phys_footprint": 171869024,
+            "diskio_bytesread": 2801664,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 141066240,
+            "phys_footprint": 118096688,
+            "interval_max_phys_footprint": 179897184,
+            "lifetime_max_phys_footprint": 179897184,
+            "diskio_bytesread": 2801664,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "validate",
+            "signature": {
+              "rows": 996147,
+              "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+            }
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "workers": 4,
+      "query": "wide_materialize",
+      "version": "1.34.0",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 50413568,
+            "phys_footprint": 34619968,
+            "interval_max_phys_footprint": 34619968,
+            "lifetime_max_phys_footprint": 34619968,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "ready",
+            "version": "1.34.0",
+            "held_results": 0
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 50413568,
+            "phys_footprint": 34619968,
+            "interval_max_phys_footprint": 34619968,
+            "lifetime_max_phys_footprint": 34619968,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 191217664,
+            "phys_footprint": 169788136,
+            "interval_max_phys_footprint": 169788136,
+            "lifetime_max_phys_footprint": 169788136,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "cold",
+            "held_results": 1
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 191217664,
+            "phys_footprint": 169788136,
+            "interval_max_phys_footprint": 169788136,
+            "lifetime_max_phys_footprint": 169788136,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 191234048,
+            "phys_footprint": 169788136,
+            "interval_max_phys_footprint": 169788136,
+            "lifetime_max_phys_footprint": 169788136,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release",
+            "held_results": 0
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 191234048,
+            "phys_footprint": 169788136,
+            "interval_max_phys_footprint": 169788136,
+            "lifetime_max_phys_footprint": 169788136,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 201162752,
+            "phys_footprint": 179716840,
+            "interval_max_phys_footprint": 179716840,
+            "lifetime_max_phys_footprint": 179716840,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "warmup",
+            "held_results": 0
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 201162752,
+            "phys_footprint": 179716840,
+            "interval_max_phys_footprint": 179716840,
+            "lifetime_max_phys_footprint": 179716840,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 204783616,
+            "phys_footprint": 183337704,
+            "interval_max_phys_footprint": 183354112,
+            "lifetime_max_phys_footprint": 183354112,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "steady",
+            "held_results": 0
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 204783616,
+            "phys_footprint": 183337704,
+            "interval_max_phys_footprint": 183337704,
+            "lifetime_max_phys_footprint": 183354112,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 329416704,
+            "phys_footprint": 308052832,
+            "interval_max_phys_footprint": 308052832,
+            "lifetime_max_phys_footprint": 308052832,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "retain",
+            "held_results": 2
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 329416704,
+            "phys_footprint": 308052832,
+            "interval_max_phys_footprint": 308052832,
+            "lifetime_max_phys_footprint": 308052832,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 329416704,
+            "phys_footprint": 308052832,
+            "interval_max_phys_footprint": 308052832,
+            "lifetime_max_phys_footprint": 308052832,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release_all",
+            "held_results": 0
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 329416704,
+            "phys_footprint": 308052832,
+            "interval_max_phys_footprint": 308052832,
+            "lifetime_max_phys_footprint": 308052832,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 329416704,
+            "phys_footprint": 308052832,
+            "interval_max_phys_footprint": 308052832,
+            "lifetime_max_phys_footprint": 308052832,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "gc",
+            "held_results": 0
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 329416704,
+            "phys_footprint": 308052832,
+            "interval_max_phys_footprint": 308052832,
+            "lifetime_max_phys_footprint": 308052832,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 329842688,
+            "phys_footprint": 308347744,
+            "interval_max_phys_footprint": 308347744,
+            "lifetime_max_phys_footprint": 308347744,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "validate",
+            "signature": {
+              "rows": 1048576,
+              "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+            }
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "wide_materialize",
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "workers": 4,
+      "query": "full_sort_numeric",
+      "version": "1.34.0",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 50151424,
+            "phys_footprint": 34243160,
+            "interval_max_phys_footprint": 34243160,
+            "lifetime_max_phys_footprint": 34243160,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "ready",
+            "version": "1.34.0",
+            "held_results": 0
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 50151424,
+            "phys_footprint": 34243160,
+            "interval_max_phys_footprint": 34243160,
+            "lifetime_max_phys_footprint": 34243160,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 116604928,
+            "phys_footprint": 93651616,
+            "interval_max_phys_footprint": 139477688,
+            "lifetime_max_phys_footprint": 139477688,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "cold",
+            "held_results": 1
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 116604928,
+            "phys_footprint": 93651616,
+            "interval_max_phys_footprint": 93651616,
+            "lifetime_max_phys_footprint": 139477688,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 116604928,
+            "phys_footprint": 93651616,
+            "interval_max_phys_footprint": 93651616,
+            "lifetime_max_phys_footprint": 139477688,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release",
+            "held_results": 0
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 116604928,
+            "phys_footprint": 93651616,
+            "interval_max_phys_footprint": 93651616,
+            "lifetime_max_phys_footprint": 139477688,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 126369792,
+            "phys_footprint": 103416480,
+            "interval_max_phys_footprint": 165249744,
+            "lifetime_max_phys_footprint": 165249744,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "warmup",
+            "held_results": 0
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 126369792,
+            "phys_footprint": 103416480,
+            "interval_max_phys_footprint": 103416480,
+            "lifetime_max_phys_footprint": 165249744,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 143540224,
+            "phys_footprint": 120586912,
+            "interval_max_phys_footprint": 182452944,
+            "lifetime_max_phys_footprint": 182452944,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "steady",
+            "held_results": 0
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 143540224,
+            "phys_footprint": 120586912,
+            "interval_max_phys_footprint": 120586912,
+            "lifetime_max_phys_footprint": 182452944,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 151764992,
+            "phys_footprint": 128811680,
+            "interval_max_phys_footprint": 182633168,
+            "lifetime_max_phys_footprint": 182633168,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "retain",
+            "held_results": 2
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 151764992,
+            "phys_footprint": 128811680,
+            "interval_max_phys_footprint": 128811680,
+            "lifetime_max_phys_footprint": 182633168,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 151764992,
+            "phys_footprint": 128811680,
+            "interval_max_phys_footprint": 128811680,
+            "lifetime_max_phys_footprint": 182633168,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release_all",
+            "held_results": 0
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 151764992,
+            "phys_footprint": 128811680,
+            "interval_max_phys_footprint": 128811680,
+            "lifetime_max_phys_footprint": 182633168,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 151764992,
+            "phys_footprint": 128811680,
+            "interval_max_phys_footprint": 128811680,
+            "lifetime_max_phys_footprint": 182633168,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "gc",
+            "held_results": 0
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 151764992,
+            "phys_footprint": 128811680,
+            "interval_max_phys_footprint": 128811680,
+            "lifetime_max_phys_footprint": 182633168,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 152059904,
+            "phys_footprint": 128991904,
+            "interval_max_phys_footprint": 190792400,
+            "lifetime_max_phys_footprint": 190792400,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "validate",
+            "signature": {
+              "rows": 996147,
+              "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+            }
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "workers": 4,
+      "query": "wide_materialize",
+      "version": "1.5.6",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 47595520,
+            "phys_footprint": 24805784,
+            "interval_max_phys_footprint": 24805784,
+            "lifetime_max_phys_footprint": 24805784,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "ready",
+            "version": "1.5.6",
+            "held_results": 0
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 47595520,
+            "phys_footprint": 24805784,
+            "interval_max_phys_footprint": 24805784,
+            "lifetime_max_phys_footprint": 24805784,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 596197376,
+            "phys_footprint": 542081744,
+            "interval_max_phys_footprint": 542081744,
+            "lifetime_max_phys_footprint": 542081744,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "cold",
+            "held_results": 1
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 596197376,
+            "phys_footprint": 542081744,
+            "interval_max_phys_footprint": 542081744,
+            "lifetime_max_phys_footprint": 542081744,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 103366656,
+            "phys_footprint": 49119760,
+            "interval_max_phys_footprint": 542081744,
+            "lifetime_max_phys_footprint": 542081744,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release",
+            "held_results": 0
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 103366656,
+            "phys_footprint": 49119760,
+            "interval_max_phys_footprint": 49119760,
+            "lifetime_max_phys_footprint": 542081744,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 111804416,
+            "phys_footprint": 48480808,
+            "interval_max_phys_footprint": 542622416,
+            "lifetime_max_phys_footprint": 542622416,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "warmup",
+            "held_results": 0
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 111804416,
+            "phys_footprint": 48480808,
+            "interval_max_phys_footprint": 48480808,
+            "lifetime_max_phys_footprint": 542622416,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 141492224,
+            "phys_footprint": 51479080,
+            "interval_max_phys_footprint": 544424656,
+            "lifetime_max_phys_footprint": 544424656,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "steady",
+            "held_results": 0
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 141492224,
+            "phys_footprint": 51479080,
+            "interval_max_phys_footprint": 51479080,
+            "lifetime_max_phys_footprint": 544424656,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1153859584,
+            "phys_footprint": 1054704816,
+            "interval_max_phys_footprint": 1054704816,
+            "lifetime_max_phys_footprint": 1054704816,
+            "diskio_bytesread": 65536,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "retain",
+            "held_results": 2
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 1153859584,
+            "phys_footprint": 1054704816,
+            "interval_max_phys_footprint": 1054704816,
+            "lifetime_max_phys_footprint": 1054704816,
+            "diskio_bytesread": 65536,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 167149568,
+            "phys_footprint": 66847488,
+            "interval_max_phys_footprint": 1054704816,
+            "lifetime_max_phys_footprint": 1054704816,
+            "diskio_bytesread": 65536,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release_all",
+            "held_results": 0
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 167149568,
+            "phys_footprint": 66847488,
+            "interval_max_phys_footprint": 66847488,
+            "lifetime_max_phys_footprint": 1054704816,
+            "diskio_bytesread": 65536,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 165330944,
+            "phys_footprint": 65028864,
+            "interval_max_phys_footprint": 66847488,
+            "lifetime_max_phys_footprint": 1054704816,
+            "diskio_bytesread": 65536,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "gc",
+            "held_results": 0
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 165330944,
+            "phys_footprint": 65028864,
+            "interval_max_phys_footprint": 65028864,
+            "lifetime_max_phys_footprint": 1054704816,
+            "diskio_bytesread": 65536,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 661716992,
+            "phys_footprint": 558629800,
+            "interval_max_phys_footprint": 558629800,
+            "lifetime_max_phys_footprint": 1054704816,
+            "diskio_bytesread": 720896,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "validate",
+            "signature": {
+              "rows": 1048576,
+              "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+            }
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "wide_materialize",
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "workers": 4,
+      "query": "full_sort_numeric",
+      "version": "1.5.6",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 48136192,
+            "phys_footprint": 25379272,
+            "interval_max_phys_footprint": 25379272,
+            "lifetime_max_phys_footprint": 25379272,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "ready",
+            "version": "1.5.6",
+            "held_results": 0
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 48136192,
+            "phys_footprint": 25379272,
+            "interval_max_phys_footprint": 25379272,
+            "lifetime_max_phys_footprint": 25379272,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 229752832,
+            "phys_footprint": 168559120,
+            "interval_max_phys_footprint": 177193464,
+            "lifetime_max_phys_footprint": 177193464,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "cold",
+            "held_results": 1
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 229752832,
+            "phys_footprint": 168559120,
+            "interval_max_phys_footprint": 168559120,
+            "lifetime_max_phys_footprint": 177193464,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 103923712,
+            "phys_footprint": 42697184,
+            "interval_max_phys_footprint": 168559120,
+            "lifetime_max_phys_footprint": 177193464,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release",
+            "held_results": 0
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 103923712,
+            "phys_footprint": 42697184,
+            "interval_max_phys_footprint": 42697184,
+            "lifetime_max_phys_footprint": 177193464,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 113295360,
+            "phys_footprint": 41271776,
+            "interval_max_phys_footprint": 168018448,
+            "lifetime_max_phys_footprint": 177193464,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "warmup",
+            "held_results": 0
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 113295360,
+            "phys_footprint": 41271776,
+            "interval_max_phys_footprint": 41271776,
+            "lifetime_max_phys_footprint": 177193464,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 129351680,
+            "phys_footprint": 41927136,
+            "interval_max_phys_footprint": 167920144,
+            "lifetime_max_phys_footprint": 177193464,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "steady",
+            "held_results": 0
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 129351680,
+            "phys_footprint": 41927136,
+            "interval_max_phys_footprint": 41927136,
+            "lifetime_max_phys_footprint": 177193464,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 391397376,
+            "phys_footprint": 304054872,
+            "interval_max_phys_footprint": 304054872,
+            "lifetime_max_phys_footprint": 304054872,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "retain",
+            "held_results": 2
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 391397376,
+            "phys_footprint": 304054872,
+            "interval_max_phys_footprint": 304054872,
+            "lifetime_max_phys_footprint": 304054872,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 138690560,
+            "phys_footprint": 43303416,
+            "interval_max_phys_footprint": 304054872,
+            "lifetime_max_phys_footprint": 304054872,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "release_all",
+            "held_results": 0
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 138690560,
+            "phys_footprint": 43303416,
+            "interval_max_phys_footprint": 43303416,
+            "lifetime_max_phys_footprint": 304054872,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 136888320,
+            "phys_footprint": 41501176,
+            "interval_max_phys_footprint": 43303416,
+            "lifetime_max_phys_footprint": 304054872,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "gc",
+            "held_results": 0
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 136888320,
+            "phys_footprint": 41501176,
+            "interval_max_phys_footprint": 41501176,
+            "lifetime_max_phys_footprint": 304054872,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 263651328,
+            "phys_footprint": 174228008,
+            "interval_max_phys_footprint": 174228008,
+            "lifetime_max_phys_footprint": 304054872,
+            "diskio_bytesread": 933888,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "stage": "validate",
+            "signature": {
+              "rows": 996147,
+              "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+            }
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "peGosus",
+      "workers": 4,
+      "query": "wide_materialize",
+      "version": "go1.27.1",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 7634944,
+            "phys_footprint": 4047232,
+            "interval_max_phys_footprint": 4997504,
+            "lifetime_max_phys_footprint": 4997504,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1048576,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 0,
+              "ScratchRequests": 2
+            },
+            "heap_alloc": 2239240,
+            "heap_sys": 8126464,
+            "held_results": 0,
+            "signature": null,
+            "stage": "ready",
+            "version": "go1.27.1"
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 7634944,
+            "phys_footprint": 4047232,
+            "interval_max_phys_footprint": 4047232,
+            "lifetime_max_phys_footprint": 4997504,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 203653120,
+            "phys_footprint": 200770064,
+            "interval_max_phys_footprint": 200770064,
+            "lifetime_max_phys_footprint": 200770064,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 180141056,
+              "ScratchCapacity": 22734848,
+              "GeneralUsed": 146222912,
+              "ScratchUsed": 0,
+              "GeneralRequests": 5120,
+              "ScratchRequests": 3811
+            },
+            "heap_alloc": 217639992,
+            "heap_sys": 226131968,
+            "held_results": 1,
+            "signature": null,
+            "stage": "cold",
+            "version": "go1.27.1"
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 203653120,
+            "phys_footprint": 200770064,
+            "interval_max_phys_footprint": 200770064,
+            "lifetime_max_phys_footprint": 200770064,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 203653120,
+            "phys_footprint": 200770064,
+            "interval_max_phys_footprint": 200770064,
+            "lifetime_max_phys_footprint": 200770064,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 180141056,
+              "ScratchCapacity": 22734848,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 5120,
+              "ScratchRequests": 3811
+            },
+            "heap_alloc": 217643296,
+            "heap_sys": 226131968,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release",
+            "version": "go1.27.1"
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 203653120,
+            "phys_footprint": 200770064,
+            "interval_max_phys_footprint": 200770064,
+            "lifetime_max_phys_footprint": 200770064,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 215498752,
+            "phys_footprint": 212615696,
+            "interval_max_phys_footprint": 212615696,
+            "lifetime_max_phys_footprint": 212615696,
+            "diskio_bytesread": 32768,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 180141056,
+              "ScratchCapacity": 24334912,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 10240,
+              "ScratchRequests": 7620
+            },
+            "heap_alloc": 219208248,
+            "heap_sys": 226131968,
+            "held_results": 0,
+            "signature": null,
+            "stage": "warmup",
+            "version": "go1.27.1"
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 215498752,
+            "phys_footprint": 212615696,
+            "interval_max_phys_footprint": 212615696,
+            "lifetime_max_phys_footprint": 212615696,
+            "diskio_bytesread": 32768,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 223133696,
+            "phys_footprint": 220267048,
+            "interval_max_phys_footprint": 220267048,
+            "lifetime_max_phys_footprint": 220267048,
+            "diskio_bytesread": 278528,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 180141056,
+              "ScratchCapacity": 25934976,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 25600,
+              "ScratchRequests": 19047
+            },
+            "heap_alloc": 225291008,
+            "heap_sys": 230326272,
+            "held_results": 0,
+            "signature": null,
+            "stage": "steady",
+            "version": "go1.27.1"
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 223133696,
+            "phys_footprint": 220267048,
+            "interval_max_phys_footprint": 220267048,
+            "lifetime_max_phys_footprint": 220267048,
+            "diskio_bytesread": 278528,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 387629056,
+            "phys_footprint": 384844448,
+            "interval_max_phys_footprint": 384844448,
+            "lifetime_max_phys_footprint": 384844448,
+            "diskio_bytesread": 278528,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 353637312,
+              "ScratchCapacity": 25934976,
+              "GeneralUsed": 294489920,
+              "ScratchUsed": 0,
+              "GeneralRequests": 35840,
+              "ScratchRequests": 26665
+            },
+            "heap_alloc": 415416424,
+            "heap_sys": 423264256,
+            "held_results": 2,
+            "signature": null,
+            "stage": "retain",
+            "version": "go1.27.1"
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 387629056,
+            "phys_footprint": 384844448,
+            "interval_max_phys_footprint": 384844448,
+            "lifetime_max_phys_footprint": 384844448,
+            "diskio_bytesread": 278528,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 387629056,
+            "phys_footprint": 384844448,
+            "interval_max_phys_footprint": 384844448,
+            "lifetime_max_phys_footprint": 384844448,
+            "diskio_bytesread": 278528,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 353637312,
+              "ScratchCapacity": 25934976,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 35840,
+              "ScratchRequests": 26665
+            },
+            "heap_alloc": 415417216,
+            "heap_sys": 423264256,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release_all",
+            "version": "go1.27.1"
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 387629056,
+            "phys_footprint": 384844448,
+            "interval_max_phys_footprint": 384844448,
+            "lifetime_max_phys_footprint": 384844448,
+            "diskio_bytesread": 278528,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 387661824,
+            "phys_footprint": 384877216,
+            "interval_max_phys_footprint": 384877216,
+            "lifetime_max_phys_footprint": 384877216,
+            "diskio_bytesread": 278528,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 353637312,
+              "ScratchCapacity": 25934976,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 35840,
+              "ScratchRequests": 26665
+            },
+            "heap_alloc": 408042768,
+            "heap_sys": 423264256,
+            "held_results": 0,
+            "signature": null,
+            "stage": "gc",
+            "version": "go1.27.1"
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 387661824,
+            "phys_footprint": 384877216,
+            "interval_max_phys_footprint": 384877216,
+            "lifetime_max_phys_footprint": 384877216,
+            "diskio_bytesread": 278528,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 510640128,
+            "phys_footprint": 507904768,
+            "interval_max_phys_footprint": 507904768,
+            "lifetime_max_phys_footprint": 507904768,
+            "diskio_bytesread": 278528,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 353637312,
+              "ScratchCapacity": 25934976,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 40960,
+              "ScratchRequests": 30474
+            },
+            "heap_alloc": 531582640,
+            "heap_sys": 540704768,
+            "held_results": 0,
+            "signature": {
+              "rows": 1048576,
+              "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+            },
+            "stage": "validate",
+            "version": "go1.27.1"
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "wide_materialize",
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "peGosus",
+      "workers": 4,
+      "query": "full_sort_numeric",
+      "version": "go1.27.1",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 7716864,
+            "phys_footprint": 4112792,
+            "interval_max_phys_footprint": 5079448,
+            "lifetime_max_phys_footprint": 5079448,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1048576,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 0,
+              "ScratchRequests": 2
+            },
+            "heap_alloc": 2244464,
+            "heap_sys": 8093696,
+            "held_results": 0,
+            "signature": null,
+            "stage": "ready",
+            "version": "go1.27.1"
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 7716864,
+            "phys_footprint": 4112792,
+            "interval_max_phys_footprint": 4112792,
+            "lifetime_max_phys_footprint": 5079448,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 656048128,
+            "phys_footprint": 653443936,
+            "interval_max_phys_footprint": 653443936,
+            "lifetime_max_phys_footprint": 653443936,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 18979264,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 12202944,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1028,
+              "ScratchRequests": 371
+            },
+            "heap_alloc": 497617424,
+            "heap_sys": 670760960,
+            "held_results": 1,
+            "signature": null,
+            "stage": "cold",
+            "version": "go1.27.1"
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 656048128,
+            "phys_footprint": 653443936,
+            "interval_max_phys_footprint": 653443936,
+            "lifetime_max_phys_footprint": 653443936,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 656048128,
+            "phys_footprint": 653443936,
+            "interval_max_phys_footprint": 653443936,
+            "lifetime_max_phys_footprint": 653443936,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 18979264,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1028,
+              "ScratchRequests": 371
+            },
+            "heap_alloc": 497620728,
+            "heap_sys": 670760960,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release",
+            "version": "go1.27.1"
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 656048128,
+            "phys_footprint": 653443936,
+            "interval_max_phys_footprint": 653443936,
+            "lifetime_max_phys_footprint": 653443936,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 999817216,
+            "phys_footprint": 811844712,
+            "interval_max_phys_footprint": 864502792,
+            "lifetime_max_phys_footprint": 864502792,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 30933056,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 2056,
+              "ScratchRequests": 740
+            },
+            "heap_alloc": 32201792,
+            "heap_sys": 989528064,
+            "held_results": 0,
+            "signature": null,
+            "stage": "warmup",
+            "version": "go1.27.1"
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 999817216,
+            "phys_footprint": 811844712,
+            "interval_max_phys_footprint": 811844712,
+            "lifetime_max_phys_footprint": 864502792,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1212497920,
+            "phys_footprint": 866321656,
+            "interval_max_phys_footprint": 1018250440,
+            "lifetime_max_phys_footprint": 1018250440,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 30933056,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 5140,
+              "ScratchRequests": 1847
+            },
+            "heap_alloc": 509584872,
+            "heap_sys": 1257963520,
+            "held_results": 0,
+            "signature": null,
+            "stage": "steady",
+            "version": "go1.27.1"
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 1212497920,
+            "phys_footprint": 866321656,
+            "interval_max_phys_footprint": 866321656,
+            "lifetime_max_phys_footprint": 1018250440,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1212645376,
+            "phys_footprint": 912377080,
+            "interval_max_phys_footprint": 1116456184,
+            "lifetime_max_phys_footprint": 1116456184,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 24405888,
+              "ScratchUsed": 0,
+              "GeneralRequests": 7196,
+              "ScratchRequests": 2585
+            },
+            "heap_alloc": 606326648,
+            "heap_sys": 1257963520,
+            "held_results": 2,
+            "signature": null,
+            "stage": "retain",
+            "version": "go1.27.1"
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 1212645376,
+            "phys_footprint": 912377080,
+            "interval_max_phys_footprint": 912377080,
+            "lifetime_max_phys_footprint": 1116456184,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1212645376,
+            "phys_footprint": 912377080,
+            "interval_max_phys_footprint": 912377080,
+            "lifetime_max_phys_footprint": 1116456184,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 7196,
+              "ScratchRequests": 2585
+            },
+            "heap_alloc": 606329952,
+            "heap_sys": 1257963520,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release_all",
+            "version": "go1.27.1"
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 1212645376,
+            "phys_footprint": 912377080,
+            "interval_max_phys_footprint": 912377080,
+            "lifetime_max_phys_footprint": 1116456184,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1212645376,
+            "phys_footprint": 836158712,
+            "interval_max_phys_footprint": 912377080,
+            "lifetime_max_phys_footprint": 1116456184,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 7196,
+              "ScratchRequests": 2585
+            },
+            "heap_alloc": 44164968,
+            "heap_sys": 1257963520,
+            "held_results": 0,
+            "signature": null,
+            "stage": "gc",
+            "version": "go1.27.1"
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 1212645376,
+            "phys_footprint": 836158712,
+            "interval_max_phys_footprint": 836158712,
+            "lifetime_max_phys_footprint": 1116456184,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1212694528,
+            "phys_footprint": 673580280,
+            "interval_max_phys_footprint": 836158712,
+            "lifetime_max_phys_footprint": 1116456184,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 8224,
+              "ScratchRequests": 2954
+            },
+            "heap_alloc": 521616648,
+            "heap_sys": 1257963520,
+            "held_results": 0,
+            "signature": {
+              "rows": 996147,
+              "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+            },
+            "stage": "validate",
+            "version": "go1.27.1"
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    }
+  ],
+  "validation_errors": [],
+  "query_failures": []
+}

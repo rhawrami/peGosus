@@ -1,0 +1,4440 @@
+{
+  "fixtures": {
+    "case": "balanced:1048576",
+    "rows": 1048576,
+    "profile": "balanced",
+    "null_percentage": 5,
+    "customer_domain": 786433,
+    "generator_sql": "SELECT i::INTEGER AS id, CASE WHEN (i*17+3)%100 < 5 THEN NULL ELSE ((i*104729)%65536-32768)::DOUBLE/128 END AS score, CASE WHEN (i*17+7)%100 < 5 THEN NULL ELSE i%3=0 END AS active, DATE '1970-01-01' + (19000+(i*13)%365)::INTEGER AS day, CASE WHEN (i*17+11)%100 < 5 THEN NULL ELSE (['north','south','east','west','central','island','Caf\u00e9','\u6771\u4eac'])[(i%8)+1] END AS category, CASE WHEN (i*17+19)%100 < 5 THEN NULL ELSE 'Event-' || printf('%04d', i%128) || ' Caf\u00e9 \u6771\u4eac' END AS message, CASE WHEN (i*17+23)%100 < 5 THEN NULL ELSE ((i*48271)%786433)::INTEGER END AS customer_key, CASE WHEN (i*17+23)%100 < 5 THEN NULL ELSE 'cust-' || printf('%08d', (i*48271)%786433) END AS customer_code, CASE WHEN (i*17+31)%100 < 5 THEN NULL ELSE ((i*17)%536)::INTEGER END AS segment_key, CASE WHEN (i*17+31)%100 < 5 THEN NULL ELSE 'seg-' || printf('%04d', (i*17)%536) END AS segment_code, CASE WHEN (i*17+37)%100 < 5 THEN NULL ELSE CASE WHEN i%29=0 THEN '?' WHEN i%2=0 THEN 'Y' ELSE 'N' END END AS flag_text, printf('%d/%02d', 2017+i%6, (18+i%6)) AS fiscal_year, CASE WHEN (i*17+41)%100 < 5 THEN NULL ELSE (i%1024+1)::DOUBLE/8 END AS price, CASE WHEN (i*17+43)%100 < 5 THEN NULL ELSE (CASE WHEN i%127=0 THEN 0 ELSE (1 << (i%4)) END)::INTEGER END AS quantity, CASE WHEN (i*17+47)%100 < 5 THEN NULL ELSE (i%4)::DOUBLE/8 END AS discount, ((i*37)%100)::INTEGER AS selectivity FROM range(1048576) AS t(i)",
+    "dimension_sql": "SELECT i::INTEGER AS segment_key, 'seg-' || printf('%04d', i) AS segment_code, 'region-' || (i%8)::VARCHAR AS region, i%5!=0 AS enabled FROM range(512) AS t(i)",
+    "fields": [
+      {
+        "name": "id",
+        "kind": "int32",
+        "nullable": false
+      },
+      {
+        "name": "score",
+        "kind": "float64",
+        "nullable": true
+      },
+      {
+        "name": "active",
+        "kind": "bool",
+        "nullable": true
+      },
+      {
+        "name": "day",
+        "kind": "date",
+        "nullable": false
+      },
+      {
+        "name": "category",
+        "kind": "string",
+        "nullable": true
+      },
+      {
+        "name": "message",
+        "kind": "string",
+        "nullable": true
+      },
+      {
+        "name": "customer_key",
+        "kind": "int32",
+        "nullable": true
+      },
+      {
+        "name": "customer_code",
+        "kind": "string",
+        "nullable": true
+      },
+      {
+        "name": "segment_key",
+        "kind": "int32",
+        "nullable": true
+      },
+      {
+        "name": "segment_code",
+        "kind": "string",
+        "nullable": true
+      },
+      {
+        "name": "flag_text",
+        "kind": "string",
+        "nullable": true
+      },
+      {
+        "name": "fiscal_year",
+        "kind": "string",
+        "nullable": false
+      },
+      {
+        "name": "price",
+        "kind": "float64",
+        "nullable": true
+      },
+      {
+        "name": "quantity",
+        "kind": "int32",
+        "nullable": true
+      },
+      {
+        "name": "discount",
+        "kind": "float64",
+        "nullable": true
+      },
+      {
+        "name": "selectivity",
+        "kind": "int32",
+        "nullable": false
+      }
+    ],
+    "dimension_fields": [
+      {
+        "name": "segment_key",
+        "kind": "int32",
+        "nullable": false
+      },
+      {
+        "name": "segment_code",
+        "kind": "string",
+        "nullable": false
+      },
+      {
+        "name": "region",
+        "kind": "string",
+        "nullable": false
+      },
+      {
+        "name": "enabled",
+        "kind": "bool",
+        "nullable": false
+      }
+    ],
+    "encodings": [
+      [
+        "active",
+        [
+          "PLAIN"
+        ],
+        1048576
+      ],
+      [
+        "category",
+        [
+          "PLAIN_DICTIONARY"
+        ],
+        1048576
+      ],
+      [
+        "customer_code",
+        [
+          "PLAIN"
+        ],
+        1048576
+      ],
+      [
+        "customer_key",
+        [
+          "PLAIN"
+        ],
+        1048576
+      ],
+      [
+        "day",
+        [
+          "PLAIN_DICTIONARY"
+        ],
+        1048576
+      ],
+      [
+        "discount",
+        [
+          "PLAIN_DICTIONARY"
+        ],
+        1048576
+      ],
+      [
+        "fiscal_year",
+        [
+          "PLAIN_DICTIONARY"
+        ],
+        1048576
+      ],
+      [
+        "flag_text",
+        [
+          "PLAIN_DICTIONARY"
+        ],
+        1048576
+      ],
+      [
+        "id",
+        [
+          "PLAIN"
+        ],
+        1048576
+      ],
+      [
+        "message",
+        [
+          "PLAIN_DICTIONARY"
+        ],
+        1048576
+      ],
+      [
+        "price",
+        [
+          "PLAIN_DICTIONARY"
+        ],
+        1048576
+      ],
+      [
+        "quantity",
+        [
+          "PLAIN_DICTIONARY"
+        ],
+        1048576
+      ],
+      [
+        "score",
+        [
+          "PLAIN"
+        ],
+        1048576
+      ],
+      [
+        "segment_code",
+        [
+          "PLAIN_DICTIONARY"
+        ],
+        1048576
+      ],
+      [
+        "segment_key",
+        [
+          "PLAIN_DICTIONARY"
+        ],
+        1048576
+      ],
+      [
+        "selectivity",
+        [
+          "PLAIN_DICTIONARY"
+        ],
+        1048576
+      ]
+    ],
+    "files": {
+      "parquet": {
+        "bytes": 22395533,
+        "sha256": "f398784e32a814d2122449473340c2d89c62b3dca94a8b6d47ae07f681cce0a4"
+      },
+      "dimension": {
+        "bytes": 4855,
+        "sha256": "d52c472a64df6c1fc17e3af8e5567b8022d67bac36ce0b1779a89acb4ccd93f4"
+      },
+      "csv": {
+        "bytes": 128048903,
+        "sha256": "06dd69aaa5a96c906e0fe2065e9f97adbb849b61543767bf07c3aa0af55f193b"
+      },
+      "dimension_csv": {
+        "bytes": 13857,
+        "sha256": "6701cac4eb6d7e5e63f3a6ace6bee2fb137d0d2ead885c29cf3972f4564f0e64"
+      }
+    },
+    "parquet": "/private/tmp/peg-expanded-workloads-v2/balanced-1048576/facts.parquet",
+    "dimension": "/private/tmp/peg-expanded-workloads-v2/balanced-1048576/dimension.parquet",
+    "csv": "/private/tmp/peg-expanded-workloads-v2/balanced-1048576/facts.csv",
+    "dimension_csv": "/private/tmp/peg-expanded-workloads-v2/balanced-1048576/dimension.csv"
+  },
+  "binary_sha256": {
+    "before": "045ca67ea15bb50f8d7d2a5e7e828bfd34a4b6571aa94afaf3ac892e3970eebf",
+    "after": "64d1480b6a86cb446a051164ee52ec6bf2a2b490641d9c3896776bc0efdf181b"
+  },
+  "baseline_commit": "be740cf982c9f367a968d8625ca7f515fb42e214",
+  "method": "Frozen runners, same fixtures and ordered query list; alternating variants and worker order, 1 warmup and 3 samples per round. Time excludes result validation and release. Guard 10s. Memory: 1 warmup, 3 immediate releases, 2 held results, same existing native footprint protocol.",
+  "timings": [
+    {
+      "allocator": {
+        "GeneralCapacity": 188612672,
+        "ScratchCapacity": 8994496,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 574683,
+        "ScratchRequests": 148429
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 423750,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 56917,
+          "prepare_ns": 57875,
+          "times_ns": [
+            1894923166,
+            1817851000,
+            1896535792
+          ],
+          "release_ns": [
+            1167,
+            1083,
+            666
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 6042,
+          "prepare_ns": 9417,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "context deadline exceeded",
+          "error_code": 10
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 23250,
+          "prepare_ns": 46958,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "context deadline exceeded",
+          "error_code": 10
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 6459,
+          "prepare_ns": 7917,
+          "times_ns": [
+            2090652458,
+            2061770708,
+            2073437416
+          ],
+          "release_ns": [
+            133209,
+            145750,
+            147584
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 16292,
+          "prepare_ns": 35667,
+          "times_ns": [
+            15547917,
+            15495750,
+            15436333
+          ],
+          "release_ns": [
+            125,
+            83,
+            42
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 3916,
+          "prepare_ns": 6667,
+          "times_ns": [
+            24253083,
+            24059916,
+            24094791
+          ],
+          "release_ns": [
+            84,
+            42,
+            84
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "variant": "before",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 195651264,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 56965,
+        "ScratchRequests": 47972
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 433875,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 14500,
+          "prepare_ns": 25334,
+          "times_ns": [
+            77715334,
+            72494250,
+            84114708
+          ],
+          "release_ns": [
+            375,
+            125,
+            292
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 9459,
+          "prepare_ns": 12584,
+          "times_ns": [
+            558205500,
+            543354583,
+            539922333
+          ],
+          "release_ns": [
+            500,
+            542,
+            458
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "be2c19245767afd274915901377dc3b261fa289322c80ccc4cdd747e3d266000"
+          }
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 21625,
+          "prepare_ns": 43166,
+          "times_ns": [
+            28479459,
+            28608708,
+            28508000
+          ],
+          "release_ns": [
+            458,
+            459,
+            375
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 7208,
+          "prepare_ns": 8708,
+          "times_ns": [
+            130097750,
+            139288042,
+            134942625
+          ],
+          "release_ns": [
+            83708,
+            81791,
+            89750
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 16208,
+          "prepare_ns": 23583,
+          "times_ns": [
+            15780333,
+            15722833,
+            15772917
+          ],
+          "release_ns": [
+            42,
+            84,
+            83
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 4625,
+          "prepare_ns": 7833,
+          "times_ns": [
+            24846083,
+            25313125,
+            24597125
+          ],
+          "release_ns": [
+            209,
+            167,
+            250
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "variant": "after",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 179292224,
+        "ScratchCapacity": 27092544,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 580156,
+        "ScratchRequests": 358823
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 381041,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 20750,
+          "prepare_ns": 24583,
+          "times_ns": [
+            1723213167,
+            1685517834,
+            1708125625
+          ],
+          "release_ns": [
+            958,
+            833,
+            1125
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 6708,
+          "prepare_ns": 9208,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "context deadline exceeded",
+          "error_code": 10
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 16833,
+          "prepare_ns": 45042,
+          "times_ns": [
+            48548292,
+            47682375,
+            45402541
+          ],
+          "release_ns": [
+            625,
+            750,
+            625
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 5541,
+          "prepare_ns": 14333,
+          "times_ns": [
+            1745929291,
+            1967729625,
+            1923256833
+          ],
+          "release_ns": [
+            163584,
+            186500,
+            159542
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 7625,
+          "prepare_ns": 21292,
+          "times_ns": [
+            4374000,
+            4310042,
+            4336833
+          ],
+          "release_ns": [
+            83,
+            83,
+            125
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 3917,
+          "prepare_ns": 6292,
+          "times_ns": [
+            7568542,
+            7518417,
+            7554250
+          ],
+          "release_ns": [
+            125,
+            41,
+            84
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "variant": "before",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 195651264,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 57280,
+        "ScratchRequests": 47987
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 458167,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 18500,
+          "prepare_ns": 27583,
+          "times_ns": [
+            83634083,
+            83882000,
+            80451708
+          ],
+          "release_ns": [
+            125,
+            250,
+            125
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 9916,
+          "prepare_ns": 12208,
+          "times_ns": [
+            538474834,
+            571052125,
+            530533000
+          ],
+          "release_ns": [
+            833,
+            667,
+            667
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "be2c19245767afd274915901377dc3b261fa289322c80ccc4cdd747e3d266000"
+          }
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 32166,
+          "prepare_ns": 50125,
+          "times_ns": [
+            8690625,
+            8271459,
+            8218833
+          ],
+          "release_ns": [
+            625,
+            666,
+            625
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 8041,
+          "prepare_ns": 8458,
+          "times_ns": [
+            54192084,
+            59947708,
+            62357791
+          ],
+          "release_ns": [
+            117541,
+            118792,
+            96750
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 15125,
+          "prepare_ns": 19375,
+          "times_ns": [
+            4600542,
+            4830958,
+            4638042
+          ],
+          "release_ns": [
+            125,
+            167,
+            125
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 4417,
+          "prepare_ns": 6375,
+          "times_ns": [
+            7704375,
+            8577417,
+            7739709
+          ],
+          "release_ns": [
+            250,
+            166,
+            333
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "variant": "after",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 34367232,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 538553,
+        "ScratchRequests": 332805
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 209484917,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 16625,
+          "prepare_ns": 107709,
+          "times_ns": [
+            1751775750,
+            1746311125,
+            1721306041
+          ],
+          "release_ns": [
+            959,
+            1167,
+            834
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 6583,
+          "prepare_ns": 104083,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "context deadline exceeded",
+          "error_code": 10
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 16083,
+          "prepare_ns": 117416,
+          "times_ns": [
+            131638083,
+            128994541,
+            127483750
+          ],
+          "release_ns": [
+            583,
+            584,
+            625
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 4750,
+          "prepare_ns": 82500,
+          "times_ns": [
+            4438709,
+            4401083,
+            4325209
+          ],
+          "release_ns": [
+            41666,
+            45833,
+            43708
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 25667,
+          "prepare_ns": 211500,
+          "times_ns": [
+            15620417,
+            15583500,
+            15956250
+          ],
+          "release_ns": [
+            83,
+            125,
+            125
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 5541,
+          "prepare_ns": 89208,
+          "times_ns": [
+            16883542,
+            16860833,
+            17106959
+          ],
+          "release_ns": [
+            83,
+            125,
+            83
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "table",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "variant": "before",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 192702144,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 1830,
+        "ScratchRequests": 15380
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 189880250,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 18125,
+          "prepare_ns": 100584,
+          "times_ns": [
+            68071291,
+            68320708,
+            70857000
+          ],
+          "release_ns": [
+            292,
+            334,
+            291
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 8500,
+          "prepare_ns": 94875,
+          "times_ns": [
+            524127875,
+            569394000,
+            541741750
+          ],
+          "release_ns": [
+            375,
+            334,
+            333
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "be2c19245767afd274915901377dc3b261fa289322c80ccc4cdd747e3d266000"
+          }
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 24500,
+          "prepare_ns": 135958,
+          "times_ns": [
+            4848250,
+            4832833,
+            4813959
+          ],
+          "release_ns": [
+            417,
+            417,
+            541
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 5667,
+          "prepare_ns": 101333,
+          "times_ns": [
+            4395917,
+            4460541,
+            4583041
+          ],
+          "release_ns": [
+            41667,
+            45042,
+            56417
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 17083,
+          "prepare_ns": 159417,
+          "times_ns": [
+            15991709,
+            15770375,
+            15765917
+          ],
+          "release_ns": [
+            83,
+            42,
+            83
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 3792,
+          "prepare_ns": 103083,
+          "times_ns": [
+            16610791,
+            16424291,
+            16489125
+          ],
+          "release_ns": [
+            42,
+            84,
+            41
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "table",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "variant": "after",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 34367232,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 538868,
+        "ScratchRequests": 332820
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 186819750,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 17500,
+          "prepare_ns": 91541,
+          "times_ns": [
+            1682413667,
+            1662857917,
+            1669178125
+          ],
+          "release_ns": [
+            875,
+            1291,
+            1167
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 7708,
+          "prepare_ns": 97042,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "context deadline exceeded",
+          "error_code": 10
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 15791,
+          "prepare_ns": 125042,
+          "times_ns": [
+            38458042,
+            38075041,
+            37815709
+          ],
+          "release_ns": [
+            750,
+            792,
+            791
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 6292,
+          "prepare_ns": 90125,
+          "times_ns": [
+            1524584,
+            1350750,
+            1335084
+          ],
+          "release_ns": [
+            39500,
+            37750,
+            39541
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 8125,
+          "prepare_ns": 90958,
+          "times_ns": [
+            4378084,
+            4435750,
+            4494000
+          ],
+          "release_ns": [
+            125,
+            125,
+            208
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 4500,
+          "prepare_ns": 87000,
+          "times_ns": [
+            5592833,
+            5573833,
+            5587917
+          ],
+          "release_ns": [
+            125,
+            42,
+            83
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "table",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "variant": "before",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 192702144,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 2145,
+        "ScratchRequests": 15395
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 227598042,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 17959,
+          "prepare_ns": 117458,
+          "times_ns": [
+            76914292,
+            69445459,
+            65872708
+          ],
+          "release_ns": [
+            666,
+            125,
+            250
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 11292,
+          "prepare_ns": 95833,
+          "times_ns": [
+            507686500,
+            509590875,
+            507017292
+          ],
+          "release_ns": [
+            417,
+            375,
+            292
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "be2c19245767afd274915901377dc3b261fa289322c80ccc4cdd747e3d266000"
+          }
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 24666,
+          "prepare_ns": 131708,
+          "times_ns": [
+            1666500,
+            1790375,
+            1674625
+          ],
+          "release_ns": [
+            458,
+            750,
+            500
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 9666,
+          "prepare_ns": 137917,
+          "times_ns": [
+            1558416,
+            1355208,
+            1324959
+          ],
+          "release_ns": [
+            37959,
+            44209,
+            38250
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 16667,
+          "prepare_ns": 108375,
+          "times_ns": [
+            4393167,
+            4505083,
+            4366250
+          ],
+          "release_ns": [
+            83,
+            42,
+            125
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 4291,
+          "prepare_ns": 98417,
+          "times_ns": [
+            5540667,
+            5501666,
+            5524625
+          ],
+          "release_ns": [
+            83,
+            125,
+            83
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "table",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "variant": "after",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 195651264,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 57280,
+        "ScratchRequests": 47987
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 427459,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 20208,
+          "prepare_ns": 27083,
+          "times_ns": [
+            84931000,
+            83875875,
+            78081750
+          ],
+          "release_ns": [
+            208,
+            375,
+            333
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 11084,
+          "prepare_ns": 10250,
+          "times_ns": [
+            525868667,
+            524476625,
+            518190000
+          ],
+          "release_ns": [
+            583,
+            583,
+            792
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "be2c19245767afd274915901377dc3b261fa289322c80ccc4cdd747e3d266000"
+          }
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 20583,
+          "prepare_ns": 40708,
+          "times_ns": [
+            8536125,
+            8759250,
+            9950042
+          ],
+          "release_ns": [
+            584,
+            500,
+            708
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 7125,
+          "prepare_ns": 15250,
+          "times_ns": [
+            56835750,
+            60160959,
+            65538917
+          ],
+          "release_ns": [
+            123209,
+            114208,
+            90000
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 17500,
+          "prepare_ns": 20750,
+          "times_ns": [
+            4594541,
+            4585500,
+            4604542
+          ],
+          "release_ns": [
+            125,
+            125,
+            125
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 4667,
+          "prepare_ns": 8000,
+          "times_ns": [
+            7726708,
+            7648209,
+            7744250
+          ],
+          "release_ns": [
+            208,
+            83,
+            125
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "variant": "after",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 178918208,
+        "ScratchCapacity": 27589568,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 572369,
+        "ScratchRequests": 358818
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 389333,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 22416,
+          "prepare_ns": 22666,
+          "times_ns": [
+            1706061917,
+            1703821167,
+            1690565459
+          ],
+          "release_ns": [
+            1083,
+            750,
+            1041
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 6916,
+          "prepare_ns": 16250,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "context deadline exceeded",
+          "error_code": 10
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 16709,
+          "prepare_ns": 36500,
+          "times_ns": [
+            66863667,
+            65989666,
+            66080875
+          ],
+          "release_ns": [
+            917,
+            667,
+            750
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 5000,
+          "prepare_ns": 7916,
+          "times_ns": [
+            1767972584,
+            1706982375,
+            1726496458
+          ],
+          "release_ns": [
+            177333,
+            169208,
+            223959
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 16625,
+          "prepare_ns": 21917,
+          "times_ns": [
+            5522208,
+            5735459,
+            5371708
+          ],
+          "release_ns": [
+            84,
+            166,
+            417
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 4959,
+          "prepare_ns": 9084,
+          "times_ns": [
+            8860167,
+            9092917,
+            9593292
+          ],
+          "release_ns": [
+            125,
+            125,
+            125
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "variant": "before",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 195651264,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 56965,
+        "ScratchRequests": 47972
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 401625,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 15792,
+          "prepare_ns": 23333,
+          "times_ns": [
+            78003917,
+            77019333,
+            83385458
+          ],
+          "release_ns": [
+            83,
+            167,
+            375
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 11708,
+          "prepare_ns": 12459,
+          "times_ns": [
+            553190417,
+            548088625,
+            538757208
+          ],
+          "release_ns": [
+            458,
+            458,
+            708
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "be2c19245767afd274915901377dc3b261fa289322c80ccc4cdd747e3d266000"
+          }
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 21958,
+          "prepare_ns": 54833,
+          "times_ns": [
+            28804041,
+            28795042,
+            28777375
+          ],
+          "release_ns": [
+            584,
+            500,
+            709
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 6291,
+          "prepare_ns": 9417,
+          "times_ns": [
+            134951250,
+            132770708,
+            138391625
+          ],
+          "release_ns": [
+            84000,
+            82959,
+            94583
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 16166,
+          "prepare_ns": 31750,
+          "times_ns": [
+            15913041,
+            15995667,
+            15946625
+          ],
+          "release_ns": [
+            167,
+            83,
+            83
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 4708,
+          "prepare_ns": 8083,
+          "times_ns": [
+            24688084,
+            24661375,
+            24552041
+          ],
+          "release_ns": [
+            125,
+            83,
+            125
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "variant": "after",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 188612672,
+        "ScratchCapacity": 8994496,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 574713,
+        "ScratchRequests": 149733
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 408958,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 19292,
+          "prepare_ns": 24458,
+          "times_ns": [
+            1911936125,
+            1871709875,
+            1862817584
+          ],
+          "release_ns": [
+            1250,
+            1250,
+            1166
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 5833,
+          "prepare_ns": 9125,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "context deadline exceeded",
+          "error_code": 10
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 15250,
+          "prepare_ns": 40416,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "context deadline exceeded",
+          "error_code": 10
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 7500,
+          "prepare_ns": 8208,
+          "times_ns": [
+            2518751166,
+            2174307625,
+            2191490250
+          ],
+          "release_ns": [
+            129209,
+            150000,
+            145042
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 16708,
+          "prepare_ns": 42917,
+          "times_ns": [
+            15623584,
+            15520666,
+            15529500
+          ],
+          "release_ns": [
+            125,
+            84,
+            83
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 4250,
+          "prepare_ns": 6833,
+          "times_ns": [
+            24261041,
+            24667250,
+            24395958
+          ],
+          "release_ns": [
+            84,
+            166,
+            83
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "variant": "before",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 192702144,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 2145,
+        "ScratchRequests": 15395
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 186798500,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 16458,
+          "prepare_ns": 104667,
+          "times_ns": [
+            67579292,
+            69418083,
+            72337917
+          ],
+          "release_ns": [
+            292,
+            167,
+            250
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 11750,
+          "prepare_ns": 96959,
+          "times_ns": [
+            531852791,
+            551446083,
+            569658333
+          ],
+          "release_ns": [
+            375,
+            333,
+            375
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "be2c19245767afd274915901377dc3b261fa289322c80ccc4cdd747e3d266000"
+          }
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 25625,
+          "prepare_ns": 148708,
+          "times_ns": [
+            2358834,
+            1704250,
+            1724667
+          ],
+          "release_ns": [
+            750,
+            583,
+            541
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 6875,
+          "prepare_ns": 105708,
+          "times_ns": [
+            1437583,
+            1348459,
+            1336292
+          ],
+          "release_ns": [
+            39000,
+            38625,
+            41792
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 8084,
+          "prepare_ns": 114500,
+          "times_ns": [
+            4377208,
+            4338500,
+            4401541
+          ],
+          "release_ns": [
+            125,
+            125,
+            84
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 4541,
+          "prepare_ns": 108083,
+          "times_ns": [
+            5594000,
+            5639292,
+            5610167
+          ],
+          "release_ns": [
+            83,
+            125,
+            125
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "table",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "variant": "after",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 34367232,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 538868,
+        "ScratchRequests": 332820
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 222538417,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 18458,
+          "prepare_ns": 119417,
+          "times_ns": [
+            1656303292,
+            1685236708,
+            1667602417
+          ],
+          "release_ns": [
+            1708,
+            1792,
+            166
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 7667,
+          "prepare_ns": 115458,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "context deadline exceeded",
+          "error_code": 10
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 15958,
+          "prepare_ns": 111500,
+          "times_ns": [
+            37965625,
+            41262875,
+            37979459
+          ],
+          "release_ns": [
+            750,
+            834,
+            875
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 6125,
+          "prepare_ns": 110458,
+          "times_ns": [
+            1443916,
+            1344583,
+            1331125
+          ],
+          "release_ns": [
+            38959,
+            36375,
+            35750
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 6917,
+          "prepare_ns": 98916,
+          "times_ns": [
+            4400417,
+            4391375,
+            4332750
+          ],
+          "release_ns": [
+            125,
+            84,
+            125
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 4458,
+          "prepare_ns": 86458,
+          "times_ns": [
+            5593916,
+            5613542,
+            5637083
+          ],
+          "release_ns": [
+            167,
+            125,
+            125
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "table",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "variant": "before",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 192702144,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 1830,
+        "ScratchRequests": 15380
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 229495375,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 17958,
+          "prepare_ns": 106750,
+          "times_ns": [
+            75827459,
+            70331166,
+            76375708
+          ],
+          "release_ns": [
+            375,
+            209,
+            209
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 22250,
+          "prepare_ns": 102584,
+          "times_ns": [
+            533651917,
+            515797875,
+            531304208
+          ],
+          "release_ns": [
+            417,
+            375,
+            375
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "be2c19245767afd274915901377dc3b261fa289322c80ccc4cdd747e3d266000"
+          }
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 24917,
+          "prepare_ns": 154500,
+          "times_ns": [
+            4815417,
+            5029000,
+            5383917
+          ],
+          "release_ns": [
+            375,
+            416,
+            500
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 5333,
+          "prepare_ns": 100291,
+          "times_ns": [
+            4736000,
+            4293583,
+            4306916
+          ],
+          "release_ns": [
+            58416,
+            43875,
+            44417
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 16375,
+          "prepare_ns": 134125,
+          "times_ns": [
+            15741083,
+            16329041,
+            16540500
+          ],
+          "release_ns": [
+            125,
+            42,
+            41
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 6125,
+          "prepare_ns": 111125,
+          "times_ns": [
+            16614708,
+            16504500,
+            16474708
+          ],
+          "release_ns": [
+            125,
+            83,
+            42
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "table",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "variant": "after",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 34367232,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 538553,
+        "ScratchRequests": 332805
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 188745625,
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "build_ns": 27917,
+          "prepare_ns": 153791,
+          "times_ns": [
+            1819811583,
+            1742738208,
+            1843118500
+          ],
+          "release_ns": [
+            833,
+            959,
+            917
+          ],
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        },
+        {
+          "name": "full_sort_string",
+          "build_ns": 6833,
+          "prepare_ns": 152458,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "context deadline exceeded",
+          "error_code": 10
+        },
+        {
+          "name": "repeated_expression_32",
+          "build_ns": 18875,
+          "prepare_ns": 132834,
+          "times_ns": [
+            128719584,
+            128782291,
+            128926000
+          ],
+          "release_ns": [
+            541,
+            375,
+            542
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        },
+        {
+          "name": "wide_materialize",
+          "build_ns": 5125,
+          "prepare_ns": 106958,
+          "times_ns": [
+            4503541,
+            4459125,
+            4430000
+          ],
+          "release_ns": [
+            45500,
+            43208,
+            44416
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 15959,
+          "prepare_ns": 102334,
+          "times_ns": [
+            15908292,
+            15974375,
+            16190250
+          ],
+          "release_ns": [
+            83,
+            83,
+            41
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "top50",
+          "build_ns": 4500,
+          "prepare_ns": 91375,
+          "times_ns": [
+            17067458,
+            17048292,
+            17030459
+          ],
+          "release_ns": [
+            83,
+            42,
+            83
+          ],
+          "signature": {
+            "rows": 50,
+            "sha256": "779173f228ed83a0a38ac3482c770e1b782ccd897e41f01bc80b47ddff36f701"
+          }
+        }
+      ],
+      "source": "table",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "variant": "before",
+      "round": 2
+    }
+  ],
+  "memory_before": [
+    {
+      "engine": "peGosus",
+      "workers": 4,
+      "query": "full_sort_numeric",
+      "version": "go1.27.1",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 7716864,
+            "phys_footprint": 4079976,
+            "interval_max_phys_footprint": 5013864,
+            "lifetime_max_phys_footprint": 5013864,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1048576,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 0,
+              "ScratchRequests": 2
+            },
+            "heap_alloc": 2239144,
+            "heap_sys": 8126464,
+            "held_results": 0,
+            "signature": null,
+            "stage": "ready",
+            "version": "go1.27.1"
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 7716864,
+            "phys_footprint": 4079976,
+            "interval_max_phys_footprint": 4079976,
+            "lifetime_max_phys_footprint": 5013864,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 590053376,
+            "phys_footprint": 587432752,
+            "interval_max_phys_footprint": 587432752,
+            "lifetime_max_phys_footprint": 587432752,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 18979264,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 12202944,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1028,
+              "ScratchRequests": 371
+            },
+            "heap_alloc": 582398128,
+            "heap_sys": 607846400,
+            "held_results": 1,
+            "signature": null,
+            "stage": "cold",
+            "version": "go1.27.1"
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 590053376,
+            "phys_footprint": 587432752,
+            "interval_max_phys_footprint": 587432752,
+            "lifetime_max_phys_footprint": 587432752,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 590053376,
+            "phys_footprint": 587432752,
+            "interval_max_phys_footprint": 587432752,
+            "lifetime_max_phys_footprint": 587432752,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 18979264,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1028,
+              "ScratchRequests": 371
+            },
+            "heap_alloc": 582401432,
+            "heap_sys": 607846400,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release",
+            "version": "go1.27.1"
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 590053376,
+            "phys_footprint": 587432752,
+            "interval_max_phys_footprint": 587432752,
+            "lifetime_max_phys_footprint": 587432752,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 798474240,
+            "phys_footprint": 712213440,
+            "interval_max_phys_footprint": 712213440,
+            "lifetime_max_phys_footprint": 712213440,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 30933056,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 2056,
+              "ScratchRequests": 740
+            },
+            "heap_alloc": 32201920,
+            "heap_sys": 792395776,
+            "held_results": 0,
+            "signature": null,
+            "stage": "warmup",
+            "version": "go1.27.1"
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 798474240,
+            "phys_footprint": 712213440,
+            "interval_max_phys_footprint": 712213440,
+            "lifetime_max_phys_footprint": 712213440,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 980189184,
+            "phys_footprint": 811091000,
+            "interval_max_phys_footprint": 885343216,
+            "lifetime_max_phys_footprint": 885343216,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 30933056,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 5140,
+              "ScratchRequests": 1847
+            },
+            "heap_alloc": 509584968,
+            "heap_sys": 1027276800,
+            "held_results": 0,
+            "signature": null,
+            "stage": "steady",
+            "version": "go1.27.1"
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 980189184,
+            "phys_footprint": 811091000,
+            "interval_max_phys_footprint": 811091000,
+            "lifetime_max_phys_footprint": 885343216,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1091764224,
+            "phys_footprint": 953468032,
+            "interval_max_phys_footprint": 1020085376,
+            "lifetime_max_phys_footprint": 1020085376,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 24405888,
+              "ScratchUsed": 0,
+              "GeneralRequests": 7196,
+              "ScratchRequests": 2585
+            },
+            "heap_alloc": 606326776,
+            "heap_sys": 1098579968,
+            "held_results": 2,
+            "signature": null,
+            "stage": "retain",
+            "version": "go1.27.1"
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 1091764224,
+            "phys_footprint": 953468032,
+            "interval_max_phys_footprint": 953468032,
+            "lifetime_max_phys_footprint": 1020085376,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1091764224,
+            "phys_footprint": 953468032,
+            "interval_max_phys_footprint": 953468032,
+            "lifetime_max_phys_footprint": 1020085376,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 7196,
+              "ScratchRequests": 2585
+            },
+            "heap_alloc": 606330080,
+            "heap_sys": 1098579968,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release_all",
+            "version": "go1.27.1"
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 1091764224,
+            "phys_footprint": 953468032,
+            "interval_max_phys_footprint": 953468032,
+            "lifetime_max_phys_footprint": 1020085376,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1091764224,
+            "phys_footprint": 930727040,
+            "interval_max_phys_footprint": 953468032,
+            "lifetime_max_phys_footprint": 1020085376,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 7196,
+              "ScratchRequests": 2585
+            },
+            "heap_alloc": 44165464,
+            "heap_sys": 1098579968,
+            "held_results": 0,
+            "signature": null,
+            "stage": "gc",
+            "version": "go1.27.1"
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 1091764224,
+            "phys_footprint": 930727040,
+            "interval_max_phys_footprint": 930727040,
+            "lifetime_max_phys_footprint": 1020085376,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1091813376,
+            "phys_footprint": 688473216,
+            "interval_max_phys_footprint": 930727040,
+            "lifetime_max_phys_footprint": 1020085376,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 8224,
+              "ScratchRequests": 2954
+            },
+            "heap_alloc": 521626792,
+            "heap_sys": 1098579968,
+            "held_results": 0,
+            "signature": {
+              "rows": 996147,
+              "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+            },
+            "stage": "validate",
+            "version": "go1.27.1"
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        }
+      ],
+      "variant": "before",
+      "round": 1
+    },
+    {
+      "engine": "peGosus",
+      "workers": 4,
+      "query": "repeated_expression_32",
+      "version": "go1.27.1",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 7897088,
+            "phys_footprint": 5226880,
+            "interval_max_phys_footprint": 5226880,
+            "lifetime_max_phys_footprint": 5226880,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1048576,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 0,
+              "ScratchRequests": 2
+            },
+            "heap_alloc": 2273504,
+            "heap_sys": 8126464,
+            "held_results": 0,
+            "signature": null,
+            "stage": "ready",
+            "version": "go1.27.1"
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 7897088,
+            "phys_footprint": 5226880,
+            "interval_max_phys_footprint": 5226880,
+            "lifetime_max_phys_footprint": 5226880,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 20840448,
+            "phys_footprint": 17711512,
+            "interval_max_phys_footprint": 17711512,
+            "lifetime_max_phys_footprint": 17711512,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 4096,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1600,
+              "ScratchRequests": 65923
+            },
+            "heap_alloc": 7857096,
+            "heap_sys": 20611072,
+            "held_results": 1,
+            "signature": null,
+            "stage": "cold",
+            "version": "go1.27.1"
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 20840448,
+            "phys_footprint": 17711512,
+            "interval_max_phys_footprint": 17711512,
+            "lifetime_max_phys_footprint": 17711512,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 20840448,
+            "phys_footprint": 17711512,
+            "interval_max_phys_footprint": 17711512,
+            "lifetime_max_phys_footprint": 17711512,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1600,
+              "ScratchRequests": 65923
+            },
+            "heap_alloc": 7860400,
+            "heap_sys": 20611072,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release",
+            "version": "go1.27.1"
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 20840448,
+            "phys_footprint": 17711512,
+            "interval_max_phys_footprint": 17711512,
+            "lifetime_max_phys_footprint": 17711512,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 20987904,
+            "phys_footprint": 17121688,
+            "interval_max_phys_footprint": 17858968,
+            "lifetime_max_phys_footprint": 17858968,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 3200,
+              "ScratchRequests": 131844
+            },
+            "heap_alloc": 6698952,
+            "heap_sys": 20643840,
+            "held_results": 0,
+            "signature": null,
+            "stage": "warmup",
+            "version": "go1.27.1"
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 20987904,
+            "phys_footprint": 16810392,
+            "interval_max_phys_footprint": 16875928,
+            "lifetime_max_phys_footprint": 17858968,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 21479424,
+            "phys_footprint": 18350488,
+            "interval_max_phys_footprint": 18350488,
+            "lifetime_max_phys_footprint": 18350488,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 8000,
+              "ScratchRequests": 329607
+            },
+            "heap_alloc": 9571104,
+            "heap_sys": 20643840,
+            "held_results": 0,
+            "signature": null,
+            "stage": "steady",
+            "version": "go1.27.1"
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 21479424,
+            "phys_footprint": 18350488,
+            "interval_max_phys_footprint": 18350488,
+            "lifetime_max_phys_footprint": 18350488,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 21512192,
+            "phys_footprint": 18383256,
+            "interval_max_phys_footprint": 18383256,
+            "lifetime_max_phys_footprint": 18383256,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 8192,
+              "ScratchUsed": 0,
+              "GeneralRequests": 11200,
+              "ScratchRequests": 461449
+            },
+            "heap_alloc": 11614536,
+            "heap_sys": 20643840,
+            "held_results": 2,
+            "signature": null,
+            "stage": "retain",
+            "version": "go1.27.1"
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 21512192,
+            "phys_footprint": 18383256,
+            "interval_max_phys_footprint": 18383256,
+            "lifetime_max_phys_footprint": 18383256,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 21512192,
+            "phys_footprint": 18383256,
+            "interval_max_phys_footprint": 18383256,
+            "lifetime_max_phys_footprint": 18383256,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 11200,
+              "ScratchRequests": 461449
+            },
+            "heap_alloc": 11617840,
+            "heap_sys": 20643840,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release_all",
+            "version": "go1.27.1"
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 21512192,
+            "phys_footprint": 18383256,
+            "interval_max_phys_footprint": 18383256,
+            "lifetime_max_phys_footprint": 18383256,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 21512192,
+            "phys_footprint": 18383256,
+            "interval_max_phys_footprint": 18383256,
+            "lifetime_max_phys_footprint": 18383256,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 11200,
+              "ScratchRequests": 461449
+            },
+            "heap_alloc": 6708368,
+            "heap_sys": 20643840,
+            "held_results": 0,
+            "signature": null,
+            "stage": "gc",
+            "version": "go1.27.1"
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 21512192,
+            "phys_footprint": 18383256,
+            "interval_max_phys_footprint": 18383256,
+            "lifetime_max_phys_footprint": 18383256,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 21544960,
+            "phys_footprint": 18252184,
+            "interval_max_phys_footprint": 18383256,
+            "lifetime_max_phys_footprint": 18383256,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 12800,
+              "ScratchRequests": 527370
+            },
+            "heap_alloc": 7882208,
+            "heap_sys": 20643840,
+            "held_results": 0,
+            "signature": {
+              "rows": 1,
+              "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+            },
+            "stage": "validate",
+            "version": "go1.27.1"
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "repeated_expression_32",
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        }
+      ],
+      "variant": "before",
+      "round": 1
+    },
+    {
+      "engine": "peGosus",
+      "workers": 4,
+      "query": "wide_materialize",
+      "version": "go1.27.1",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 7618560,
+            "phys_footprint": 4981072,
+            "interval_max_phys_footprint": 4981072,
+            "lifetime_max_phys_footprint": 4981072,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1048576,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 0,
+              "ScratchRequests": 2
+            },
+            "heap_alloc": 2239240,
+            "heap_sys": 8126464,
+            "held_results": 0,
+            "signature": null,
+            "stage": "ready",
+            "version": "go1.27.1"
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 7618560,
+            "phys_footprint": 4981072,
+            "interval_max_phys_footprint": 4981072,
+            "lifetime_max_phys_footprint": 4981072,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 204242944,
+            "phys_footprint": 201294304,
+            "interval_max_phys_footprint": 201294304,
+            "lifetime_max_phys_footprint": 201294304,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 180668160,
+              "ScratchCapacity": 22734784,
+              "GeneralUsed": 146231680,
+              "ScratchUsed": 0,
+              "GeneralRequests": 5120,
+              "ScratchRequests": 3811
+            },
+            "heap_alloc": 218308120,
+            "heap_sys": 226131968,
+            "held_results": 1,
+            "signature": null,
+            "stage": "cold",
+            "version": "go1.27.1"
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 204242944,
+            "phys_footprint": 201294304,
+            "interval_max_phys_footprint": 201294304,
+            "lifetime_max_phys_footprint": 201294304,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 204242944,
+            "phys_footprint": 201294304,
+            "interval_max_phys_footprint": 201294304,
+            "lifetime_max_phys_footprint": 201294304,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 180668160,
+              "ScratchCapacity": 22734784,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 5120,
+              "ScratchRequests": 3811
+            },
+            "heap_alloc": 218311424,
+            "heap_sys": 226131968,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release",
+            "version": "go1.27.1"
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 204242944,
+            "phys_footprint": 201294304,
+            "interval_max_phys_footprint": 201294304,
+            "lifetime_max_phys_footprint": 201294304,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 218202112,
+            "phys_footprint": 215253472,
+            "interval_max_phys_footprint": 215253472,
+            "lifetime_max_phys_footprint": 215253472,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 180668160,
+              "ScratchCapacity": 25934912,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 10240,
+              "ScratchRequests": 7620
+            },
+            "heap_alloc": 221448480,
+            "heap_sys": 230359040,
+            "held_results": 0,
+            "signature": null,
+            "stage": "warmup",
+            "version": "go1.27.1"
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 218202112,
+            "phys_footprint": 215253472,
+            "interval_max_phys_footprint": 215253472,
+            "lifetime_max_phys_footprint": 215253472,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 224100352,
+            "phys_footprint": 221151712,
+            "interval_max_phys_footprint": 221151712,
+            "lifetime_max_phys_footprint": 221151712,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 180668160,
+              "ScratchCapacity": 25934912,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 25600,
+              "ScratchRequests": 19047
+            },
+            "heap_alloc": 225907672,
+            "heap_sys": 234553344,
+            "held_results": 0,
+            "signature": null,
+            "stage": "steady",
+            "version": "go1.27.1"
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 224100352,
+            "phys_footprint": 221151712,
+            "interval_max_phys_footprint": 221151712,
+            "lifetime_max_phys_footprint": 221151712,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 386334720,
+            "phys_footprint": 383484528,
+            "interval_max_phys_footprint": 383484528,
+            "lifetime_max_phys_footprint": 383484528,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 353266112,
+              "ScratchCapacity": 25934912,
+              "GeneralUsed": 294305664,
+              "ScratchUsed": 0,
+              "GeneralRequests": 35840,
+              "ScratchRequests": 26665
+            },
+            "heap_alloc": 415058512,
+            "heap_sys": 423297024,
+            "held_results": 2,
+            "signature": null,
+            "stage": "retain",
+            "version": "go1.27.1"
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 386334720,
+            "phys_footprint": 383484528,
+            "interval_max_phys_footprint": 383484528,
+            "lifetime_max_phys_footprint": 383484528,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 386334720,
+            "phys_footprint": 383484528,
+            "interval_max_phys_footprint": 383484528,
+            "lifetime_max_phys_footprint": 383484528,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 353266112,
+              "ScratchCapacity": 25934912,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 35840,
+              "ScratchRequests": 26665
+            },
+            "heap_alloc": 415060768,
+            "heap_sys": 423297024,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release_all",
+            "version": "go1.27.1"
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 386334720,
+            "phys_footprint": 383484528,
+            "interval_max_phys_footprint": 383484528,
+            "lifetime_max_phys_footprint": 383484528,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 386400256,
+            "phys_footprint": 383550064,
+            "interval_max_phys_footprint": 383550064,
+            "lifetime_max_phys_footprint": 383550064,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 353266112,
+              "ScratchCapacity": 25934912,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 35840,
+              "ScratchRequests": 26665
+            },
+            "heap_alloc": 407698832,
+            "heap_sys": 423297024,
+            "held_results": 0,
+            "signature": null,
+            "stage": "gc",
+            "version": "go1.27.1"
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 386400256,
+            "phys_footprint": 383550064,
+            "interval_max_phys_footprint": 383550064,
+            "lifetime_max_phys_footprint": 383550064,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 510099456,
+            "phys_footprint": 507314920,
+            "interval_max_phys_footprint": 507314920,
+            "lifetime_max_phys_footprint": 507314920,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 353266112,
+              "ScratchCapacity": 25934912,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 40960,
+              "ScratchRequests": 30474
+            },
+            "heap_alloc": 531227296,
+            "heap_sys": 540737536,
+            "held_results": 0,
+            "signature": {
+              "rows": 1048576,
+              "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+            },
+            "stage": "validate",
+            "version": "go1.27.1"
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "wide_materialize",
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        }
+      ],
+      "variant": "before",
+      "round": 1
+    },
+    {
+      "engine": "peGosus",
+      "workers": 4,
+      "query": "full_sort_numeric",
+      "version": "go1.27.1",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 7667712,
+            "phys_footprint": 4112768,
+            "interval_max_phys_footprint": 5013888,
+            "lifetime_max_phys_footprint": 5013888,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1048576,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 0,
+              "ScratchRequests": 2
+            },
+            "heap_alloc": 2244464,
+            "heap_sys": 8093696,
+            "held_results": 0,
+            "signature": null,
+            "stage": "ready",
+            "version": "go1.27.1"
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 7667712,
+            "phys_footprint": 4112768,
+            "interval_max_phys_footprint": 4112768,
+            "lifetime_max_phys_footprint": 5013888,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 589840384,
+            "phys_footprint": 587236144,
+            "interval_max_phys_footprint": 587236144,
+            "lifetime_max_phys_footprint": 587236144,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 18979264,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 12202944,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1028,
+              "ScratchRequests": 371
+            },
+            "heap_alloc": 582397968,
+            "heap_sys": 607846400,
+            "held_results": 1,
+            "signature": null,
+            "stage": "cold",
+            "version": "go1.27.1"
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 589840384,
+            "phys_footprint": 587236144,
+            "interval_max_phys_footprint": 587236144,
+            "lifetime_max_phys_footprint": 587236144,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 589856768,
+            "phys_footprint": 587252528,
+            "interval_max_phys_footprint": 587252528,
+            "lifetime_max_phys_footprint": 587252528,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 18979264,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1028,
+              "ScratchRequests": 371
+            },
+            "heap_alloc": 582401272,
+            "heap_sys": 607846400,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release",
+            "version": "go1.27.1"
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 589856768,
+            "phys_footprint": 587252528,
+            "interval_max_phys_footprint": 587252528,
+            "lifetime_max_phys_footprint": 587252528,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 798523392,
+            "phys_footprint": 646267840,
+            "interval_max_phys_footprint": 668812152,
+            "lifetime_max_phys_footprint": 668812152,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 30933056,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 2056,
+              "ScratchRequests": 740
+            },
+            "heap_alloc": 32201872,
+            "heap_sys": 792395776,
+            "held_results": 0,
+            "signature": null,
+            "stage": "warmup",
+            "version": "go1.27.1"
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 798523392,
+            "phys_footprint": 646267840,
+            "interval_max_phys_footprint": 646267840,
+            "lifetime_max_phys_footprint": 668812152,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1136951296,
+            "phys_footprint": 832324784,
+            "interval_max_phys_footprint": 943588528,
+            "lifetime_max_phys_footprint": 943588528,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 30933056,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 5140,
+              "ScratchRequests": 1847
+            },
+            "heap_alloc": 509585032,
+            "heap_sys": 1136328704,
+            "held_results": 0,
+            "signature": null,
+            "stage": "steady",
+            "version": "go1.27.1"
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 1136951296,
+            "phys_footprint": 832324784,
+            "interval_max_phys_footprint": 832324784,
+            "lifetime_max_phys_footprint": 943588528,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1137033216,
+            "phys_footprint": 795690160,
+            "interval_max_phys_footprint": 1064240304,
+            "lifetime_max_phys_footprint": 1064240304,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 24405888,
+              "ScratchUsed": 0,
+              "GeneralRequests": 7196,
+              "ScratchRequests": 2585
+            },
+            "heap_alloc": 521546216,
+            "heap_sys": 1136328704,
+            "held_results": 2,
+            "signature": null,
+            "stage": "retain",
+            "version": "go1.27.1"
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 1137033216,
+            "phys_footprint": 795690160,
+            "interval_max_phys_footprint": 795690160,
+            "lifetime_max_phys_footprint": 1064240304,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1137033216,
+            "phys_footprint": 795690160,
+            "interval_max_phys_footprint": 795690160,
+            "lifetime_max_phys_footprint": 1064240304,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 7196,
+              "ScratchRequests": 2585
+            },
+            "heap_alloc": 521549520,
+            "heap_sys": 1136328704,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release_all",
+            "version": "go1.27.1"
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 1137033216,
+            "phys_footprint": 795690160,
+            "interval_max_phys_footprint": 795690160,
+            "lifetime_max_phys_footprint": 1064240304,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1137033216,
+            "phys_footprint": 795690160,
+            "interval_max_phys_footprint": 795690160,
+            "lifetime_max_phys_footprint": 1064240304,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 7196,
+              "ScratchRequests": 2585
+            },
+            "heap_alloc": 44165144,
+            "heap_sys": 1136328704,
+            "held_results": 0,
+            "signature": null,
+            "stage": "gc",
+            "version": "go1.27.1"
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 1137033216,
+            "phys_footprint": 795690160,
+            "interval_max_phys_footprint": 795690160,
+            "lifetime_max_phys_footprint": 1064240304,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 1137082368,
+            "phys_footprint": 618235056,
+            "interval_max_phys_footprint": 795690160,
+            "lifetime_max_phys_footprint": 1064240304,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 42886848,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 8224,
+              "ScratchRequests": 2954
+            },
+            "heap_alloc": 521616696,
+            "heap_sys": 1136328704,
+            "held_results": 0,
+            "signature": {
+              "rows": 996147,
+              "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+            },
+            "stage": "validate",
+            "version": "go1.27.1"
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "full_sort_numeric",
+          "signature": {
+            "rows": 996147,
+            "sha256": "80867d4705b35ea7ec4745eae88860ca9b0e7948a611249f6ddcd19317bdb42a"
+          }
+        }
+      ],
+      "variant": "before",
+      "round": 2
+    },
+    {
+      "engine": "peGosus",
+      "workers": 4,
+      "query": "repeated_expression_32",
+      "version": "go1.27.1",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 7831552,
+            "phys_footprint": 4358504,
+            "interval_max_phys_footprint": 5144936,
+            "lifetime_max_phys_footprint": 5144936,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1048576,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 0,
+              "ScratchRequests": 2
+            },
+            "heap_alloc": 2273824,
+            "heap_sys": 8126464,
+            "held_results": 0,
+            "signature": null,
+            "stage": "ready",
+            "version": "go1.27.1"
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 7831552,
+            "phys_footprint": 4358504,
+            "interval_max_phys_footprint": 4358504,
+            "lifetime_max_phys_footprint": 5144936,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 21200896,
+            "phys_footprint": 18022760,
+            "interval_max_phys_footprint": 18022760,
+            "lifetime_max_phys_footprint": 18022760,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 4096,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1600,
+              "ScratchRequests": 65923
+            },
+            "heap_alloc": 7655960,
+            "heap_sys": 20611072,
+            "held_results": 1,
+            "signature": null,
+            "stage": "cold",
+            "version": "go1.27.1"
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 21200896,
+            "phys_footprint": 18022760,
+            "interval_max_phys_footprint": 18022760,
+            "lifetime_max_phys_footprint": 18022760,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 21200896,
+            "phys_footprint": 18022760,
+            "interval_max_phys_footprint": 18022760,
+            "lifetime_max_phys_footprint": 18022760,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1600,
+              "ScratchRequests": 65923
+            },
+            "heap_alloc": 7659264,
+            "heap_sys": 20611072,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release",
+            "version": "go1.27.1"
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 21200896,
+            "phys_footprint": 18022760,
+            "interval_max_phys_footprint": 18022760,
+            "lifetime_max_phys_footprint": 18022760,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 21594112,
+            "phys_footprint": 18415976,
+            "interval_max_phys_footprint": 18415976,
+            "lifetime_max_phys_footprint": 18415976,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 3200,
+              "ScratchRequests": 131844
+            },
+            "heap_alloc": 6700568,
+            "heap_sys": 20643840,
+            "held_results": 0,
+            "signature": null,
+            "stage": "warmup",
+            "version": "go1.27.1"
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 21594112,
+            "phys_footprint": 18415976,
+            "interval_max_phys_footprint": 18415976,
+            "lifetime_max_phys_footprint": 18415976,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 22200320,
+            "phys_footprint": 18497896,
+            "interval_max_phys_footprint": 19005800,
+            "lifetime_max_phys_footprint": 19005800,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 8000,
+              "ScratchRequests": 329607
+            },
+            "heap_alloc": 8853472,
+            "heap_sys": 20643840,
+            "held_results": 0,
+            "signature": null,
+            "stage": "steady",
+            "version": "go1.27.1"
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 22200320,
+            "phys_footprint": 18497896,
+            "interval_max_phys_footprint": 18497896,
+            "lifetime_max_phys_footprint": 19005800,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 22233088,
+            "phys_footprint": 19038568,
+            "interval_max_phys_footprint": 19038568,
+            "lifetime_max_phys_footprint": 19038568,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 8192,
+              "ScratchUsed": 0,
+              "GeneralRequests": 11200,
+              "ScratchRequests": 461449
+            },
+            "heap_alloc": 10834016,
+            "heap_sys": 20643840,
+            "held_results": 2,
+            "signature": null,
+            "stage": "retain",
+            "version": "go1.27.1"
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 22233088,
+            "phys_footprint": 19038568,
+            "interval_max_phys_footprint": 19038568,
+            "lifetime_max_phys_footprint": 19038568,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 22233088,
+            "phys_footprint": 19038568,
+            "interval_max_phys_footprint": 19038568,
+            "lifetime_max_phys_footprint": 19038568,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 11200,
+              "ScratchRequests": 461449
+            },
+            "heap_alloc": 10837320,
+            "heap_sys": 20643840,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release_all",
+            "version": "go1.27.1"
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 22233088,
+            "phys_footprint": 19038568,
+            "interval_max_phys_footprint": 19038568,
+            "lifetime_max_phys_footprint": 19038568,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 22233088,
+            "phys_footprint": 19038568,
+            "interval_max_phys_footprint": 19038568,
+            "lifetime_max_phys_footprint": 19038568,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 11200,
+              "ScratchRequests": 461449
+            },
+            "heap_alloc": 6708320,
+            "heap_sys": 20643840,
+            "held_results": 0,
+            "signature": null,
+            "stage": "gc",
+            "version": "go1.27.1"
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 22233088,
+            "phys_footprint": 19038568,
+            "interval_max_phys_footprint": 19038568,
+            "lifetime_max_phys_footprint": 19038568,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 22265856,
+            "phys_footprint": 18448744,
+            "interval_max_phys_footprint": 19038568,
+            "lifetime_max_phys_footprint": 19038568,
+            "diskio_bytesread": 16384,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1146880,
+              "ScratchCapacity": 5242880,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 12800,
+              "ScratchRequests": 527370
+            },
+            "heap_alloc": 7778040,
+            "heap_sys": 20643840,
+            "held_results": 0,
+            "signature": {
+              "rows": 1,
+              "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+            },
+            "stage": "validate",
+            "version": "go1.27.1"
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "repeated_expression_32",
+          "signature": {
+            "rows": 1,
+            "sha256": "5e27630d6353d98fbe53531dcd462ad9a0f9a25e790dee03825283d71828f10a"
+          }
+        }
+      ],
+      "variant": "before",
+      "round": 2
+    },
+    {
+      "engine": "peGosus",
+      "workers": 4,
+      "query": "wide_materialize",
+      "version": "go1.27.1",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "resident_size": 7651328,
+            "phys_footprint": 5013888,
+            "interval_max_phys_footprint": 5013888,
+            "lifetime_max_phys_footprint": 5013888,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1048576,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 0,
+              "ScratchRequests": 2
+            },
+            "heap_alloc": 2239080,
+            "heap_sys": 12320768,
+            "held_results": 0,
+            "signature": null,
+            "stage": "ready",
+            "version": "go1.27.1"
+          }
+        },
+        "cold": {
+          "before": {
+            "resident_size": 7651328,
+            "phys_footprint": 5013888,
+            "interval_max_phys_footprint": 5013888,
+            "lifetime_max_phys_footprint": 5013888,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 206667776,
+            "phys_footprint": 203866664,
+            "interval_max_phys_footprint": 203866664,
+            "lifetime_max_phys_footprint": 203866664,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 181151616,
+              "ScratchCapacity": 24334912,
+              "GeneralUsed": 146203328,
+              "ScratchUsed": 0,
+              "GeneralRequests": 5120,
+              "ScratchRequests": 3811
+            },
+            "heap_alloc": 220459840,
+            "heap_sys": 226131968,
+            "held_results": 1,
+            "signature": null,
+            "stage": "cold",
+            "version": "go1.27.1"
+          }
+        },
+        "release": {
+          "before": {
+            "resident_size": 206667776,
+            "phys_footprint": 203866664,
+            "interval_max_phys_footprint": 203866664,
+            "lifetime_max_phys_footprint": 203866664,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 206667776,
+            "phys_footprint": 203866664,
+            "interval_max_phys_footprint": 203866664,
+            "lifetime_max_phys_footprint": 203866664,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 181151616,
+              "ScratchCapacity": 24334912,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 5120,
+              "ScratchRequests": 3811
+            },
+            "heap_alloc": 220463144,
+            "heap_sys": 226131968,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release",
+            "version": "go1.27.1"
+          }
+        },
+        "warmup": {
+          "before": {
+            "resident_size": 206667776,
+            "phys_footprint": 203866664,
+            "interval_max_phys_footprint": 203866664,
+            "lifetime_max_phys_footprint": 203866664,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 217284608,
+            "phys_footprint": 214483496,
+            "interval_max_phys_footprint": 214483496,
+            "lifetime_max_phys_footprint": 214483496,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 181151616,
+              "ScratchCapacity": 24334912,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 10240,
+              "ScratchRequests": 7620
+            },
+            "heap_alloc": 220388336,
+            "heap_sys": 230359040,
+            "held_results": 0,
+            "signature": null,
+            "stage": "warmup",
+            "version": "go1.27.1"
+          }
+        },
+        "steady": {
+          "before": {
+            "resident_size": 217284608,
+            "phys_footprint": 214483496,
+            "interval_max_phys_footprint": 214483496,
+            "lifetime_max_phys_footprint": 214483496,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 224788480,
+            "phys_footprint": 221987368,
+            "interval_max_phys_footprint": 221987368,
+            "lifetime_max_phys_footprint": 221987368,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 181151616,
+              "ScratchCapacity": 25934976,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 25600,
+              "ScratchRequests": 19047
+            },
+            "heap_alloc": 226449784,
+            "heap_sys": 234553344,
+            "held_results": 0,
+            "signature": null,
+            "stage": "steady",
+            "version": "go1.27.1"
+          }
+        },
+        "retain": {
+          "before": {
+            "resident_size": 224788480,
+            "phys_footprint": 221987368,
+            "interval_max_phys_footprint": 221987368,
+            "lifetime_max_phys_footprint": 221987368,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 387252224,
+            "phys_footprint": 384549560,
+            "interval_max_phys_footprint": 384549560,
+            "lifetime_max_phys_footprint": 384549560,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 354549568,
+              "ScratchCapacity": 25934976,
+              "GeneralUsed": 294787520,
+              "ScratchUsed": 0,
+              "GeneralRequests": 35840,
+              "ScratchRequests": 26665
+            },
+            "heap_alloc": 416475200,
+            "heap_sys": 423297024,
+            "held_results": 2,
+            "signature": null,
+            "stage": "retain",
+            "version": "go1.27.1"
+          }
+        },
+        "release_all": {
+          "before": {
+            "resident_size": 387252224,
+            "phys_footprint": 384549560,
+            "interval_max_phys_footprint": 384549560,
+            "lifetime_max_phys_footprint": 384549560,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 387252224,
+            "phys_footprint": 384549560,
+            "interval_max_phys_footprint": 384549560,
+            "lifetime_max_phys_footprint": 384549560,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 354549568,
+              "ScratchCapacity": 25934976,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 35840,
+              "ScratchRequests": 26665
+            },
+            "heap_alloc": 416477456,
+            "heap_sys": 423297024,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release_all",
+            "version": "go1.27.1"
+          }
+        },
+        "gc": {
+          "before": {
+            "resident_size": 387252224,
+            "phys_footprint": 384549560,
+            "interval_max_phys_footprint": 384549560,
+            "lifetime_max_phys_footprint": 384549560,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 387284992,
+            "phys_footprint": 384582328,
+            "interval_max_phys_footprint": 384582328,
+            "lifetime_max_phys_footprint": 384582328,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 354549568,
+              "ScratchCapacity": 25934976,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 35840,
+              "ScratchRequests": 26665
+            },
+            "heap_alloc": 409115920,
+            "heap_sys": 423297024,
+            "held_results": 0,
+            "signature": null,
+            "stage": "gc",
+            "version": "go1.27.1"
+          }
+        },
+        "validate": {
+          "before": {
+            "resident_size": 387284992,
+            "phys_footprint": 384582328,
+            "interval_max_phys_footprint": 384582328,
+            "lifetime_max_phys_footprint": 384582328,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "resident_size": 510427136,
+            "phys_footprint": 507757312,
+            "interval_max_phys_footprint": 507757312,
+            "lifetime_max_phys_footprint": 507757312,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 354549568,
+              "ScratchCapacity": 25934976,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 40960,
+              "ScratchRequests": 30474
+            },
+            "heap_alloc": 532660976,
+            "heap_sys": 540737536,
+            "held_results": 0,
+            "signature": {
+              "rows": 1048576,
+              "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+            },
+            "stage": "validate",
+            "version": "go1.27.1"
+          }
+        }
+      },
+      "queries": [
+        {
+          "name": "wide_materialize",
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        }
+      ],
+      "variant": "before",
+      "round": 2
+    }
+  ],
+  "isolated_wide": [
+    {
+      "allocator": {
+        "GeneralCapacity": 180685632,
+        "ScratchCapacity": 27535104,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 40960,
+        "ScratchRequests": 30474
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 416583,
+      "queries": [
+        {
+          "name": "wide_materialize",
+          "build_ns": 23334,
+          "prepare_ns": 20667,
+          "times_ns": [
+            70744750,
+            72796750,
+            78773958,
+            52473625,
+            55446459
+          ],
+          "release_ns": [
+            190208,
+            211417,
+            178583,
+            162500,
+            162625
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "variant": "before",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 180515776,
+        "ScratchCapacity": 28583680,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 40960,
+        "ScratchRequests": 30474
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 1057917,
+      "queries": [
+        {
+          "name": "wide_materialize",
+          "build_ns": 53166,
+          "prepare_ns": 50458,
+          "times_ns": [
+            46648625,
+            47815334,
+            46710791,
+            46780250,
+            45436209
+          ],
+          "release_ns": [
+            167125,
+            257291,
+            170542,
+            135917,
+            129333
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "variant": "before",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 180082688,
+        "ScratchCapacity": 25934976,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 40960,
+        "ScratchRequests": 30474
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 389791,
+      "queries": [
+        {
+          "name": "wide_materialize",
+          "build_ns": 20250,
+          "prepare_ns": 22375,
+          "times_ns": [
+            44068208,
+            44512125,
+            43315667,
+            43560375,
+            44731916
+          ],
+          "release_ns": [
+            126125,
+            144750,
+            121625,
+            124917,
+            122959
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "variant": "after",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 180069504,
+        "ScratchCapacity": 29135104,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 40960,
+        "ScratchRequests": 30474
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 389042,
+      "queries": [
+        {
+          "name": "wide_materialize",
+          "build_ns": 18500,
+          "prepare_ns": 22625,
+          "times_ns": [
+            44165459,
+            43574916,
+            43674292,
+            44254833,
+            44953792
+          ],
+          "release_ns": [
+            130416,
+            130875,
+            131750,
+            130042,
+            127375
+          ],
+          "signature": {
+            "rows": 1048576,
+            "sha256": "04cf9ff33b07e1c2c20f9b99dde402ee1607b189c6e5df9e0e7f8f0f62dfd9b1"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 10000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "variant": "after",
+      "round": 2
+    }
+  ],
+  "errors": []
+}

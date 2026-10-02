@@ -1,0 +1,28 @@
+File: peg-execution-profile
+Type: cpu
+Time: 2026-10-01 22:54:21 CDT
+Duration: 2.68s, Total samples = 2.50s (93.38%)
+Showing nodes accounting for 2.41s, 96.40% of 2.50s total
+Dropped 32 nodes (cum <= 0.01s)
+Showing top 20 nodes out of 54
+      flat  flat%   sum%        cum   cum%
+     1.10s 44.00% 44.00%      1.10s 44.00%  runtime.madvise
+     0.84s 33.60% 77.60%      0.84s 33.60%  syscall.rawsyscalln
+     0.08s  3.20% 80.80%      0.08s  3.20%  github.com/rhawrami/peGosus/pkg/io/parquet.decodeParquetRuns
+     0.06s  2.40% 83.20%      1.06s 42.40%  github.com/rhawrami/peGosus/pkg/io/parquet.makeParquetStringVector
+     0.06s  2.40% 85.60%      0.06s  2.40%  runtime.memmove
+     0.05s  2.00% 87.60%      1.01s 40.40%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).advancePage
+     0.05s  2.00% 89.60%      0.05s  2.00%  github.com/rhawrami/peGosus/pkg/mem.(*Slab).makeSegmentLocked
+     0.04s  1.60% 91.20%      0.06s  2.40%  github.com/rhawrami/peGosus/pkg/dtype.MakeString (inline)
+     0.04s  1.60% 92.80%      0.83s 33.20%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).next
+     0.03s  1.20% 94.00%      0.11s  4.40%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).startPage
+     0.03s  1.20% 95.20%      0.03s  1.20%  github.com/rhawrami/peGosus/pkg/store.(*BitMap).Set
+     0.02s   0.8% 96.00%      0.02s   0.8%  runtime.(*mspan).init
+     0.01s   0.4% 96.40%      0.27s 10.80%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).materializeFixed
+         0     0% 96.40%      1.34s 53.60%  github.com/rhawrami/peGosus/pkg/io/parquet.(*ParquetReader).Next
+         0     0% 96.40%      1.34s 53.60%  github.com/rhawrami/peGosus/pkg/io/parquet.(*ParquetReader).next
+         0     0% 96.40%      0.02s   0.8%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).materializeValues
+         0     0% 96.40%      0.96s 38.40%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).readPage
+         0     0% 96.40%      0.02s   0.8%  github.com/rhawrami/peGosus/pkg/io/parquet.decodeParquetIndices
+         0     0% 96.40%      0.06s  2.40%  github.com/rhawrami/peGosus/pkg/io/parquet.decodeParquetRLE (inline)
+         0     0% 96.40%      0.05s  2.00%  github.com/rhawrami/peGosus/pkg/mem.(*AllocationScope).AllocSeg (inline)
