@@ -51,9 +51,46 @@ func (s *distinctState) add(a *mem.Allocator, batch *store.Batch, row int, budge
 	if index, exists := s.index.lookup(bytes[:on], &s.keys); exists {
 		return index, true
 	}
+	return s.appendRow(a, bytes[:on], batch, row, budget)
+}
+
+func (s *distinctState) addString(a *mem.Allocator, batch *store.Batch, row int, budget int64) (int, bool) {
+	key := batch.VectorAt(0)
+	isNull := key.Validity() != nil && !key.Validity().IsSet(row)
+	var text string
+	if !isNull {
+		text = key.Strings()[row].View()
+	}
+	if index, exists := s.index.lookupString(text, isNull, &s.keys); exists {
+		return index, true
+	}
+	length := 1
+	if !isNull {
+		if len(text) > int(^uint(0)>>1)-9 {
+			return 0, false
+		}
+		length = 9 + len(text)
+	}
+	if int64(length) > budget-s.charged {
+		return 0, false
+	}
+	encoded := s.keyBuffer(a, length, budget)
+	if encoded == nil {
+		return 0, false
+	}
+	encoded[0] = 0
+	if !isNull {
+		encoded[0] = 1
+		binary.LittleEndian.PutUint64(encoded[1:], uint64(len(text)))
+		copy(encoded[9:], text)
+	}
+	return s.appendRow(a, encoded, batch, row, budget)
+}
+
+func (s *distinctState) appendRow(a *mem.Allocator, encoded []byte, batch *store.Batch, row int, budget int64) (int, bool) {
 	priorKeyBytes, priorIndexBytes := s.keys.bytes(), s.index.bytes()
 	other := s.charged - priorKeyBytes - priorIndexBytes
-	if !s.keys.append(a, bytes[:on], budget-other-priorIndexBytes) || !s.index.put(a, bytes[:on], s.rows.length, budget-other-s.keys.bytes()) || !s.rows.append(a, batch, row, budget-s.keys.bytes()-s.index.bytes()) {
+	if !s.keys.append(a, encoded, budget-other-priorIndexBytes) || !s.index.put(a, encoded, s.rows.length, budget-other-s.keys.bytes()) || !s.rows.append(a, batch, row, budget-s.keys.bytes()-s.index.bytes()) {
 		return 0, false
 	}
 	s.charged = saturatingAdd(saturatingAdd(s.keys.bytes(), s.index.bytes()), s.rows.bytes()+int64(s.scratch.Len()))

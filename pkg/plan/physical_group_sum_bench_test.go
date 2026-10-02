@@ -97,7 +97,7 @@ func BenchmarkGroupedSumState(b *testing.B) {
 							var groups int
 							for range b.N {
 								var state *groupState
-								if !compact && keyKind == "numeric" {
+								if !compact {
 									state = &groupState{}
 								} else {
 									state = makeGroupState(p.steps[0], nil)

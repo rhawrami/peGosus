@@ -64,6 +64,34 @@ func TestBatchSelectionSelfAssignmentAndEmptyProjection(t *testing.T) {
 	projected.Release()
 }
 
+func TestBatchExplicitZeroColumnDomain(t *testing.T) {
+	if MakeBatchWithLength(nil, -1) != nil {
+		t.Fatal("accepted negative row domain")
+	}
+	a := mem.MakeAllocatorWithProfiles([]int{4096}, []int{4096})
+	batch := MakeBatchWithLength(nil, 65)
+	bitmap := MakeBitMap(a, 65)
+	bitmap.Set(64)
+	batch.SetSelection(MakeRowSelectionFromBitMap(bitmap))
+	retained := batch.Retain()
+	projected := batch.Project(nil)
+	batch.Release()
+	for _, b := range []*Batch{retained, projected} {
+		if b.Len() != 65 || b.NVectors() != 0 || b.ActiveLen() != 1 {
+			t.Fatal("lost zero-column domain or selection")
+		}
+		b.Release()
+	}
+	v := MakeVector(a, 2, dtype.Int32T(), false)
+	if MakeBatchWithLength([]Vector{v}, 3) != nil {
+		t.Fatal("accepted mismatched physical lengths")
+	}
+	v.Release()
+	if usage := a.Usage(); usage.GeneralUsed != 0 || usage.ScratchUsed != 0 {
+		t.Fatalf("leak %+v", usage)
+	}
+}
+
 func TestBatchProjectOwnership(t *testing.T) {
 	a := mem.MakeAllocatorWithProfiles([]int{16_384}, []int{16_384})
 	left := MakeVector(a, 4, dtype.Int64T(), false)

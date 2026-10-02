@@ -29,7 +29,7 @@ func BenchmarkLowCardinalityStringGroupLookup(b *testing.B) {
 	for _, fast := range []bool{true, false} {
 		name := "encoded"
 		if fast {
-			name = "cached"
+			name = "direct"
 		}
 		b.Run(name, func(b *testing.B) {
 			b.ReportAllocs()
@@ -38,7 +38,7 @@ func BenchmarkLowCardinalityStringGroupLookup(b *testing.B) {
 			for range b.N {
 				g := makeGroupState(p.steps[0], nil)
 				if !fast {
-					g.stringGroups = nil
+					g.keys.index.stringKeys = false
 				}
 				if !g.add(a, batch, p.steps[0], math.MaxInt64) || len(g.values) != 6 {
 					b.Fatal("incorrect groups")

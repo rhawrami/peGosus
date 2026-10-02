@@ -163,7 +163,7 @@ func TestStringGroupLookupAcrossBatchesAndNulls(t *testing.T) {
 	table.Release()
 }
 
-func TestStringGroupLookupHighCardinalityFallback(t *testing.T) {
+func TestStringGroupLookupHighCardinality(t *testing.T) {
 	a := mem.MakeAllocatorWithProfiles([]int{1 << 16}, []int{1 << 16})
 	stringsIn := make([][]byte, 301)
 	for row := range stringsIn {
@@ -180,8 +180,8 @@ func TestStringGroupLookupHighCardinalityFallback(t *testing.T) {
 	if !g.add(a, batch, step, math.MaxInt64) {
 		t.Fatal("string group accumulation failed")
 	}
-	if g.stringGroups != nil || len(g.values) != 300 || g.values[0][0].count != 2 {
-		t.Fatal("high-cardinality fallback lost a key or count")
+	if !g.keys.index.stringKeys || len(g.values) != 300 || g.values[0][0].count != 2 {
+		t.Fatal("high-cardinality lookup lost a key or count")
 	}
 	output := g.finish(a, step)
 	g.release()

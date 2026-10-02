@@ -66,26 +66,33 @@ func (c *parquetCursor) close() {
 	c.dictCount = 0
 }
 
-func (c *parquetCursor) next(ctx context.Context) ([]byte, bool, *ParquetError) {
+func (c *parquetCursor) advancePage(ctx context.Context) *ParquetError {
 	for c.pagePos == c.pageRows {
 		if c.pageRows > 0 && c.nonNull != 0 {
-			return nil, false, c.failure(ParquetInvalid, errors.New("page value count mismatch"))
+			return c.failure(ParquetInvalid, errors.New("page value count mismatch"))
 		}
 		if c.pageRows > 0 && c.encoding == 0 && (c.column.typ.ID() != dtype.BOOLT && c.valuePos != len(c.values) || c.column.typ.ID() == dtype.BOOLT && (c.valuePos+7)/8 != len(c.values)) {
-			return nil, false, c.failure(ParquetInvalid, errors.New("page value length mismatch"))
+			return c.failure(ParquetInvalid, errors.New("page value length mismatch"))
 		}
 		c.clearPage()
 		if c.rows >= c.chunk.values {
-			return nil, false, c.failure(ParquetInvalid, errors.New("column ended early"))
+			return c.failure(ParquetInvalid, errors.New("column ended early"))
 		}
 		if err := c.readPage(ctx); err != nil {
-			return nil, false, err
+			return err
 		}
+	}
+	return nil
+}
+
+func (c *parquetCursor) next(ctx context.Context) ([]byte, bool, *ParquetError) {
+	if err := c.advancePage(ctx); err != nil {
+		return nil, false, err
 	}
 	row := c.pagePos
 	c.pagePos++
 	c.rows++
-	if c.column.optional && c.levels.AsBytes()[row] == 0 {
+	if c.levels != nil && c.levels.AsBytes()[row] == 0 {
 		return nil, false, nil
 	}
 	if c.nonNull == 0 {
@@ -395,10 +402,6 @@ func (c *parquetCursor) startPage(kind int64, header compactValue, data, v2value
 		}
 	}
 	if c.column.optional {
-		c.levels = c.a.AllocSegTemp(int(count))
-		if c.levels == nil {
-			return c.failure(ParquetResourceExhausted, errors.New("level allocation failed"))
-		}
 		var levels []byte
 		if kind == 0 {
 			if len(data) < 4 {
@@ -413,12 +416,18 @@ func (c *parquetCursor) startPage(kind int64, header compactValue, data, v2value
 		} else {
 			levels = data
 		}
-		if err := decodeParquetRLE(levels, 1, c.levels.AsBytes()[:count]); err != nil {
-			return c.failure(ParquetInvalid, err)
-		}
-		for _, v := range c.levels.AsBytes()[:count] {
-			if v == 0 {
-				c.nonNull--
+		run, used := binary.Uvarint(levels)
+		allValid := count > 0 && used > 0 && run&1 == 0 && run>>1 == uint64(count) && len(levels) == used+1 && levels[used] == 1
+		if !allValid {
+			c.levels = c.a.AllocSegTemp(int(count))
+			if c.levels == nil {
+				return c.failure(ParquetResourceExhausted, errors.New("level allocation failed"))
+			}
+			if err := decodeParquetRLE(levels, 1, c.levels.AsBytes()[:count]); err != nil {
+				return c.failure(ParquetInvalid, err)
+			}
+			for _, v := range c.levels.AsBytes()[:count] {
+				c.nonNull -= 1 - int(v)
 			}
 		}
 	}
@@ -501,13 +510,20 @@ func decodeParquetRuns(buf []byte, width byte, n int, emit func(int, uint32)) er
 			if groups <= uint64((n-out+7)/8) {
 				limit = min(limit, int(groups*8))
 			}
+			mask := uint32(uint64(1)<<width - 1)
+			packed := buf[pos : pos+int(bytes)]
 			for j := range limit {
-				var v uint32
-				for b := 0; b < int(width); b++ {
-					bit := j*int(width) + b
-					v |= uint32((buf[pos+bit/8]>>(bit%8))&1) << b
+				bit := j * int(width)
+				src := packed[bit/8:]
+				var word uint64
+				if len(src) >= 8 {
+					word = binary.LittleEndian.Uint64(src)
+				} else {
+					for at, value := range src {
+						word |= uint64(value) << (8 * at)
+					}
 				}
-				emit(out, v)
+				emit(out, uint32(word>>(bit&7))&mask)
 				out++
 			}
 			pos += int(bytes)

@@ -58,17 +58,25 @@ func (s *AllocationScope) Peak() int64 {
 	return s.peak.Load()
 }
 
-// Exhausted reports whether any request was denied by the scope.
+// Exhausted reports whether a required allocation was denied by the scope.
 func (s *AllocationScope) Exhausted() bool { return s != nil && s.exhausted.Load() }
 
 // AllocSeg reserves general storage, returning false without allocation when
 // the requested bytes would exceed the scope limit.
-func (s *AllocationScope) AllocSeg(length int) (*Segment, bool) { return s.alloc(length, false) }
+func (s *AllocationScope) AllocSeg(length int) (*Segment, bool) { return s.alloc(length, false, true) }
 
 // AllocSegTemp reserves temporary storage under the same limit.
-func (s *AllocationScope) AllocSegTemp(length int) (*Segment, bool) { return s.alloc(length, true) }
+func (s *AllocationScope) AllocSegTemp(length int) (*Segment, bool) {
+	return s.alloc(length, true, true)
+}
 
-func (s *AllocationScope) alloc(length int, temporary bool) (*Segment, bool) {
+// TryAllocSeg reserves optional general storage without marking exhaustion
+// when the reservation is declined. Successful reservations retain the same accounting.
+func (s *AllocationScope) TryAllocSeg(length int) (*Segment, bool) {
+	return s.alloc(length, false, false)
+}
+
+func (s *AllocationScope) alloc(length int, temporary, markExhausted bool) (*Segment, bool) {
 	if s == nil || length < 0 {
 		return nil, false
 	}
@@ -76,7 +84,9 @@ func (s *AllocationScope) alloc(length int, temporary bool) (*Segment, bool) {
 	for {
 		live := s.live.Load()
 		if amount > s.limit-live {
-			s.exhausted.Store(true)
+			if markExhausted {
+				s.exhausted.Store(true)
+			}
 			return nil, false
 		}
 		if s.live.CompareAndSwap(live, live+amount) {

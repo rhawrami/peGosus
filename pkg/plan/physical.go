@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 
+	"github.com/rhawrami/peGosus/pkg/io/parquet"
 	"github.com/rhawrami/peGosus/pkg/mem"
 	"github.com/rhawrami/peGosus/pkg/store"
 )
@@ -41,6 +42,7 @@ func MakePhysicalPlanFromBound(bound *BoundPlan) (*PhysicalPlan, error) {
 		releaseJoinSteps(steps)
 		return nil, err
 	}
+	steps = foldAggregateProjection(steps)
 	pruneScanProjection(source, steps)
 	pushScanFilters(source, steps)
 	return &PhysicalPlan{source: source.Retain(), schema: schema, steps: steps}, nil
@@ -107,7 +109,7 @@ func lowerBoundNode(plan *BoundPlan, node *boundLogicalNode) (*scanSource, Schem
 			return &scanSource{csvPath: node.csvPath, csvOptions: node.csvOptions, schema: node.schema}, node.schema, nil, nil
 		}
 		if node.parquetPath != "" {
-			return &scanSource{parquetPath: node.parquetPath, parquetOptions: node.parquetOptions, schema: node.schema}, node.schema, nil, nil
+			return &scanSource{parquetPath: node.parquetPath, parquetOptions: node.parquetOptions, parquetMetadata: parquet.MakeParquetMetadataCache(), schema: node.schema}, node.schema, nil, nil
 		}
 		if !node.table.Valid() || node.table.NColumns() != node.schema.Len() {
 			return nil, Schema{}, nil, makePlanError(ErrorInvalidPlan, "bound scan source is no longer valid")
@@ -134,6 +136,7 @@ func lowerBoundNode(plan *BoundPlan, node *boundLogicalNode) (*scanSource, Schem
 			releaseJoinSteps(rightSteps)
 			return nil, Schema{}, steps, err
 		}
+		rightSteps = foldAggregateProjection(rightSteps)
 		pruneScanProjection(rightSource, rightSteps)
 		pushScanFilters(rightSource, rightSteps)
 		spec := &physicalJoinSpec{right: &PhysicalPlan{source: rightSource.Retain(), schema: rightSchema, steps: rightSteps}, kind: node.joinKind, leftColumns: schema.Len(), rightColumns: rightSchema.Len()}

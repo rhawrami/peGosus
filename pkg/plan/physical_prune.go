@@ -7,7 +7,16 @@ import (
 
 func makeParquetPruningPredicates(source *scanSource) []parquet.PruningPredicate {
 	var predicates []parquet.PruningPredicate
-	for _, program := range source.filters {
+	for _, p := range source.parquetPredicates {
+		switch source.schema.FieldAt(p.Column).Type().ID() {
+		case dtype.INT32T, dtype.INT64T, dtype.DATET, dtype.TIMESTAMPTZT:
+			predicates = append(predicates, parquet.PruningPredicate{Column: p.Column, Op: p.Op, Literal: p.Integer})
+		}
+	}
+	for i, program := range source.filters {
+		if i < len(source.parquetFilterHandled) && source.parquetFilterHandled[i] {
+			continue
+		}
 		if len(program.roots) != 1 {
 			continue
 		}

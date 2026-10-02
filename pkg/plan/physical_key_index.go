@@ -8,10 +8,11 @@ import (
 )
 
 type keyIndex struct {
-	slots *mem.Segment
-	scope *mem.AllocationScope
-	seed  maphash.Seed
-	used  int
+	slots      *mem.Segment
+	scope      *mem.AllocationScope
+	seed       maphash.Seed
+	used       int
+	stringKeys bool
 }
 
 func (h *keyIndex) release() {
@@ -34,7 +35,7 @@ func (h *keyIndex) lookup(key []byte, keys *keyArena) (int, bool) {
 	}
 	slots := h.slots.AsU64T()
 	mask := uint64(len(slots)/2 - 1)
-	hash := maphash.Bytes(h.seed, key)
+	hash := h.hash(key)
 	for at := hash & mask; ; at = (at + 1) & mask {
 		index := slots[2*at+1]
 		if index == 0 {
@@ -92,7 +93,7 @@ func (h *keyIndex) put(a *mem.Allocator, key []byte, index int, budget int64) bo
 		capacity = next
 	}
 	slots := h.slots.AsU64T()
-	hash := maphash.Bytes(h.seed, key)
+	hash := h.hash(key)
 	at := hash & uint64(capacity-1)
 	for slots[2*at+1] != 0 {
 		at = (at + 1) & uint64(capacity-1)
@@ -100,4 +101,37 @@ func (h *keyIndex) put(a *mem.Allocator, key []byte, index int, budget int64) bo
 	slots[2*at], slots[2*at+1] = hash, uint64(index)+1
 	h.used++
 	return true
+}
+
+func (h *keyIndex) hash(key []byte) uint64 {
+	// Single string keys keep their canonical encoding but hash only the payload.
+	if h.stringKeys && key[0] != 0 {
+		key = key[9:]
+	}
+	return maphash.Bytes(h.seed, key)
+}
+
+func (h *keyIndex) lookupString(text string, isNull bool, keys *keyArena) (int, bool) {
+	if h.slots == nil {
+		return 0, false
+	}
+	hash := maphash.String(h.seed, text)
+	if isNull {
+		hash = maphash.Bytes(h.seed, []byte{0})
+	}
+	slots := h.slots.AsU64T()
+	mask := uint64(len(slots)/2 - 1)
+	for at := hash & mask; ; at = (at + 1) & mask {
+		index := slots[2*at+1]
+		if index == 0 {
+			return 0, false
+		}
+		if slots[2*at] != hash {
+			continue
+		}
+		key := keys.key(int(index - 1))
+		if isNull && key[0] == 0 || !isNull && key[0] != 0 && string(key[9:]) == text {
+			return int(index - 1), true
+		}
+	}
 }

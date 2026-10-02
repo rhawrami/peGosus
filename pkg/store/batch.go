@@ -138,6 +138,15 @@ func MakeBatch(vectors []Vector) *Batch {
 	if len(vectors) != 0 {
 		length = vectors[0].Len()
 	}
+	return MakeBatchWithLength(vectors, length)
+}
+
+// MakeBatchWithLength returns a batch with an explicit physical row domain,
+// including a zero-column batch. It takes ownership of vectors on success.
+func MakeBatchWithLength(vectors []Vector, length int) *Batch {
+	if length < 0 {
+		return nil
+	}
 	for i := range vectors {
 		if vectors[i].Kind() == VectorInvalid || vectors[i].Len() != length {
 			return nil

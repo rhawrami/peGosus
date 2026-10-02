@@ -31,14 +31,17 @@ func MakeParquetScan(path string, schema Schema, options parquet.ParquetOptions)
 }
 
 type scanSource struct {
-	table          *store.Table
-	csvPath        string
-	csvOptions     csv.CSVOptions
-	parquetPath    string
-	parquetOptions parquet.ParquetOptions
-	schema         Schema
-	projection     []int
-	filters        []physicalExprProgram
+	table                *store.Table
+	csvPath              string
+	csvOptions           csv.CSVOptions
+	parquetPath          string
+	parquetOptions       parquet.ParquetOptions
+	parquetMetadata      *parquet.ParquetMetadataCache
+	schema               Schema
+	projection           []int
+	filters              []physicalExprProgram
+	parquetPredicates    []parquet.ScanPredicate
+	parquetFilterHandled []bool
 }
 
 var errScanFilter = errors.New("scan predicate evaluation failed")
@@ -176,7 +179,7 @@ func (c *scanCursor) openParquet(a *mem.Allocator) error {
 	if err != nil {
 		return err
 	}
-	reader, parseErr := parquet.MakeParquetReaderProjected(file, info.Size(), a, c.source.projection, c.source.parquetOptions)
+	reader, parseErr := parquet.MakeParquetReaderProjectedCached(file, info.Size(), a, c.source.projection, c.source.parquetOptions, c.source.parquetMetadata)
 	if parseErr != nil {
 		return parseErr
 	}
@@ -193,12 +196,19 @@ func (c *scanCursor) openParquet(a *mem.Allocator) error {
 		}
 	}
 	reader.SetPruningPredicates(makeParquetPruningPredicates(c.source))
+	if !reader.SetScanPredicates(c.source.parquetPredicates) {
+		reader.Close()
+		return parquet.MakeParquetError(parquet.ParquetInvalid, errors.New("invalid compiled Parquet predicates"))
+	}
 	c.parquet = reader
 	return nil
 }
 
 func (c *scanCursor) applyFilters(a *mem.Allocator, batch *store.Batch) bool {
-	for _, program := range c.source.filters {
+	for i, program := range c.source.filters {
+		if c.source.parquetPath != "" && i < len(c.source.parquetFilterHandled) && c.source.parquetFilterHandled[i] {
+			continue
+		}
 		if !executePhysicalFilter(a, batch, program) {
 			return false
 		}

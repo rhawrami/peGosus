@@ -1,8 +1,6 @@
 package plan
 
 import (
-	"hash/maphash"
-
 	"github.com/rhawrami/peGosus/pkg/dtype"
 	"github.com/rhawrami/peGosus/pkg/mem"
 	"github.com/rhawrami/peGosus/pkg/store"
@@ -11,8 +9,7 @@ import (
 func makeGroupState(step physicalStep, scope *mem.AllocationScope) *groupState {
 	g := &groupState{compact: makeCompactGroupState(step), scope: scope}
 	if g.compact == nil && len(step.groupKeys) == 1 && step.schema.FieldAt(0).Type().ID() == dtype.STRT {
-		g.stringGroups = make(map[uint64][]int, 16)
-		g.stringSeed = maphash.MakeSeed()
+		g.keys.index.stringKeys = true
 	}
 	g.keys.setScope(scope)
 	if g.compact != nil {
@@ -23,14 +20,12 @@ func makeGroupState(step physicalStep, scope *mem.AllocationScope) *groupState {
 }
 
 type groupState struct {
-	keys         distinctState
-	values       [][]aggregateValue
-	uniques      [][]*distinctState
-	stateBytes   int64
-	compact      *compactGroupState
-	scope        *mem.AllocationScope
-	stringGroups map[uint64][]int
-	stringSeed   maphash.Seed
+	keys       distinctState
+	values     [][]aggregateValue
+	uniques    [][]*distinctState
+	stateBytes int64
+	compact    *compactGroupState
+	scope      *mem.AllocationScope
 }
 
 func (g *groupState) release() {
@@ -125,38 +120,16 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 		if selection != nil && !selection.IsSet(row) {
 			continue
 		}
-		index := -1
-		var hash uint64
-		var text string
-		isNull := false
-		if g.stringGroups != nil {
-			key := keyBatch.VectorAt(0)
-			isNull = key.Validity() != nil && !key.Validity().IsSet(row)
-			if !isNull {
-				text = key.Strings()[row].View()
-				hash = maphash.String(g.stringSeed, text)
-			}
-			for _, candidate := range g.stringGroups[hash] {
-				stored := g.keys.rows.at(candidate, 0)
-				if stored.IsNull() == isNull && (isNull || stored.text == text) {
-					index = candidate
-					break
-				}
-			}
+		var index int
+		var ok bool
+		remaining := budget - g.charged(len(step.aggregates)) + g.keys.charged
+		if g.keys.index.stringKeys {
+			index, ok = g.keys.addString(a, keyBatch, row, remaining)
+		} else {
+			index, ok = g.keys.add(a, keyBatch, row, remaining)
 		}
-		if index < 0 {
-			var ok bool
-			index, ok = g.keys.add(a, keyBatch, row, budget-g.charged(len(step.aggregates))+g.keys.charged)
-			if !ok {
-				return false
-			}
-			if g.stringGroups != nil {
-				if index >= 256 {
-					g.stringGroups = nil
-				} else {
-					g.stringGroups[hash] = append(g.stringGroups[hash], index)
-				}
-			}
+		if !ok {
+			return false
 		}
 		for len(g.values) <= index {
 			g.values = append(g.values, make([]aggregateValue, len(step.aggregates)))
@@ -228,7 +201,6 @@ func (g *groupState) merge(a *mem.Allocator, src *groupState, step physicalStep,
 }
 
 func (g *groupState) mergeRow(a *mem.Allocator, src *groupState, step physicalStep, budget int64, row int, keyValues []Scalar) bool {
-	g.stringGroups = nil
 	key := src.keys.keys.key(row)
 	index, ok := g.keys.addEncoded(a, key, &src.keys.rows, row, keyValues, budget-g.charged(len(step.aggregates))+g.keys.charged)
 	if !ok {

@@ -1,8 +1,57 @@
 package plan
 
+func foldAggregateProjection(steps []physicalStep) []physicalStep {
+	for at := len(steps) - 1; at > 0; at-- {
+		if steps[at].operation != physicalAggregate || steps[at-1].operation != physicalProject {
+			continue
+		}
+		projection := steps[at-1].program
+		columns := make([]int, len(projection.roots))
+		plain := true
+		for i, root := range projection.roots {
+			if projection.nodes[root].kind != exprColumn {
+				plain = false
+				break
+			}
+			columns[i] = projection.nodes[root].column
+		}
+		if !plain {
+			continue
+		}
+		remap := func(program *physicalExprProgram) {
+			for i := range program.nodes {
+				if program.nodes[i].kind == exprColumn {
+					program.nodes[i].column = columns[program.nodes[i].column]
+				}
+			}
+		}
+		for i := range steps[at].groupKeys {
+			remap(&steps[at].groupKeys[i])
+		}
+		for i := range steps[at].aggregates {
+			remap(&steps[at].aggregates[i].program)
+		}
+		copy(steps[at-1:], steps[at:])
+		steps = steps[:len(steps)-1]
+	}
+	return steps
+}
+
 func pruneScanProjection(source *scanSource, steps []physicalStep) {
-	if source == nil || source.schema.Len() < 2 {
+	if source == nil {
 		return
+	}
+	if source.parquetPath != "" {
+		for _, step := range steps {
+			if step.operation != physicalFilter {
+				break
+			}
+			predicates, handled := makeParquetScanPredicates(step.program)
+			source.parquetFilterHandled = append(source.parquetFilterHandled, handled)
+			if handled {
+				source.parquetPredicates = append(source.parquetPredicates, predicates...)
+			}
+		}
 	}
 	needed := make([]bool, source.schema.Len())
 	boundary := -1
@@ -18,7 +67,9 @@ func pruneScanProjection(source *scanSource, steps []physicalStep) {
 		case physicalLimit:
 			continue
 		case physicalFilter, physicalProject:
-			mark(step.program)
+			if i >= len(source.parquetFilterHandled) || !source.parquetFilterHandled[i] {
+				mark(step.program)
+			}
 			if step.operation == physicalProject {
 				boundary = i
 			}
@@ -40,13 +91,13 @@ func pruneScanProjection(source *scanSource, steps []physicalStep) {
 	if boundary < 0 {
 		return
 	}
-	var selected []int
+	selected := make([]int, 0, len(needed))
 	for i, keep := range needed {
 		if keep {
 			selected = append(selected, i)
 		}
 	}
-	if len(selected) == 0 {
+	if len(selected) == 0 && source.parquetPath == "" {
 		selected = append(selected, 0)
 	}
 	if len(selected) == len(needed) {
@@ -64,6 +115,9 @@ func pruneScanProjection(source *scanSource, steps []physicalStep) {
 		}
 	}
 	for i := 0; i <= boundary; i++ {
+		if i < len(source.parquetFilterHandled) && source.parquetFilterHandled[i] {
+			continue
+		}
 		if steps[i].operation == physicalAggregate {
 			for j := range steps[i].groupKeys {
 				remapProgram(&steps[i].groupKeys[j])

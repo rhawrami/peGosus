@@ -54,6 +54,9 @@ func makeCompactGroupState(step physicalStep) *compactGroupState {
 // compactGroupState stores fixed-width group keys and COUNT/SUM accumulators
 // in allocator-backed columns, indexed by a single group-ID map.
 type compactGroupState struct {
+	dense          *mem.Segment
+	denseBase      int64
+	workBytes      int64
 	index          u64Index
 	keys           *mem.Segment
 	counts         *mem.Segment
@@ -69,6 +72,9 @@ type compactGroupState struct {
 
 func (g *compactGroupState) release() {
 	g.index.release()
+	if g.dense != nil {
+		g.dense.Dec()
+	}
 	if g.keys != nil {
 		g.keys.Dec()
 	}
@@ -86,7 +92,7 @@ func (g *compactGroupState) charged() int64 {
 	if g.sumTypes != nil {
 		width += g.aggregateCount
 	}
-	return int64(g.capacity)*int64(width)*8 + g.index.bytes()
+	return int64(g.capacity)*int64(width)*8 + g.index.bytes() + g.auxiliaryBytes()
 }
 
 func (g *compactGroupState) grow(a *mem.Allocator, budget int64) bool {
@@ -101,7 +107,7 @@ func (g *compactGroupState) grow(a *mem.Allocator, budget int64) bool {
 	if g.sumTypes != nil {
 		width += int64(g.aggregateCount) * 8
 	}
-	if width <= 0 || int64(capacity) > int64(int(^uint(0)>>1))/width || int64(capacity) > (budget-g.index.bytes())/width-int64(g.capacity) {
+	if width <= 0 || int64(capacity) > int64(int(^uint(0)>>1))/width || int64(capacity) > (budget-g.index.bytes()-g.auxiliaryBytes())/width-int64(g.capacity) {
 		return false
 	}
 	newKeys, ok := allocOperatorSegment(a, g.scope, capacity*8)
@@ -137,6 +143,9 @@ func (g *compactGroupState) grow(a *mem.Allocator, budget int64) bool {
 }
 
 func (g *compactGroupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep, budget int64) bool {
+	if batch.ActiveLen() == 0 {
+		return true
+	}
 	keyValues, ok := executePhysicalExprProgram(a, batch, step.groupKeys[0])
 	if !ok {
 		return false
@@ -168,6 +177,9 @@ func (g *compactGroupState) add(a *mem.Allocator, batch *store.Batch, step physi
 	if selection != nil {
 		defer selection.Release()
 	}
+	if batch.Len() >= 64 && g.length <= math.MaxInt32-batch.Len() {
+		return g.addTyped(a, batch, step, key, values, selection, budget)
+	}
 	for row := range batch.Len() {
 		if selection != nil && !selection.IsSet(row) {
 			continue
@@ -192,30 +204,10 @@ func (g *compactGroupState) add(a *mem.Allocator, batch *store.Batch, step physi
 					lookup = 0
 				}
 			}
-			var found bool
-			index, found = g.index.get(lookup)
-			if !found {
-				index = -1
-			}
 		}
+		index = g.groupIndex(a, lookup, original, isNull, budget)
 		if index < 0 {
-			if g.length == g.capacity && !g.grow(a, budget) {
-				return false
-			}
-			index = g.length
-			if !isNull && !g.index.put(a, lookup, index, budget-g.charged()+g.index.bytes()) {
-				return false
-			}
-			g.length++
-			g.keys.AsU64T()[index] = original
-			counts := g.counts.AsI64T()[index*g.aggregateCount : (index+1)*g.aggregateCount]
-			clear(counts)
-			if g.sums != nil {
-				clear(g.sums.AsU64T()[index*g.aggregateCount : (index+1)*g.aggregateCount])
-			}
-			if isNull {
-				g.nullIndex = index
-			}
+			return false
 		}
 		counts := g.counts.AsI64T()[index*g.aggregateCount : (index+1)*g.aggregateCount]
 		var sums []uint64
@@ -286,35 +278,12 @@ func (g *compactGroupState) merge(a *mem.Allocator, src *compactGroupState, budg
 					lookup = 0
 				}
 			}
-			var found bool
-			index, found = g.index.get(lookup)
-			if !found {
-				index = -1
-			}
-			if index < 0 {
-				if g.length == g.capacity && !g.grow(a, budget) {
-					return false
-				}
-				index = g.length
-				if !g.index.put(a, lookup, index, budget-g.charged()+g.index.bytes()) {
-					return false
-				}
-			}
+			index = g.groupIndex(a, lookup, key, false, budget)
+		} else {
+			index = g.groupIndex(a, 0, key, true, budget)
 		}
 		if index < 0 {
-			if g.length == g.capacity && !g.grow(a, budget) {
-				return false
-			}
-			index = g.length
-			g.nullIndex = index
-		}
-		if index == g.length {
-			g.length++
-			g.keys.AsU64T()[index] = key
-			clear(g.counts.AsI64T()[index*g.aggregateCount : (index+1)*g.aggregateCount])
-			if g.sums != nil {
-				clear(g.sums.AsU64T()[index*g.aggregateCount : (index+1)*g.aggregateCount])
-			}
+			return false
 		}
 		for i, count := range src.counts.AsI64T()[row*src.aggregateCount : (row+1)*src.aggregateCount] {
 			if g.sums != nil && count != 0 {
