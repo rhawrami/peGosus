@@ -6,6 +6,8 @@ Example (DuckDB 1.5.6 and Polars 1.34.0 must be installed in the Python environm
 The source is the ignored paired fixture produced by prepare_io_testdata.py.
 This is a local microbenchmark, not an official ClickBench run.
 peGosus uses explicit Select stages to enable scan projection pruning.
+Thread settings also cap Go runtime parallelism. Add --include-grouped-sum
+to include date-key SUM in addition to the default six queries.
 """
 
 import argparse
@@ -50,10 +52,12 @@ def measure(name, operation, warmup, runs):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=pathlib.Path, default=SOURCE)
+    parser.add_argument("--parquet", type=pathlib.Path, help="benchmark an existing repeated fixture without regenerating it")
     parser.add_argument("--repeat", type=int, default=64)
     parser.add_argument("--runs", type=int, default=7)
     parser.add_argument("--warmup", type=int, default=2)
     parser.add_argument("--threads", type=int, default=1)
+    parser.add_argument("--include-grouped-sum", action="store_true", help="also compare date-key SUM to exercise compact numeric grouping")
     parser.add_argument("--scratch", type=pathlib.Path)
     parser.add_argument("--memory", action="store_true", help="measure peGosus heap and allocator reuse in separate untimed passes")
     parser.add_argument("--retain", type=int, default=4, help="result retention window for memory measurements")
@@ -63,28 +67,35 @@ def main():
     if args.repeat < 1 or args.runs < 1 or args.warmup < 0 or args.threads < 1 or args.retain < 1:
         parser.error("repeat, runs, and threads must be positive")
     os.environ["POLARS_MAX_THREADS"] = str(args.threads)
+    os.environ["GOMAXPROCS"] = str(args.threads)
     import duckdb
     import polars as pl
 
-    if not args.source.is_file():
+    if args.parquet and not args.parquet.is_file():
+        parser.error("existing Parquet fixture does not exist")
+    if not args.parquet and not args.source.is_file():
         parser.error("run scripts/prepare_io_testdata.py to create the paired Parquet source")
     with tempfile.TemporaryDirectory(prefix="peg-compare-", dir=args.scratch) as directory:
         output = pathlib.Path(directory) / "bench.parquet"
         binary = pathlib.Path(directory) / "peg-bench"
         connection = duckdb.connect()
         connection.execute(f"PRAGMA threads={args.threads}")
-        source_rows = connection.execute("SELECT count(*) FROM read_parquet(?)", [str(args.source)]).fetchone()[0]
-        output_sql = str(output).replace("'", "''")
-        connection.execute(
-            f"""COPY (
-                SELECT (id + rep * ?)::INTEGER AS id, seq, measure, score,
-                       active, day, observed, category, message
-                FROM read_parquet(?) CROSS JOIN range(?) AS r(rep)
-                ORDER BY id
-            ) TO '{output_sql}' (FORMAT PARQUET, COMPRESSION SNAPPY, ROW_GROUP_SIZE 65536)""",
-            [source_rows, str(args.source), args.repeat],
-        )
-        rows = source_rows * args.repeat
+        if args.parquet:
+            output = args.parquet.resolve()
+            rows = connection.execute("SELECT count(*) FROM read_parquet(?)", [str(output)]).fetchone()[0]
+        else:
+            source_rows = connection.execute("SELECT count(*) FROM read_parquet(?)", [str(args.source)]).fetchone()[0]
+            output_sql = str(output).replace("'", "''")
+            connection.execute(
+                f"""COPY (
+                    SELECT (id + rep * ?)::INTEGER AS id, seq, measure, score,
+                           active, day, observed, category, message
+                    FROM read_parquet(?) CROSS JOIN range(?) AS r(rep)
+                    ORDER BY id
+                ) TO '{output_sql}' (FORMAT PARQUET, COMPRESSION SNAPPY, ROW_GROUP_SIZE 65536)""",
+                [source_rows, str(args.source), args.repeat],
+            )
+            rows = source_rows * args.repeat
         print(f"Data: {rows:,} rows, {output.stat().st_size / (1 << 20):.1f} MiB Parquet", flush=True)
         subprocess.run(["go", "build", "-o", str(binary), "./scripts/compare_parquet_peg.go"], cwd=ROOT, check=True)
         peg_report = json.loads(subprocess.check_output([
@@ -92,6 +103,13 @@ def main():
             "-warmup", str(args.warmup), "-workers", str(args.threads),
             *(["-memory", "-retain", str(args.retain)] if args.memory else []),
         ], cwd=ROOT, text=True))
+        if args.include_grouped_sum:
+            grouped_report = json.loads(subprocess.check_output([
+                str(binary), "-parquet", str(output), "-rows", str(rows), "-runs", str(args.runs),
+                "-warmup", str(args.warmup), "-workers", str(args.threads), "-only", "group_day_sum",
+                *(["-memory", "-retain", str(args.retain)] if args.memory else []),
+            ], cwd=ROOT, text=True))
+            peg_report["queries"].extend(grouped_report["queries"])
 
         file_sql = "read_parquet('" + str(output).replace("'", "''") + "')"
         sql = {
@@ -102,6 +120,8 @@ def main():
             "string_filter_sum": f"SELECT sum(id) FROM {file_sql} WHERE category = 'north' AND score > -23.0",
             "square_sum": f"SELECT sum(score * score) FROM {file_sql} WHERE score IS NOT NULL",
         }
+        if args.include_grouped_sum:
+            sql["group_day_sum"] = f"SELECT datediff('day', DATE '1970-01-01', day), sum(id) FROM {file_sql} WHERE id >= {rows // 4} GROUP BY day ORDER BY day ASC NULLS LAST"
         duck_report = {
             "engine": "DuckDB", "version": duckdb.__version__, "threads": args.threads,
             "queries": [measure(name, lambda query=query: connection.execute(query).fetchall(), args.warmup, args.runs)
@@ -117,6 +137,8 @@ def main():
             "string_filter_sum": scan.filter((pl.col("category") == "north") & (pl.col("score") > -23.0)).select(pl.col("id").cast(pl.Int64).sum()),
             "square_sum": scan.filter(pl.col("score").is_not_null()).select((pl.col("score") * pl.col("score")).sum()),
         }
+        if args.include_grouped_sum:
+            lazy["group_day_sum"] = scan.filter(pl.col("id") >= rows // 4).group_by("day").agg(pl.col("id").cast(pl.Int64).sum()).sort("day", nulls_last=True).with_columns(pl.col("day").cast(pl.Int32))
         polars_report = {
             "engine": "Polars", "version": pl.__version__, "threads": pl.thread_pool_size(),
             "queries": [measure(name, lambda query=query: query.collect().rows(), args.warmup, args.runs)
@@ -133,6 +155,7 @@ def main():
                     failures[(report["engine"], item["name"])] = str(error)
 
         print(f"Machine: {platform.platform()} | threads/worker: {args.threads} | warmups: {args.warmup} | runs: {args.runs}")
+        print("Warm file-cache scans; timings include result conversion. peGosus prepares once; DuckDB and Polars include per-call planning.")
         if failures:
             print("Result mismatches; invalid timings are marked INVALID:")
             for (engine, name), detail in failures.items():
@@ -164,7 +187,11 @@ def main():
                     print(f"{item['name'] + '/' + entry['mode']:30} {allocated:13.1f} {allocations:11.0f} {gcs:5} {post_gc:12.2f} {slab:10.2f} {live:10.1f}")
         print("Versions:", ", ".join(f"{report['engine']} {report['version']}" for report in reports))
         if args.json:
-            args.json.write_text(json.dumps({"source_rows": rows, "parquet_bytes": output.stat().st_size, "reports": reports, "failures": {f"{engine}/{name}": detail for (engine, name), detail in failures.items()}}, indent=2) + "\n")
+            args.json.write_text(json.dumps({"source_rows": rows, "parquet_bytes": output.stat().st_size,
+                "machine": platform.platform(), "warmup": args.warmup, "runs": args.runs, "threads": args.threads,
+                "repeat": args.repeat, "include_grouped_sum": args.include_grouped_sum,
+                "method": "warm file-cache Parquet scans; peGosus prepares once; DuckDB execute/fetchall and Polars lazy collect/rows include per-call planning; all timings include result conversion; file generation and binary compilation excluded",
+                "reports": reports, "failures": {f"{engine}/{name}": detail for (engine, name), detail in failures.items()}}, indent=2) + "\n")
             print("Raw timings and results:", args.json)
         if args.profile_query:
             profile = pathlib.Path(directory) / (args.profile_query + ".prof")

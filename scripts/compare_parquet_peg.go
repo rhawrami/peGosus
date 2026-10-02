@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"flag"
@@ -16,6 +17,126 @@ import (
 	"github.com/rhawrami/peGosus/pkg/peg"
 	"github.com/rhawrami/peGosus/pkg/store"
 )
+
+func collectRows(result *peg.Result) [][]any {
+	fields := result.Schema()
+	data := make([][]any, 0, result.NumRows())
+	for batchIndex := 0; batchIndex < result.NumBatches(); batchIndex++ {
+		batch, _ := result.BatchAt(batchIndex)
+		columns := make([]peg.Column, len(fields))
+		for col, field := range fields {
+			var err error
+			columns[col], err = batch.Column(field.Name)
+			if err != nil {
+				panic(err)
+			}
+		}
+		batch.ForEachActive(func(row int) bool {
+			values := make([]any, len(columns))
+			for col, column := range columns {
+				if !column.IsValid(row) {
+					continue
+				}
+				switch column.Kind() {
+				case peg.Int32, peg.Date:
+					values[col] = column.Int32s()[row]
+				case peg.Int64, peg.TimestampTZ:
+					values[col] = column.Int64s()[row]
+				case peg.Float32:
+					values[col] = column.Float32s()[row]
+				case peg.Float64:
+					values[col] = column.Float64s()[row]
+				case peg.String:
+					value, _ := column.StringAt(row)
+					values[col] = strings.Clone(value)
+				case peg.Bool:
+					values[col], _ = column.BoolAt(row)
+				}
+			}
+			data = append(data, values)
+			return true
+		})
+	}
+	return data
+}
+
+func measureProcessMemory(engine *peg.Engine, prepared *peg.Prepared, warmup, runs, retain int) {
+	encoder := json.NewEncoder(os.Stdout)
+	held := make([]*peg.Result, 0, retain)
+	emit := func(stage string, rows [][]any) {
+		var stats runtime.MemStats
+		runtime.ReadMemStats(&stats)
+		if err := encoder.Encode(struct {
+			Stage       string             `json:"stage"`
+			Version     string             `json:"version"`
+			HeldResults int                `json:"held_results"`
+			Allocator   mem.AllocatorUsage `json:"allocator"`
+			Heap        heapSnapshot       `json:"heap"`
+			Rows        [][]any            `json:"rows,omitempty"`
+		}{stage, runtime.Version(), len(held), engine.MemoryUsage(), heapSnapshot{stats.HeapAlloc, stats.HeapSys, stats.HeapObjects}, rows}); err != nil {
+			panic(err)
+		}
+	}
+	execute := func() *peg.Result {
+		result, err := prepared.Exec()
+		if err != nil {
+			panic(err)
+		}
+		return result
+	}
+	release := func() {
+		for i, result := range held {
+			result.Release()
+			held[i] = nil
+		}
+		held = held[:0]
+	}
+	runtime.GC()
+	emit("ready", nil)
+	commands := bufio.NewScanner(os.Stdin)
+	for commands.Scan() {
+		stage := commands.Text()
+		switch stage {
+		case "cold":
+			held = append(held, execute())
+		case "release", "release_all":
+			release()
+		case "warmup":
+			for range warmup {
+				execute().Release()
+			}
+			runtime.GC()
+		case "steady":
+			for range runs {
+				execute().Release()
+			}
+		case "retain":
+			for range retain {
+				held = append(held, execute())
+			}
+		case "gc":
+			runtime.GC()
+		case "validate":
+			result := execute()
+			rows := collectRows(result)
+			result.Release()
+			emit(stage, rows)
+			continue
+		case "quit":
+			release()
+			prepared.Release()
+			runtime.KeepAlive(engine)
+			return
+		default:
+			panic("invalid process-memory command")
+		}
+		emit(stage, nil)
+	}
+	if err := commands.Err(); err != nil {
+		panic(err)
+	}
+	panic("process-memory controller disconnected")
+}
 
 type measurement struct {
 	Name      string              `json:"name"`
@@ -137,10 +258,14 @@ func main() {
 	only := flag.String("only", "", "run one named query for profiling")
 	profile := flag.String("cpuprofile", "", "write a CPU profile")
 	memory := flag.Bool("memory", false, "measure heap allocations in separate release, streaming, and retained-result passes")
+	processMemory := flag.Bool("process-memory", false, "run one query with an external process-memory controller")
 	retained := flag.Int("retain", 4, "result retention window in the separate memory pass")
 	flag.Parse()
 	if *path == "" || *rows <= 0 || *runs < 1 || *warmup < 0 || *workers < 1 || *retained < 1 || (*source != "parquet" && *source != "table") {
 		panic("invalid benchmark arguments")
+	}
+	if *processMemory && (*only == "" || *source != "parquet" || *profile != "" || *memory) {
+		panic("process-memory requires one Parquet query without profiling")
 	}
 	engine := peg.MakeEngine(peg.EngineOptions{MemoryBudget: 512 << 20, Workers: *workers})
 	scan := engine.ScanParquet(*path)
@@ -231,6 +356,10 @@ func main() {
 			panic(fmt.Errorf("%s prepare: %w", item.name, err))
 		}
 		entry := measurement{Name: item.name, PrepareNS: time.Since(start).Nanoseconds()}
+		if *processMemory {
+			measureProcessMemory(engine, prepared, *warmup, *runs, *retained)
+			return
+		}
 		for i := 0; i < *warmup+*runs; i++ {
 			if i == *warmup && profileOutput != nil && !profileStarted {
 				if err := pprof.StartCPUProfile(profileOutput); err != nil {
@@ -245,43 +374,7 @@ func main() {
 				panic(fmt.Errorf("%s execute: %w", item.name, err))
 			}
 			execDone := time.Now()
-			fields := result.Schema()
-			data := make([][]any, 0, result.NumRows())
-			for batchIndex := 0; batchIndex < result.NumBatches(); batchIndex++ {
-				batch, _ := result.BatchAt(batchIndex)
-				columns := make([]peg.Column, len(fields))
-				for col, field := range fields {
-					columns[col], err = batch.Column(field.Name)
-					if err != nil {
-						panic(err)
-					}
-				}
-				batch.ForEachActive(func(row int) bool {
-					values := make([]any, len(columns))
-					for col, column := range columns {
-						if !column.IsValid(row) {
-							continue
-						}
-						switch column.Kind() {
-						case peg.Int32, peg.Date:
-							values[col] = column.Int32s()[row]
-						case peg.Int64, peg.TimestampTZ:
-							values[col] = column.Int64s()[row]
-						case peg.Float32:
-							values[col] = column.Float32s()[row]
-						case peg.Float64:
-							values[col] = column.Float64s()[row]
-						case peg.String:
-							value, _ := column.StringAt(row)
-							values[col] = strings.Clone(value)
-						case peg.Bool:
-							values[col], _ = column.BoolAt(row)
-						}
-					}
-					data = append(data, values)
-					return true
-				})
-			}
+			data := collectRows(result)
 			collectDone := time.Now()
 			result.Release()
 			releaseDone := time.Now()
