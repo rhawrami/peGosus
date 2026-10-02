@@ -59,7 +59,7 @@ func (s *distinctState) addString(a *mem.Allocator, batch *store.Batch, row int,
 	isNull := key.Validity() != nil && !key.Validity().IsSet(row)
 	var text string
 	if !isNull {
-		text = key.Strings()[row].View()
+		text = key.StringAt(row).View()
 	}
 	if index, exists := s.index.lookupString(text, isNull, &s.keys); exists {
 		return index, true
@@ -220,7 +220,7 @@ func encodedRowKeyLength(batch *store.Batch, row int) int {
 		length += 9
 		v := batch.VectorAt(column)
 		if v.TypeID() == dtype.STRT && (v.Validity() == nil || v.Validity().IsSet(row)) {
-			length += len(v.Strings()[row].View())
+			length += len(v.StringAt(row).View())
 		}
 	}
 	return length

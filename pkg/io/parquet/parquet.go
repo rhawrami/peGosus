@@ -418,21 +418,22 @@ func physicalWidth(typ int64) int64 {
 
 // ParquetReader scans selected flat columns into independently owned batches.
 type ParquetReader struct {
-	input       io.ReaderAt
-	allocator   *mem.Allocator
-	options     ParquetOptions
-	columns     []parquetColumn
-	groups      []parquetGroup
-	selected    []int
-	groupBase   int
-	group       int
-	row         int64
-	cursors     []parquetCursor
-	closed      bool
-	pruning     []PruningPredicate
-	predicates  []ScanPredicate
-	scanColumns []int
-	scanStates  []parquetPredicateState
+	input             io.ReaderAt
+	allocator         *mem.Allocator
+	options           ParquetOptions
+	columns           []parquetColumn
+	groups            []parquetGroup
+	selected          []int
+	groupBase         int
+	group             int
+	row               int64
+	cursors           []parquetCursor
+	closed            bool
+	pruning           []PruningPredicate
+	predicates        []ScanPredicate
+	scanColumns       []int
+	scanStates        []parquetPredicateState
+	dictionaryColumns []bool
 }
 
 // ColumnCount returns the number of columns in the file schema.
@@ -504,6 +505,13 @@ func (r *ParquetReader) next(ctx context.Context) (*store.Batch, *ParquetError) 
 		r.startScanGroup()
 	}
 	n := int(min(int64(r.options.BatchSize), r.groups[r.group].rows-r.row))
+	if len(r.dictionaryColumns) != 0 {
+		var failure *ParquetError
+		n, failure = r.dictionaryBatchLength(ctx, n)
+		if failure != nil {
+			return nil, failure
+		}
+	}
 	var mask *store.BitMap
 	for i := range r.scanStates {
 		if len(r.scanStates[i].predicates) != 0 {
@@ -566,7 +574,11 @@ func (r *ParquetReader) next(ctx context.Context) (*store.Batch, *ParquetError) 
 		}
 		if c.column.typ.ID() == dtype.STRT {
 			var failure *ParquetError
-			vectors[i], failure = makeParquetStringVector(ctx, c, n)
+			if i < len(r.dictionaryColumns) && r.dictionaryColumns[i] && (c.encoding == 8 || c.encoding == 2) && c.dictCount <= max(4096, n*4) {
+				vectors[i], failure = c.materializeDictionaryStrings(ctx, n)
+			} else {
+				vectors[i], failure = makeParquetStringVector(ctx, c, n)
+			}
 			if failure != nil {
 				return nil, failure
 			}

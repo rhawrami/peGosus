@@ -180,7 +180,7 @@ func TestStringGroupLookupHighCardinality(t *testing.T) {
 	if !g.add(a, batch, step, math.MaxInt64) {
 		t.Fatal("string group accumulation failed")
 	}
-	if !g.keys.index.stringKeys || len(g.values) != 300 || g.values[0][0].count != 2 {
+	if g.compact == nil || !g.compact.strings.index.stringKeys || g.compact.length != 300 || g.compact.counts.AsI64T()[0] != 2 {
 		t.Fatal("high-cardinality lookup lost a key or count")
 	}
 	output := g.finish(a, step)

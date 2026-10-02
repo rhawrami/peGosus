@@ -93,7 +93,7 @@ func (s *sortState) add(a *mem.Allocator, batch *store.Batch, step physicalStep,
 		}
 		vectors[i] = &computed[i].vectors[key.program.roots[0]]
 	}
-	selection := batch.Selection().MakeBitMapTemp(a)
+	selection := batch.Selection().RetainBitMap(a)
 	if batch.Selection() != nil && selection == nil {
 		return false
 	}
@@ -121,12 +121,12 @@ func (s *sortState) add(a *mem.Allocator, batch *store.Batch, step physicalStep,
 		for column := range batch.NVectors() {
 			v := batch.VectorAt(column)
 			if v.TypeID() == dtype.STRT && (v.Validity() == nil || v.Validity().IsSet(row)) {
-				charge = saturatingAdd(charge, int64(len(v.Strings()[row].View())))
+				charge = saturatingAdd(charge, int64(len(v.StringAt(row).View())))
 			}
 		}
 		for _, vector := range vectors {
 			if vector.TypeID() == dtype.STRT && (vector.Validity() == nil || vector.Validity().IsSet(row)) {
-				charge = saturatingAdd(charge, int64(len(vector.Strings()[row].View())))
+				charge = saturatingAdd(charge, int64(len(vector.StringAt(row).View())))
 			}
 		}
 		evict := int64(0)

@@ -127,7 +127,7 @@ func (s *joinState) build(ctx context.Context, a *mem.Allocator, spec *physicalJ
 				values[i].release()
 			}
 		}()
-		selection := batch.Selection().MakeBitMapTemp(a)
+		selection := batch.Selection().RetainBitMap(a)
 		if batch.Selection() != nil && selection == nil {
 			return false
 		}
@@ -184,7 +184,7 @@ func (s *joinState) probe(a *mem.Allocator, batch *store.Batch, step physicalSte
 			values[i].release()
 		}
 	}()
-	selection := batch.Selection().MakeBitMapTemp(a)
+	selection := batch.Selection().RetainBitMap(a)
 	if batch.Selection() != nil && selection == nil {
 		return nil, ExecutionResult{code: ExecutionResourceExhausted}
 	}

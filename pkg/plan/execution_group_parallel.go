@@ -5,6 +5,7 @@ import (
 	"hash/maphash"
 	"sync"
 
+	"github.com/rhawrami/peGosus/pkg/dtype"
 	"github.com/rhawrami/peGosus/pkg/mem"
 	"github.com/rhawrami/peGosus/pkg/store"
 )
@@ -23,10 +24,10 @@ func (p *PhysicalPlan) executeGroupedShards(ctx context.Context, a *mem.Allocato
 	var groups int64
 	var charged int64
 	for _, source := range sources {
-		if source == nil || source.compact != nil {
+		if source == nil || source.compact != nil && source.compact.keyType.ID() != dtype.STRT {
 			return ExecutionResult{}, false
 		}
-		groups = saturatingAdd(groups, int64(len(source.values)))
+		groups = saturatingAdd(groups, int64(source.groupCount()))
 		charged = saturatingAdd(charged, source.charged(len(step.aggregates)))
 	}
 	if groups < 4096 || groups < rows-rows/4 || charged >= budget/2 {
@@ -40,7 +41,7 @@ func (p *PhysicalPlan) executeGroupedShards(ctx context.Context, a *mem.Allocato
 		return ExecutionResult{}, false
 	}
 	for _, source := range sources {
-		if uint64(len(source.values)) > uint64(^uint32(0)) {
+		if uint64(source.groupCount()) > uint64(^uint32(0)) {
 			return ExecutionResult{}, false
 		}
 	}
@@ -62,11 +63,11 @@ func (p *PhysicalPlan) executeGroupedShards(ctx context.Context, a *mem.Allocato
 	// Count, prefix, then scatter group references so each shard visits only its own keys.
 	offsets := make([]int, shards+1)
 	for _, source := range sources {
-		for row := range source.values {
+		for row := range source.groupCount() {
 			if err := ctx.Err(); err != nil {
 				return ExecutionResult{code: ExecutionCancelled, cause: err}, true
 			}
-			shard := int(maphash.Bytes(seed, source.keys.keys.key(row)) & uint64(shards-1))
+			shard := int(maphash.Bytes(seed, source.encodedKey(row)) & uint64(shards-1))
 			offsets[shard+1]++
 		}
 	}
@@ -75,8 +76,8 @@ func (p *PhysicalPlan) executeGroupedShards(ctx context.Context, a *mem.Allocato
 	}
 	position := append([]int(nil), offsets[:shards]...)
 	for sourceIndex, source := range sources {
-		for row := range source.values {
-			shard := int(maphash.Bytes(seed, source.keys.keys.key(row)) & uint64(shards-1))
+		for row := range source.groupCount() {
+			shard := int(maphash.Bytes(seed, source.encodedKey(row)) & uint64(shards-1))
 			assigned[position[shard]] = uint64(uint32(sourceIndex))<<32 | uint64(uint32(row))
 			position[shard]++
 		}
@@ -143,7 +144,7 @@ func (p *PhysicalPlan) executeGroupedShards(ctx context.Context, a *mem.Allocato
 		if err := ctx.Err(); err != nil {
 			return ExecutionResult{code: ExecutionCancelled, cause: err}, true
 		}
-		if len(state.values) == 0 {
+		if state.groupCount() == 0 {
 			state.release()
 			merged[i] = nil
 			continue

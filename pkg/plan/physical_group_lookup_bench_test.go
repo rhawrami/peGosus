@@ -26,21 +26,29 @@ func BenchmarkLowCardinalityStringGroupLookup(b *testing.B) {
 	defer p.Release()
 	defer table.Release()
 	defer batch.Release()
-	for _, fast := range []bool{true, false} {
-		name := "encoded"
-		if fast {
-			name = "direct"
-		}
-		b.Run(name, func(b *testing.B) {
+	dictionary := store.MakeStringVector(a, [][]byte{[]byte("north"), []byte("south"), []byte("east"), []byte("west"), []byte("ø"), []byte("")}, nil)
+	indices := a.AllocSeg(len(stringsIn) * 4)
+	for row := range stringsIn {
+		indices.AsU32T()[row] = uint32(row % 6)
+	}
+	dictionaryBatch := store.MakeBatch([]store.Vector{store.MakeDictionaryStringVectorFromOwnedSegments(dictionary, len(stringsIn), indices, nil), values.Retain()})
+	defer dictionaryBatch.Release()
+	for _, mode := range []string{"typed", "dictionary", "direct", "encoded"} {
+		b.Run(mode, func(b *testing.B) {
 			b.ReportAllocs()
 			b.SetBytes(int64(len(stringsIn)))
 			b.ResetTimer()
 			for range b.N {
 				g := makeGroupState(p.steps[0], nil)
-				if !fast {
-					g.keys.index.stringKeys = false
+				if mode == "direct" || mode == "encoded" {
+					g.compact = nil
+					g.keys.index.stringKeys = mode == "direct"
 				}
-				if !g.add(a, batch, p.steps[0], math.MaxInt64) || len(g.values) != 6 {
+				input := batch
+				if mode == "dictionary" {
+					input = dictionaryBatch
+				}
+				if !g.add(a, input, p.steps[0], math.MaxInt64) || g.groupCount() != 6 {
 					b.Fatal("incorrect groups")
 				}
 				g.release()

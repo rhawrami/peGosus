@@ -5,6 +5,61 @@ import (
 	"github.com/rhawrami/peGosus/pkg/io/parquet"
 )
 
+func splitParquetScanPredicates(program physicalExprProgram) ([]parquet.ScanPredicate, physicalExprProgram, bool) {
+	if len(program.roots) != 1 {
+		return nil, program, false
+	}
+	var predicates []parquet.ScanPredicate
+	var residual []int
+	var visit func(int)
+	visit = func(at int) {
+		node := program.nodes[at]
+		if node.kind == exprBinary && node.operation == exprOpAnd {
+			visit(node.children[0])
+			visit(node.children[1])
+			return
+		}
+		part := program
+		part.roots = []int{at}
+		if exact, ok := makeParquetScanPredicates(part); ok {
+			predicates = append(predicates, exact...)
+		} else {
+			residual = append(residual, at)
+		}
+	}
+	visit(program.roots[0])
+	if len(predicates) == 0 || len(residual) == 0 {
+		return predicates, program, len(residual) == 0
+	}
+	remaining := physicalExprProgram{outputRoots: program.outputRoots}
+	mapping := make(map[int]int)
+	var copyNode func(int) int
+	copyNode = func(at int) int {
+		if index, exists := mapping[at]; exists {
+			return index
+		}
+		node := program.nodes[at]
+		for i := range int(node.childCount) {
+			node.children[i] = copyNode(node.children[i])
+		}
+		index := len(remaining.nodes)
+		mapping[at] = index
+		remaining.nodes = append(remaining.nodes, node)
+		remaining.materialize = append(remaining.materialize, program.materialize[at])
+		return index
+	}
+	root := copyNode(residual[0])
+	for _, at := range residual[1:] {
+		right := copyNode(at)
+		remaining.nodes = append(remaining.nodes, physicalExprNode{kind: exprBinary, operation: exprOpAnd, dType: dtype.BoolT(), nullable: remaining.nodes[root].nullable || remaining.nodes[right].nullable, children: [3]int{root, right}, childCount: 2})
+		remaining.materialize = append(remaining.materialize, true)
+		root = len(remaining.nodes) - 1
+	}
+	remaining.roots = []int{root}
+	remaining.materialize[root] = true
+	return predicates, remaining, false
+}
+
 func makeParquetScanPredicates(program physicalExprProgram) ([]parquet.ScanPredicate, bool) {
 	if len(program.roots) != 1 {
 		return nil, false

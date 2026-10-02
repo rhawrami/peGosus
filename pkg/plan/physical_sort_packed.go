@@ -102,7 +102,7 @@ func (s *packedSortState) add(a *mem.Allocator, batch *store.Batch, budget int64
 	if uint64(s.batches) >= math.MaxUint32 || uint64(batch.Len()) > math.MaxUint32 {
 		return false
 	}
-	selection := batch.Selection().MakeBitMapTemp(a)
+	selection := batch.Selection().RetainBitMap(a)
 	if batch.Selection() != nil && selection == nil {
 		return false
 	}
@@ -164,7 +164,7 @@ func (s *packedSortState) finish(a *mem.Allocator, step physicalStep) *store.Bat
 				if src.Validity() != nil && !src.Validity().IsSet(row) {
 					continue
 				}
-				strings[i] = borrowedStringBytes(src.Strings()[row].View())
+				strings[i] = borrowedStringBytes(src.StringAt(row).View())
 				if valid != nil {
 					valid[i] = true
 				}

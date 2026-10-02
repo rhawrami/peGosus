@@ -13,7 +13,7 @@ func makeCompactGroupState(step physicalStep) *compactGroupState {
 		return nil
 	}
 	switch step.schema.FieldAt(0).Type().ID() {
-	case dtype.INT32T, dtype.INT64T, dtype.FLOAT32T, dtype.FLOAT64T, dtype.DATET, dtype.TIMESTAMPTZT, dtype.BOOLT:
+	case dtype.INT32T, dtype.INT64T, dtype.FLOAT32T, dtype.FLOAT64T, dtype.DATET, dtype.TIMESTAMPTZT, dtype.BOOLT, dtype.STRT:
 	default:
 		return nil
 	}
@@ -37,6 +37,7 @@ func makeCompactGroupState(step physicalStep) *compactGroupState {
 		}
 	}
 	g := &compactGroupState{keyType: step.schema.FieldAt(0).Type(), aggregateCount: len(step.aggregates), nullIndex: -1}
+	g.strings.index.stringKeys = g.keyType.ID() == dtype.STRT
 	for _, aggregate := range step.aggregates {
 		if aggregate.kind == AggregateSum {
 			g.sumTypes = make([]dtype.TID, len(step.aggregates))
@@ -51,9 +52,10 @@ func makeCompactGroupState(step physicalStep) *compactGroupState {
 	return g
 }
 
-// compactGroupState stores fixed-width group keys and COUNT/SUM accumulators
-// in allocator-backed columns, indexed by a single group-ID map.
+// compactGroupState stores COUNT/SUM accumulators in allocator-backed columns,
+// indexed by numeric or owned string group keys.
 type compactGroupState struct {
+	strings        distinctState
 	dense          *mem.Segment
 	denseBase      int64
 	workBytes      int64
@@ -71,6 +73,7 @@ type compactGroupState struct {
 }
 
 func (g *compactGroupState) release() {
+	g.strings.release()
 	g.index.release()
 	if g.dense != nil {
 		g.dense.Dec()
@@ -92,7 +95,7 @@ func (g *compactGroupState) charged() int64 {
 	if g.sumTypes != nil {
 		width += g.aggregateCount
 	}
-	return int64(g.capacity)*int64(width)*8 + g.index.bytes() + g.auxiliaryBytes()
+	return int64(g.capacity)*int64(width)*8 + g.index.bytes() + g.strings.charged + g.auxiliaryBytes()
 }
 
 func (g *compactGroupState) grow(a *mem.Allocator, budget int64) bool {
@@ -107,7 +110,7 @@ func (g *compactGroupState) grow(a *mem.Allocator, budget int64) bool {
 	if g.sumTypes != nil {
 		width += int64(g.aggregateCount) * 8
 	}
-	if width <= 0 || int64(capacity) > int64(int(^uint(0)>>1))/width || int64(capacity) > (budget-g.index.bytes()-g.auxiliaryBytes())/width-int64(g.capacity) {
+	if width <= 0 || int64(capacity) > int64(int(^uint(0)>>1))/width || int64(capacity) > (budget-g.index.bytes()-g.strings.charged-g.auxiliaryBytes())/width-int64(g.capacity) {
 		return false
 	}
 	newKeys, ok := allocOperatorSegment(a, g.scope, capacity*8)
@@ -170,14 +173,17 @@ func (g *compactGroupState) add(a *mem.Allocator, batch *store.Batch, step physi
 			return false
 		}
 	}
-	selection := batch.Selection().MakeBitMapTemp(a)
+	selection := batch.Selection().RetainBitMap(a)
 	if batch.Selection() != nil && selection == nil {
 		return false
 	}
 	if selection != nil {
 		defer selection.Release()
 	}
-	if batch.Len() >= 64 && g.length <= math.MaxInt32-batch.Len() {
+	if g.keyType.ID() == dtype.STRT && g.length > math.MaxInt32-batch.Len() {
+		return false
+	}
+	if (g.keyType.ID() == dtype.STRT || batch.Len() >= 64) && g.length <= math.MaxInt32-batch.Len() {
 		return g.addTyped(a, batch, step, key, values, selection, budget)
 	}
 	for row := range batch.Len() {
@@ -257,62 +263,88 @@ func (g *compactGroupState) merge(a *mem.Allocator, src *compactGroupState, budg
 			return false
 		}
 	}
+	var stringKey [1]Scalar
 	for row := range src.length {
-		key := src.keys.AsU64T()[row]
-		index := g.nullIndex
-		if row != src.nullIndex {
-			lookup := key
-			switch g.keyType.ID() {
-			case dtype.FLOAT32T:
-				value := math.Float32frombits(uint32(key))
-				if math.IsNaN(float64(value)) {
-					lookup = 0x7fc00000
-				} else if value == 0 {
-					lookup = 0
-				}
-			case dtype.FLOAT64T:
-				value := math.Float64frombits(key)
-				if math.IsNaN(value) {
-					lookup = 0x7ff8000000000000
-				} else if value == 0 {
-					lookup = 0
-				}
-			}
-			index = g.groupIndex(a, lookup, key, false, budget)
-		} else {
-			index = g.groupIndex(a, 0, key, true, budget)
-		}
-		if index < 0 {
-			return false
-		}
-		for i, count := range src.counts.AsI64T()[row*src.aggregateCount : (row+1)*src.aggregateCount] {
-			if g.sums != nil && count != 0 {
-				at := index*g.aggregateCount + i
-				sum := src.sums.AsU64T()[row*src.aggregateCount+i]
-				if g.counts.AsI64T()[at] == 0 {
-					g.sums.AsU64T()[at] = sum
-				} else if g.sumTypes[i] == dtype.FLOAT32T || g.sumTypes[i] == dtype.FLOAT64T {
-					g.sums.AsU64T()[at] = math.Float64bits(math.Float64frombits(g.sums.AsU64T()[at]) + math.Float64frombits(sum))
-				} else {
-					g.sums.AsU64T()[at] += sum
-				}
-			}
-			g.counts.AsI64T()[index*g.aggregateCount+i] += count
-		}
-		if g.charged() > budget {
+		if !g.mergeRow(a, src, budget, row, stringKey[:]) {
 			return false
 		}
 	}
 	return true
 }
 
+func (g *compactGroupState) mergeRow(a *mem.Allocator, src *compactGroupState, budget int64, row int, stringKey []Scalar) bool {
+	index := g.nullIndex
+	key := src.keys.AsU64T()[row]
+	if g.keyType.ID() == dtype.STRT {
+		var ok bool
+		index, ok = g.strings.addEncoded(a, src.strings.keys.key(row), &src.strings.rows, row, stringKey, budget-g.charged()+g.strings.charged)
+		if !ok || !g.prepareStringGroup(a, index, budget) {
+			return false
+		}
+	} else if row != src.nullIndex {
+		lookup := key
+		switch g.keyType.ID() {
+		case dtype.FLOAT32T:
+			value := math.Float32frombits(uint32(key))
+			if math.IsNaN(float64(value)) {
+				lookup = 0x7fc00000
+			} else if value == 0 {
+				lookup = 0
+			}
+		case dtype.FLOAT64T:
+			value := math.Float64frombits(key)
+			if math.IsNaN(value) {
+				lookup = 0x7ff8000000000000
+			} else if value == 0 {
+				lookup = 0
+			}
+		}
+		index = g.groupIndex(a, lookup, key, false, budget)
+	} else {
+		index = g.groupIndex(a, 0, key, true, budget)
+	}
+	if index < 0 {
+		return false
+	}
+	for i, count := range src.counts.AsI64T()[row*src.aggregateCount : (row+1)*src.aggregateCount] {
+		if g.sums != nil && count != 0 {
+			at := index*g.aggregateCount + i
+			sum := src.sums.AsU64T()[row*src.aggregateCount+i]
+			if g.counts.AsI64T()[at] == 0 {
+				g.sums.AsU64T()[at] = sum
+			} else if g.sumTypes[i] == dtype.FLOAT32T || g.sumTypes[i] == dtype.FLOAT64T {
+				g.sums.AsU64T()[at] = math.Float64bits(math.Float64frombits(g.sums.AsU64T()[at]) + math.Float64frombits(sum))
+			} else {
+				g.sums.AsU64T()[at] += sum
+			}
+		}
+		g.counts.AsI64T()[index*g.aggregateCount+i] += count
+	}
+	if g.charged() > budget {
+		return false
+	}
+	return true
+}
+
 func (g *compactGroupState) finish(a *mem.Allocator, step physicalStep) *store.Batch {
 	vectors := make([]store.Vector, 1+g.aggregateCount)
-	vectors[0] = store.MakeVector(a, g.length, g.keyType, step.schema.FieldAt(0).Nullable())
+	if g.keyType.ID() == dtype.STRT {
+		keys := g.strings.rows.makeBatch(a, Schema{valid: true, fields: step.schema.fields[:1]})
+		if keys == nil {
+			return nil
+		}
+		vectors[0] = keys.VectorAt(0).Retain()
+		keys.Release()
+	} else {
+		vectors[0] = store.MakeVector(a, g.length, g.keyType, step.schema.FieldAt(0).Nullable())
+	}
 	if vectors[0].Kind() == store.VectorInvalid {
 		return nil
 	}
 	for i := range g.length {
+		if g.keyType.ID() == dtype.STRT {
+			break
+		}
 		if i == g.nullIndex {
 			vectors[0].Validity().Clear(i)
 			continue

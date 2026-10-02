@@ -40,6 +40,10 @@ func TestParquetScanCompiledPredicates(t *testing.T) {
 		{MakeColumn("txt").Eq("a\x00b").And(MakeColumn("id").Ge(-7)), func(i int) bool { return i%23 != 0 && i%7 == 2 && i%17 != 0 && i*48271%101-50 >= -7 }, []int{}, true},
 		{MakeColumn("id").Add(1).Ge(0), func(i int) bool { return i%17 != 0 && i*48271%101-50+1 >= 0 }, []int{1}, false},
 		{MakeColumn("id").Ge(100), func(int) bool { return false }, []int{}, true},
+		{MakeColumn("txt").Eq("north").And(MakeColumn("id").Add(1).Ge(0)), func(i int) bool { return i%23 != 0 && i%7 == 1 && i%17 != 0 && i*48271%101-50+1 >= 0 }, []int{1}, false},
+		{MakeColumn("txt").Eq("north").And(MakeColumn("id").Cast(dtype.Float64T()).Gt(-23.0)), func(i int) bool { return i%23 != 0 && i%7 == 1 && i%17 != 0 && i*48271%101-50 > -23 }, []int{1}, false},
+		{MakeColumn("txt").Eq("north").And(MakeColumn("id").Add(1).Ge(0)).And(MakeColumn("seq").Add(1).Lt(2048)), func(i int) bool { return i%23 != 0 && i%7 == 1 && i%17 != 0 && i*48271%101-50+1 >= 0 && i+1 < 2048 }, []int{0, 1}, false},
+		{MakeColumn("txt").Eq("north").Or(MakeColumn("id").Add(1).Ge(0)), func(i int) bool { return i%23 != 0 && i%7 == 1 || i%17 != 0 && i*48271%101-50+1 >= 0 }, []int{1, 3}, false},
 	}
 	a := mem.MakeAllocatorWithProfiles([]int{1 << 20}, []int{1 << 20})
 	for _, tc := range cases {

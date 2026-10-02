@@ -74,7 +74,7 @@ func (s *packedKeyStats) observe(a *mem.Allocator, vectors []store.Vector, selec
 	if selection != nil && selection.Len() != length {
 		return false
 	}
-	mask := selection.MakeBitMapTemp(a)
+	mask := selection.RetainBitMap(a)
 	if selection != nil && mask == nil {
 		return false
 	}
@@ -112,7 +112,7 @@ func (s *packedKeyStats) observe(a *mem.Allocator, vectors []store.Vector, selec
 					part.max = value
 				}
 			case dtype.STRT:
-				if n := vector.Strings()[row].Len(); n > part.maxLen {
+				if n := vector.StringAt(row).Len(); n > part.maxLen {
 					part.maxLen = n
 				}
 			case dtype.FLOAT32T, dtype.FLOAT64T, dtype.BOOLT:
@@ -230,7 +230,7 @@ func (l packedKeyLayout) encode(vectors []store.Vector, row int) (uint64, bool) 
 			case dtype.BOOLT:
 				component = uint64(vector.Bools()[row>>3] >> (row & 7) & 1)
 			case dtype.STRT:
-				value := vector.Strings()[row].View()
+				value := vector.StringAt(row).View()
 				if len(value) > part.stats.maxLen {
 					return 0, false
 				}

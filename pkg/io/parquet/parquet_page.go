@@ -12,6 +12,7 @@ import (
 	"github.com/golang/snappy"
 	"github.com/rhawrami/peGosus/pkg/dtype"
 	"github.com/rhawrami/peGosus/pkg/mem"
+	"github.com/rhawrami/peGosus/pkg/store"
 )
 
 type parquetCursor struct {
@@ -27,12 +28,14 @@ type parquetCursor struct {
 	encoding                  int64
 	data                      *mem.Segment
 	decoded                   *mem.Segment
+	reuseDecoded              *mem.Segment
 	levels                    *mem.Segment
 	indices                   *mem.Segment
 	dictionary                *mem.Segment
 	dictOffsets               *mem.Segment
 	dictRaw                   []byte
 	dictCount                 int
+	dictStrings               store.Vector
 	boolValue                 [1]byte
 	values                    []byte
 	valuePos, nonNull         int
@@ -43,7 +46,13 @@ func (c *parquetCursor) failure(code ParquetErrorCode, err error) *ParquetError 
 }
 
 func (c *parquetCursor) clearPage() {
-	for _, seg := range []*mem.Segment{c.data, c.decoded, c.levels, c.indices} {
+	if c.decoded != nil {
+		if c.reuseDecoded != nil {
+			c.reuseDecoded.Dec()
+		}
+		c.reuseDecoded, c.decoded = c.decoded, nil
+	}
+	for _, seg := range []*mem.Segment{c.data, c.levels, c.indices} {
 		if seg != nil {
 			seg.Dec()
 		}
@@ -54,6 +63,11 @@ func (c *parquetCursor) clearPage() {
 
 func (c *parquetCursor) close() {
 	c.clearPage()
+	if c.reuseDecoded != nil {
+		c.reuseDecoded.Dec()
+		c.reuseDecoded = nil
+	}
+	c.dictStrings.Release()
 	if c.dictionary != nil {
 		c.dictionary.Dec()
 		c.dictionary = nil
@@ -272,8 +286,9 @@ func (c *parquetCursor) readPage(ctx context.Context) *ParquetError {
 					return err
 				}
 				c.decoded = decoded
-				c.data = body
-				return c.startPage(kind, header, c.data.AsBytes()[:defs], decoded.AsBytes()[:uncompressed-defs])
+				failure := c.startPage(kind, header, body.AsBytes()[:defs], decoded.AsBytes()[:uncompressed-defs])
+				body.Dec()
+				return failure
 			}
 			if compressed != uncompressed {
 				body.Dec()
@@ -288,6 +303,8 @@ func (c *parquetCursor) readPage(ctx context.Context) *ParquetError {
 			}
 			c.decoded = decoded
 			data = decoded.AsBytes()[:uncompressed]
+			body.Dec()
+			body = nil
 		} else {
 			if compressed != uncompressed {
 				body.Dec()
@@ -298,7 +315,9 @@ func (c *parquetCursor) readPage(ctx context.Context) *ParquetError {
 		if kind == 2 {
 			dict := header.field(7)
 			if dict.kind != 12 || dict.number(2) != 0 || dict.number(1) < 0 || dict.number(1) > int64(c.options.MaxDecodedPageBytes/8) || c.column.typ.ID() != dtype.BOOLT && dict.number(1) > int64(len(data)) || c.column.typ.ID() == dtype.BOOLT && dict.number(1) > int64(len(data))*8 {
-				body.Dec()
+				if body != nil {
+					body.Dec()
+				}
 				c.clearPage()
 				return c.failure(ParquetUnsupported, errors.New("unsupported dictionary page"))
 			}
@@ -311,14 +330,18 @@ func (c *parquetCursor) readPage(ctx context.Context) *ParquetError {
 			} else if c.column.typ.ID() == dtype.STRT {
 				c.dictOffsets = c.a.AllocSegTemp(count * 8)
 				if c.dictOffsets == nil {
-					body.Dec()
+					if body != nil {
+						body.Dec()
+					}
 					c.clearPage()
 					return c.failure(ParquetResourceExhausted, errors.New("dictionary offset allocation failed"))
 				}
 				for i := range count {
 					v, n, ok := parquetPlainValue(data[pos:], c.column.typ.ID())
 					if !ok || !utf8.Valid(v) {
-						body.Dec()
+						if body != nil {
+							body.Dec()
+						}
 						c.clearPage()
 						return c.failure(ParquetInvalid, errors.New("invalid dictionary value"))
 					}
@@ -328,21 +351,27 @@ func (c *parquetCursor) readPage(ctx context.Context) *ParquetError {
 			} else {
 				size := c.column.typ.SlotBits() / 8
 				if count > len(data)/size {
-					body.Dec()
+					if body != nil {
+						body.Dec()
+					}
 					c.clearPage()
 					return c.failure(ParquetInvalid, errors.New("truncated dictionary"))
 				}
 				pos = count * size
 			}
 			if pos != len(data) {
-				body.Dec()
+				if body != nil {
+					body.Dec()
+				}
 				c.clearPage()
 				return c.failure(ParquetInvalid, errors.New("dictionary size mismatch"))
 			}
 			if c.decoded != nil {
 				c.dictionary = c.decoded
 				c.decoded = nil
-				body.Dec()
+				if body != nil {
+					body.Dec()
+				}
 			} else {
 				c.dictionary = body
 			}
@@ -361,7 +390,15 @@ func (c *parquetCursor) decompress(src []byte, n int) (*mem.Segment, *ParquetErr
 	if err != nil || length != n {
 		return nil, c.failure(ParquetInvalid, errors.New("invalid Snappy size"))
 	}
-	seg := c.a.AllocSegTemp(n)
+	seg := c.reuseDecoded
+	c.reuseDecoded = nil
+	if seg != nil && seg.Len() < n {
+		seg.Dec()
+		seg = nil
+	}
+	if seg == nil {
+		seg = c.a.AllocSegTemp(n)
+	}
 	if seg == nil {
 		return nil, c.failure(ParquetResourceExhausted, errors.New("decompression allocation failed"))
 	}

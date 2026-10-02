@@ -1,5 +1,31 @@
 package plan
 
+import "github.com/rhawrami/peGosus/pkg/dtype"
+
+func selectGroupDictionaries(source *scanSource, steps []physicalStep) {
+	if source == nil || source.parquetPath == "" {
+		return
+	}
+	for _, step := range steps {
+		if step.operation == physicalFilter {
+			continue
+		}
+		if step.operation != physicalAggregate || makeCompactGroupState(step) == nil || step.schema.FieldAt(0).Type().ID() != dtype.STRT {
+			return
+		}
+		program := step.groupKeys[0]
+		root := program.nodes[program.roots[0]]
+		if root.kind == exprColumn {
+			column := root.column
+			if source.projection != nil {
+				column = source.projection[column]
+			}
+			source.parquetDictionaries = []int{column}
+		}
+		return
+	}
+}
+
 func foldAggregateProjection(steps []physicalStep) []physicalStep {
 	for at := len(steps) - 1; at > 0; at-- {
 		if steps[at].operation != physicalAggregate || steps[at-1].operation != physicalProject {
@@ -42,14 +68,15 @@ func pruneScanProjection(source *scanSource, steps []physicalStep) {
 		return
 	}
 	if source.parquetPath != "" {
-		for _, step := range steps {
+		for i, step := range steps {
 			if step.operation != physicalFilter {
 				break
 			}
-			predicates, handled := makeParquetScanPredicates(step.program)
+			predicates, residual, handled := splitParquetScanPredicates(step.program)
 			source.parquetFilterHandled = append(source.parquetFilterHandled, handled)
-			if handled {
-				source.parquetPredicates = append(source.parquetPredicates, predicates...)
+			source.parquetPredicates = append(source.parquetPredicates, predicates...)
+			if !handled {
+				steps[i].program = residual
 			}
 		}
 	}

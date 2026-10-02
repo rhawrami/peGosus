@@ -44,6 +44,7 @@ func MakePhysicalPlanFromBound(bound *BoundPlan) (*PhysicalPlan, error) {
 	}
 	steps = foldAggregateProjection(steps)
 	pruneScanProjection(source, steps)
+	selectGroupDictionaries(source, steps)
 	pushScanFilters(source, steps)
 	return &PhysicalPlan{source: source.Retain(), schema: schema, steps: steps}, nil
 }
@@ -138,6 +139,7 @@ func lowerBoundNode(plan *BoundPlan, node *boundLogicalNode) (*scanSource, Schem
 		}
 		rightSteps = foldAggregateProjection(rightSteps)
 		pruneScanProjection(rightSource, rightSteps)
+		selectGroupDictionaries(rightSource, rightSteps)
 		pushScanFilters(rightSource, rightSteps)
 		spec := &physicalJoinSpec{right: &PhysicalPlan{source: rightSource.Retain(), schema: rightSchema, steps: rightSteps}, kind: node.joinKind, leftColumns: schema.Len(), rightColumns: rightSchema.Len()}
 		for i := range node.leftKeys {

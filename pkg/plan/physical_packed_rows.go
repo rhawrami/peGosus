@@ -85,7 +85,7 @@ func (r *packedRows) append(a *mem.Allocator, batch *store.Batch, row int, budge
 			return false
 		}
 		if v.TypeID() == dtype.STRT && (v.Validity() == nil || v.Validity().IsSet(row)) {
-			value := v.Strings()[row].View()
+			value := v.StringAt(row).View()
 			if len(value) > maxInt-additional {
 				return false
 			}

@@ -252,17 +252,25 @@ func executePhysicalFilter(a *mem.Allocator, batch *store.Batch, program physica
 	if predicate.TypeID() != dtype.BOOLT {
 		return false
 	}
-	mask := store.MakeBitMap(a, batch.Len())
+	var mask *store.BitMap
+	if predicate.Data().RefCount() == 1 {
+		predicate.Data().Inc()
+		mask = store.MakeBitMapWithUnknownNiN(batch.Len(), predicate.Data())
+	} else {
+		mask = store.MakeBitMap(a, batch.Len())
+		if mask != nil {
+			copy(mask.Bytes(), predicate.Bools())
+			mask.RecalcNiN()
+		}
+	}
 	if mask == nil {
 		return false
 	}
-	copy(mask.Bytes(), predicate.Bools())
-	mask.RecalcNiN()
 	if predicate.Validity() != nil {
 		mask.ANDInPlaceViN(predicate.Validity())
 	}
 	if batch.Selection() != nil {
-		prior := batch.Selection().MakeBitMapTemp(a)
+		prior := batch.Selection().RetainBitMap(a)
 		if prior == nil {
 			mask.Release()
 			return false
@@ -353,12 +361,10 @@ func (p physicalExprProgram) evaluateCase(a *mem.Allocator, batch *store.Batch, 
 	var result store.Vector
 	var strings [][]byte
 	var stringValidity []bool
-	var stringBacking [2]*mem.Segment
+	var stringBranches [2]store.Vector
 	defer func() {
-		for _, backing := range stringBacking {
-			if backing != nil {
-				backing.Dec()
-			}
+		for i := range stringBranches {
+			stringBranches[i].Release()
 		}
 	}()
 	if node.dType.ID() == dtype.STRT {
@@ -420,7 +426,7 @@ func (p physicalExprProgram) evaluateCase(a *mem.Allocator, batch *store.Batch, 
 						result.Bools()[row>>3] |= 1 << (row & 7)
 					}
 				case dtype.STRT:
-					strings[row] = borrowedStringBytes(src.Strings()[i].View())
+					strings[row] = borrowedStringBytes(src.StringAt(i).View())
 					if stringValidity != nil {
 						stringValidity[row] = true
 					}
@@ -430,25 +436,7 @@ func (p physicalExprProgram) evaluateCase(a *mem.Allocator, batch *store.Batch, 
 			}
 		}
 		if node.dType.ID() == dtype.STRT && ok {
-			length := 0
-			for _, rowIndex := range indices[:count] {
-				length += len(strings[rowIndex])
-			}
-			stringBacking[branch-1] = a.AllocSegTemp(length)
-			if stringBacking[branch-1] == nil {
-				branchValues.release()
-				subset.Release()
-				result.Release()
-				return store.Vector{}
-			}
-			backing := stringBacking[branch-1].AsBytes()
-			on := 0
-			for _, rowIndex := range indices[:count] {
-				row := int(rowIndex)
-				n := copy(backing[on:], strings[row])
-				strings[row] = backing[on : on+n]
-				on += n
-			}
+			stringBranches[branch-1] = branchValues.vectors[node.children[branch]].Retain()
 		}
 		branchValues.release()
 		subset.Release()
@@ -480,7 +468,7 @@ func gatherCaseBatch(a *mem.Allocator, batch *store.Batch, indices []int64) *sto
 				if valid != nil && !src.Validity().IsSet(int(index)) {
 					continue
 				}
-				strings[i] = borrowedStringBytes(src.Strings()[index].View())
+				strings[i] = borrowedStringBytes(src.StringAt(int(index)).View())
 				if valid != nil {
 					valid[i] = true
 				}
@@ -821,12 +809,12 @@ func evaluateBinary(operation exprOp, left, right *store.Vector, leftScalar, rig
 			if leftScalar != nil {
 				l = leftScalar.stringValue()
 			} else {
-				l = left.Strings()[row].View()
+				l = left.StringAt(row).View()
 			}
 			if rightScalar != nil {
 				r = rightScalar.stringValue()
 			} else {
-				r = right.Strings()[row].View()
+				r = right.StringAt(row).View()
 			}
 			match := false
 			if operation == exprOpContains {
@@ -1088,7 +1076,7 @@ func evaluateComparisonLiteral(operation exprOp, src *store.Vector, dst []byte, 
 	case dtype.STRT:
 		clear(dst)
 		for i := range src.Len() {
-			if comparisonMatches(compareStrings(src.Strings()[i].View(), literal.stringValue()), operation) {
+			if comparisonMatches(compareStrings(src.StringAt(i).View(), literal.stringValue()), operation) {
 				dst[i>>3] |= 1 << (i & 7)
 			}
 		}
@@ -1135,7 +1123,7 @@ func evaluateComparisonVectors(operation exprOp, left, right, dst *store.Vector)
 	case dtype.STRT:
 		clear(dst.Bools())
 		for i := range left.Len() {
-			comparison := compareStrings(left.Strings()[i].View(), right.Strings()[i].View())
+			comparison := compareStrings(left.StringAt(i).View(), right.StringAt(i).View())
 			if comparisonMatches(comparison, operation) {
 				dst.Bools()[i>>3] |= 1 << (i & 7)
 			}
@@ -1363,7 +1351,7 @@ func evaluateStringCoalesce(a *mem.Allocator, left, right *store.Vector, general
 		if selected.Validity() != nil && !selected.Validity().IsSet(i) {
 			continue
 		}
-		values[i] = borrowedStringBytes(selected.Strings()[i].View())
+		values[i] = borrowedStringBytes(selected.StringAt(i).View())
 		if valid != nil {
 			valid[i] = true
 		}
@@ -1499,17 +1487,17 @@ func evaluateBetween(operation exprOp, value, lower, upper, dst *store.Vector, b
 				match = x < lo || x > hi
 			}
 		case dtype.STRT:
-			x := value.Strings()[i].View()
+			x := value.StringAt(i).View()
 			var lo, hi string
 			if bounds[0] != nil {
 				lo = bounds[0].stringValue()
 			} else {
-				lo = lower.Strings()[i].View()
+				lo = lower.StringAt(i).View()
 			}
 			if bounds[1] != nil {
 				hi = bounds[1].stringValue()
 			} else {
-				hi = upper.Strings()[i].View()
+				hi = upper.StringAt(i).View()
 			}
 			match = x >= lo && x <= hi
 			if operation == exprOpNotBetween {

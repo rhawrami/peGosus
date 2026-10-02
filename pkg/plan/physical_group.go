@@ -15,6 +15,7 @@ func makeGroupState(step physicalStep, scope *mem.AllocationScope) *groupState {
 	if g.compact != nil {
 		g.compact.scope = scope
 		g.compact.index.scope = scope
+		g.compact.strings.setScope(scope)
 	}
 	return g
 }
@@ -109,7 +110,7 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 			}
 		}
 	}()
-	selection := batch.Selection().MakeBitMapTemp(a)
+	selection := batch.Selection().RetainBitMap(a)
 	if batch.Selection() != nil && selection == nil {
 		return false
 	}
@@ -201,6 +202,9 @@ func (g *groupState) merge(a *mem.Allocator, src *groupState, step physicalStep,
 }
 
 func (g *groupState) mergeRow(a *mem.Allocator, src *groupState, step physicalStep, budget int64, row int, keyValues []Scalar) bool {
+	if g.compact != nil || src.compact != nil {
+		return g.compact != nil && src.compact != nil && g.compact.mergeRow(a, src.compact, budget, row, keyValues)
+	}
 	key := src.keys.keys.key(row)
 	index, ok := g.keys.addEncoded(a, key, &src.keys.rows, row, keyValues, budget-g.charged(len(step.aggregates))+g.keys.charged)
 	if !ok {
@@ -224,6 +228,20 @@ func (g *groupState) mergeRow(a *mem.Allocator, src *groupState, step physicalSt
 		g.stateBytes += int64(after - before)
 	}
 	return g.charged(len(step.aggregates)) <= budget
+}
+
+func (g *groupState) groupCount() int {
+	if g.compact != nil {
+		return g.compact.length
+	}
+	return len(g.values)
+}
+
+func (g *groupState) encodedKey(row int) []byte {
+	if g.compact != nil {
+		return g.compact.strings.keys.key(row)
+	}
+	return g.keys.keys.key(row)
 }
 
 func (g *groupState) finish(a *mem.Allocator, step physicalStep) *store.Batch {

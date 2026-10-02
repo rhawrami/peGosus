@@ -319,7 +319,7 @@ func (s *parquetPredicateState) filterVector(vector *store.Vector, mask *store.B
 		for _, p := range s.predicates {
 			var comparison int
 			if vector.Type().ID() == dtype.STRT {
-				comparison = strings.Compare(vector.Strings()[row].View(), p.Text)
+				comparison = strings.Compare(vector.StringAt(row).View(), p.Text)
 			} else {
 				var value int64
 				switch vector.Type().ID() {

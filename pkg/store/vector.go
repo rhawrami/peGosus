@@ -14,6 +14,7 @@ type VectorKind uint8
 const (
 	VectorInvalid VectorKind = iota
 	VectorFlat
+	VectorDictionaryString
 )
 
 // MakeVector returns a general-storage flat vector.
@@ -70,12 +71,13 @@ func MakeStringVectorTemp(a *mem.Allocator, values [][]byte, valid []bool) Vecto
 // validity mutation require sole ownership because retained vectors share
 // storage.
 type Vector struct {
-	kind     VectorKind
-	dType    dtype.Type
-	length   int
-	data     *mem.Segment
-	validity *BitMap
-	backing  *mem.Segment
+	kind       VectorKind
+	dType      dtype.Type
+	length     int
+	data       *mem.Segment
+	validity   *BitMap
+	backing    *mem.Segment
+	dictionary *Vector
 }
 
 // Kind returns the physical vector representation.
@@ -115,6 +117,10 @@ func (v *Vector) Retain() Vector {
 	v.data.Inc()
 	retained := Vector{kind: v.kind, dType: v.dType, length: v.length, data: v.data}
 	retained.validity = v.validity.Retain()
+	if v.dictionary != nil {
+		dictionary := v.dictionary.Retain()
+		retained.dictionary = &dictionary
+	}
 	if v.backing != nil {
 		v.backing.Inc()
 		retained.backing = v.backing
@@ -133,6 +139,9 @@ func (v *Vector) Release() {
 	}
 	if v.backing != nil {
 		v.backing.Dec()
+	}
+	if v.dictionary != nil {
+		v.dictionary.Release()
 	}
 	*v = Vector{}
 }
@@ -177,11 +186,12 @@ func (v *Vector) Bools() []byte {
 	return v.data.AsBytes()[:(v.length+7)>>3]
 }
 
-// Strings returns the borrowed German-string descriptors. Assigned long-string
+// Strings returns the borrowed flat German-string descriptors, or nil for an
+// encoded vector. StringAt reads either representation. Assigned long-string
 // descriptors must point into Backing; use MakeStringVector to copy arbitrary
 // values safely. Descriptor mutation requires sole vector ownership.
 func (v *Vector) Strings() []dtype.String {
-	if v.dType.ID() != dtype.STRT || v.length == 0 {
+	if v.dType.ID() != dtype.STRT || v.kind != VectorFlat || v.length == 0 {
 		return nil
 	}
 	return unsafe.Slice((*dtype.String)(unsafe.Pointer(unsafe.SliceData(v.data.AsBytes()))), v.length)

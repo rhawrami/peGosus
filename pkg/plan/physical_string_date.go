@@ -76,26 +76,26 @@ func evaluateStringMapping(a *mem.Allocator, node physicalExprNode, nodes []phys
 		if valid != nil {
 			valid[row] = true
 		}
-		x := first.Strings()[row].View()
+		x := first.StringAt(row).View()
 		length := uint64(len(x))
 		switch node.operation {
 		case exprOpConcat:
 			if secondScalar != nil {
 				length += uint64(len(secondScalar.stringValue()))
 			} else {
-				length += uint64(len(second.Strings()[row].View()))
+				length += uint64(len(second.StringAt(row).View()))
 			}
 		case exprOpReplace:
 			var old, replacement string
 			if secondScalar != nil {
 				old = secondScalar.stringValue()
 			} else {
-				old = second.Strings()[row].View()
+				old = second.StringAt(row).View()
 			}
 			if thirdScalar != nil {
 				replacement = thirdScalar.stringValue()
 			} else {
-				replacement = third.Strings()[row].View()
+				replacement = third.StringAt(row).View()
 			}
 			occurrences := uint64(len(x)) + 1
 			if old != "" {
@@ -148,7 +148,7 @@ func evaluateStringMapping(a *mem.Allocator, node physicalExprNode, nodes []phys
 			continue
 		}
 		out := bytes[on : on+length]
-		x := first.Strings()[row].View()
+		x := first.StringAt(row).View()
 		switch node.operation {
 		case exprOpUpper:
 			if length != 0 {
@@ -163,19 +163,19 @@ func evaluateStringMapping(a *mem.Allocator, node physicalExprNode, nodes []phys
 			if secondScalar != nil {
 				copy(out[n:], secondScalar.stringValue())
 			} else {
-				copy(out[n:], second.Strings()[row].View())
+				copy(out[n:], second.StringAt(row).View())
 			}
 		case exprOpReplace:
 			var old, replacement string
 			if secondScalar != nil {
 				old = secondScalar.stringValue()
 			} else {
-				old = second.Strings()[row].View()
+				old = second.StringAt(row).View()
 			}
 			if thirdScalar != nil {
 				replacement = thirdScalar.stringValue()
 			} else {
-				replacement = third.Strings()[row].View()
+				replacement = third.StringAt(row).View()
 			}
 			if old == "" {
 				pos := copy(out, replacement)

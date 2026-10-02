@@ -8,6 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/rhawrami/peGosus/pkg/dtype"
 	"github.com/rhawrami/peGosus/pkg/io/csv"
 	"github.com/rhawrami/peGosus/pkg/io/parquet"
 	"github.com/rhawrami/peGosus/pkg/mem"
@@ -92,7 +93,7 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 	if options.Workers == 0 && p.source.table != nil && aggregateAt < 0 && topNAt < 0 {
 		return ExecutionResult{}, false
 	}
-	sampleGroup := options.Workers == 0 && aggregateAt >= 0 && len(p.steps[aggregateAt].groupKeys) != 0 && makeCompactGroupState(p.steps[aggregateAt]) == nil
+	sampleGroup := options.Workers == 0 && aggregateAt >= 0 && len(p.steps[aggregateAt].groupKeys) != 0 && (makeCompactGroupState(p.steps[aggregateAt]) == nil || p.steps[aggregateAt].schema.FieldAt(0).Type().ID() == dtype.STRT)
 	if sampleGroup && p.source.table == nil {
 		return ExecutionResult{}, false
 	}

@@ -273,5 +273,5 @@ func (c Column) StringAt(row int) (string, bool) {
 	if c.Kind() != String || !c.IsValid(row) {
 		return "", false
 	}
-	return c.vector.Strings()[row].View(), true
+	return c.vector.StringAt(row).View(), true
 }

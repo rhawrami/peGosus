@@ -42,6 +42,7 @@ type scanSource struct {
 	filters              []physicalExprProgram
 	parquetPredicates    []parquet.ScanPredicate
 	parquetFilterHandled []bool
+	parquetDictionaries  []int
 }
 
 var errScanFilter = errors.New("scan predicate evaluation failed")
@@ -196,6 +197,10 @@ func (c *scanCursor) openParquet(a *mem.Allocator) error {
 		}
 	}
 	reader.SetPruningPredicates(makeParquetPruningPredicates(c.source))
+	if len(c.source.parquetDictionaries) != 0 && !reader.SetDictionaryColumns(c.source.parquetDictionaries) {
+		reader.Close()
+		return parquet.MakeParquetError(parquet.ParquetInvalid, errors.New("invalid dictionary scan columns"))
+	}
 	if !reader.SetScanPredicates(c.source.parquetPredicates) {
 		reader.Close()
 		return parquet.MakeParquetError(parquet.ParquetInvalid, errors.New("invalid compiled Parquet predicates"))

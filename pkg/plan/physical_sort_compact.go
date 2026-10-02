@@ -101,7 +101,7 @@ func (s *compactSortState) add(a *mem.Allocator, batch *store.Batch, step physic
 	}
 	defer values.release()
 	key := &values.vectors[step.order[0].program.roots[0]]
-	selection := batch.Selection().MakeBitMapTemp(a)
+	selection := batch.Selection().RetainBitMap(a)
 	if batch.Selection() != nil && selection == nil {
 		return false
 	}

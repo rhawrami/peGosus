@@ -175,7 +175,7 @@ func (s *compactTopNState) add(a *mem.Allocator, batch *store.Batch, step physic
 		}
 		keys[i] = &values[i].vectors[step.order[i].program.roots[0]]
 	}
-	selection := batch.Selection().MakeBitMapTemp(a)
+	selection := batch.Selection().RetainBitMap(a)
 	if batch.Selection() != nil && selection == nil {
 		return false
 	}

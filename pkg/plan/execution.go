@@ -394,7 +394,7 @@ func (p *PhysicalPlan) executeSteps(ctx context.Context, a *mem.Allocator, batch
 			}
 			return ExecutionResult{code: ExecutionCompleted}
 		case physicalDistinct:
-			selection := batch.Selection().MakeBitMapTemp(a)
+			selection := batch.Selection().RetainBitMap(a)
 			if batch.Selection() != nil && selection == nil {
 				return ExecutionResult{code: ExecutionResourceExhausted}
 			}
@@ -441,7 +441,7 @@ func executePhysicalLimit(a *mem.Allocator, batch *store.Batch, remaining, skipp
 	}
 	var existing *store.BitMap
 	if batch.Selection() != nil {
-		existing = batch.Selection().MakeBitMapTemp(a)
+		existing = batch.Selection().RetainBitMap(a)
 		if existing == nil {
 			mask.Release()
 			return false
@@ -476,7 +476,11 @@ func (p *PhysicalPlan) batchReservation(batch *store.Batch) int64 {
 		v := batch.VectorAt(column)
 		perRow = saturatingAdd(perRow, int64((v.Type().SlotBits()+7)/8)+1)
 		if v.TypeID() == dtype.STRT {
-			for _, value := range v.Strings() {
+			strings := v.Strings()
+			if dictionary := v.Dictionary(); dictionary != nil {
+				strings = dictionary.Strings()
+			}
+			for _, value := range strings {
 				if n := int64(len(value.View())); n > maxStringLen {
 					maxStringLen = n
 				}

@@ -159,7 +159,7 @@ func scalarAt(v *store.Vector, row int) Scalar {
 	case dtype.BOOLT:
 		return MakeBoolScalar(v.Bools()[row>>3]&(1<<(row&7)) != 0)
 	case dtype.STRT:
-		return MakeStringScalar(v.Strings()[row].View())
+		return MakeStringScalar(v.StringAt(row).View())
 	}
 	return Scalar{}
 }
@@ -180,7 +180,7 @@ func accumulateAggregates(a *mem.Allocator, batch *store.Batch, step physicalSte
 	}
 	var selection *store.BitMap
 	if needsBitmap {
-		selection = batch.Selection().MakeBitMapTemp(a)
+		selection = batch.Selection().RetainBitMap(a)
 		if batch.Selection() != nil && selection == nil {
 			return false
 		}

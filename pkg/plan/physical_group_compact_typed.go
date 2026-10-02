@@ -167,6 +167,9 @@ func compactIntegerGroupIDs[T ~int32 | ~int64](g *compactGroupState, a *mem.Allo
 
 func (g *compactGroupState) addTyped(a *mem.Allocator, batch *store.Batch, step physicalStep, key *store.Vector, values []physicalExprValues, selection *store.BitMap, budget int64) bool {
 	bytes := int64(batch.Len()) * 4
+	if dictionary := key.Dictionary(); dictionary != nil && dictionary.Len() <= compactDenseLimit && int64(dictionary.Len()) <= max(64, int64(batch.Len())*4) {
+		bytes += int64(dictionary.Len()) * 4
+	}
 	if bytes > budget-g.charged() {
 		return false
 	}
@@ -176,8 +179,10 @@ func (g *compactGroupState) addTyped(a *mem.Allocator, batch *store.Batch, step 
 	}
 	g.workBytes = bytes
 	defer func() { segment.Dec(); g.workBytes = 0 }()
-	ids := segment.AsI32T()
+	ids := segment.AsI32T()[:batch.Len()]
 	switch g.keyType.ID() {
+	case dtype.STRT:
+		ok = g.stringGroupIDs(a, key, selection, ids, segment.AsI32T()[batch.Len():], budget)
 	case dtype.INT32T, dtype.DATET:
 		ok = compactIntegerGroupIDs(g, a, key.I32s(), key.Validity(), selection, ids, budget)
 	case dtype.INT64T, dtype.TIMESTAMPTZT:

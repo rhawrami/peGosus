@@ -106,6 +106,16 @@ func (s *RowSelection) Release() {
 	s.vec = nil
 }
 
+// RetainBitMap returns an independently releasable bitmap view. Bitmap payload
+// is shared and must remain immutable; selection vectors are converted to a new
+// temporary bitmap.
+func (s *RowSelection) RetainBitMap(a *mem.Allocator) *BitMap {
+	if bitmap, ok := s.AsBitMap(); ok {
+		return bitmap.Retain()
+	}
+	return s.MakeBitMapTemp(a)
+}
+
 // MakeBitMapTemp copies the selection into a temporary bitmap.
 func (s *RowSelection) MakeBitMapTemp(a *mem.Allocator) *BitMap {
 	if s == nil || s.vec == nil {
