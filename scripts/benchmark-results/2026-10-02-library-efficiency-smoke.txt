@@ -1,0 +1,426 @@
+Fixture balanced:512: 0.02 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+Fixture balanced:65536: 1.32 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+Fixture balanced:1048576: 21.52 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+Fixture skewed_nulls:65536: 0.92 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+Fixture plain_strings:65536: 2.02 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+
+balanced:512, 1 workers: milliseconds peGosus / DuckDB / Polars
+  filter_count              0.026 / 0.342 / 0.355
+  selective_count           0.021 / 0.314 / 0.229
+  group_sum                 0.032 / 0.510 / 0.258
+  top10                     0.036 / 0.357 / 0.220
+  top50                     0.048 / 0.353 / 0.211
+  top1000                   0.130 / 0.409 / 0.247
+  string_filter_sum         0.031 / 0.388 / 0.284
+  square_sum                0.017 / 0.311 / 0.204
+  group_day_sum             0.037 / 0.578 / 0.250
+  full_sort_numeric         0.047 / 0.462 / 0.240
+  full_sort_string          0.076 / 0.477 / 0.224
+  wide_materialize          0.115 / 0.656 / 0.227
+  preview_limit             0.033 / 0.679 / 0.170
+  range_revenue             0.042 / 0.453 / 0.300
+  multi_group_report        0.176 / 0.608 / 0.293
+  high_card_int_group       0.031 / 0.386 / 0.226
+  high_card_string_group    0.089 / 0.408 / 0.244
+  distinct_strings          0.089 / 0.358 / 0.185
+  count_distinct            0.106 / 0.426 / 0.180
+  string_clean_group        0.154 / 0.662 / 0.330
+  string_key_report         0.118 / 0.664 / 0.366
+  case_coalesce_sum         0.045 / 0.389 / 0.237
+  date_expression_group     0.075 / 0.766 / 0.272
+  empty_filter_sum          0.014 / 0.282 / 0.182
+  selectivity_1             0.060 / 0.407 / 0.251
+  selectivity_50            0.059 / 0.394 / 0.252
+  selectivity_99            0.060 / 0.393 / 0.258
+  join_int_report           0.175 / 0.830 / 0.432
+  join_string_report        0.185 / 0.809 / 0.445
+  join_left_report          0.139 / 0.755 / 0.427
+  join_semi_count           0.138 / 0.587 / 0.343
+  join_anti_count           0.104 / 0.541 / 0.321
+  grouped_self_join         0.115 / 0.753 / 0.282
+  expression_width_8        0.169 / 1.318 / 0.779
+  expression_width_32       0.737 / 5.013 / 2.377
+  expression_width_128      2.359 / 17.983 / 11.321
+  repeated_expression_32    0.038 / 1.080 / 0.769
+
+balanced:512, 4 workers: milliseconds peGosus / DuckDB / Polars
+  filter_count              0.060 / 0.437 / 0.533
+  selective_count           0.047 / 0.319 / 0.289
+  group_sum                 0.078 / 0.746 / 0.367
+  top10                     0.073 / 0.411 / 0.277
+  top50                     0.079 / 0.377 / 0.282
+  top1000                   0.184 / 0.521 / 0.292
+  string_filter_sum         0.035 / 0.429 / 0.331
+  square_sum                0.024 / 0.338 / 0.306
+  group_day_sum             0.040 / 0.610 / 0.336
+  full_sort_numeric         0.048 / 0.473 / 0.276
+  full_sort_string          0.073 / 0.600 / 0.258
+  wide_materialize          0.123 / 0.644 / 0.242
+  preview_limit             0.035 / 0.759 / 0.212
+  range_revenue             0.053 / 0.461 / 0.374
+  multi_group_report        0.201 / 0.865 / 0.383
+  high_card_int_group       0.042 / 0.440 / 0.309
+  high_card_string_group    0.116 / 0.527 / 0.306
+  distinct_strings          0.095 / 0.463 / 0.265
+  count_distinct            0.107 / 0.578 / 0.252
+  string_clean_group        0.162 / 0.759 / 0.408
+  string_key_report         0.122 / 0.810 / 0.494
+  case_coalesce_sum         0.052 / 0.427 / 0.306
+  date_expression_group     0.083 / 0.895 / 0.427
+  empty_filter_sum          0.015 / 0.312 / 0.197
+  selectivity_1             0.046 / 0.426 / 0.305
+  selectivity_50            0.153 / 0.592 / 0.274
+  selectivity_99            0.067 / 0.455 / 0.341
+  join_int_report           0.208 / 0.990 / 0.565
+  join_string_report        0.218 / 0.942 / 0.464
+  join_left_report          0.165 / 0.845 / 0.402
+  join_semi_count           0.127 / 0.722 / 0.314
+  join_anti_count           0.112 / 0.608 / 0.285
+  grouped_self_join         0.108 / 0.867 / 0.332
+  expression_width_8        0.180 / 1.270 / 0.785
+  expression_width_32       0.601 / 5.904 / 2.324
+  expression_width_128      3.047 / 17.964 / 9.565
+  repeated_expression_32    0.049 / 1.101 / 0.752
+
+balanced:65536, 1 workers: milliseconds peGosus / DuckDB / Polars
+  filter_count              0.755 / 0.595 / 0.709
+  selective_count           0.949 / 0.465 / 0.388
+  group_sum                 1.068 / 0.724 / 1.191
+  top10                     2.051 / 1.295 / 1.233
+  top50                     2.069 / 1.290 / 1.008
+  top1000                   2.862 / 1.824 / 1.243
+  string_filter_sum         1.301 / 1.165 / 0.799
+  square_sum                0.856 / 0.847 / 0.630
+  group_day_sum             0.582 / 0.791 / 0.798
+  full_sort_numeric         4.687 / 11.939 / 7.153
+  full_sort_string          8.625 / 18.305 / 6.774
+  wide_materialize          8.993 / 45.748 / 1.544
+  preview_limit             0.901 / 0.969 / 0.534
+  range_revenue             2.330 / 1.054 / 0.575
+  multi_group_report        10.915 / 2.028 / 1.820
+  high_card_int_group       3.314 / 1.848 / 2.108
+  high_card_string_group    8.370 / 3.013 / 2.735
+  distinct_strings          10.641 / 2.043 / 2.211
+  count_distinct            11.431 / 2.267 / 2.020
+  string_clean_group        14.615 / 8.591 / 9.905
+  string_key_report         8.979 / 2.267 / 2.453
+  case_coalesce_sum         2.895 / 1.188 / 0.466
+  date_expression_group     6.270 / 1.685 / 1.975
+  empty_filter_sum          0.009 / 0.283 / 0.176
+  selectivity_1             2.114 / 0.816 / 0.393
+  selectivity_50            2.154 / 1.067 / 0.592
+  selectivity_99            2.286 / 1.309 / 0.745
+  join_int_report           6.434 / 1.516 / 1.523
+  join_string_report        8.288 / 2.424 / 1.741
+  join_left_report          9.013 / 1.982 / 1.795
+  join_semi_count           3.825 / 1.294 / 0.803
+  join_anti_count           3.609 / 1.028 / 0.735
+  grouped_self_join         8.418 / 2.117 / 1.710
+  expression_width_8        16.044 / 8.366 / 2.482
+  expression_width_32       59.350 / 33.585 / 8.368
+  expression_width_128      233.604 / 149.253 / 32.805
+  repeated_expression_32    1.941 / 1.923 / 0.980
+
+balanced:65536, 4 workers: milliseconds peGosus / DuckDB / Polars
+  filter_count              0.937 / 0.806 / 0.796
+  selective_count           0.891 / 0.629 / 0.418
+  group_sum                 1.489 / 0.985 / 1.640
+  top10                     2.046 / 2.067 / 1.467
+  top50                     2.085 / 1.812 / 1.293
+  top1000                   2.866 / 2.270 / 1.323
+  string_filter_sum         1.356 / 1.342 / 0.732
+  square_sum                0.837 / 1.075 / 0.709
+  group_day_sum             0.615 / 0.912 / 0.668
+  full_sort_numeric         4.228 / 12.480 / 3.019
+  full_sort_string          6.595 / 18.085 / 4.154
+  wide_materialize          9.346 / 46.649 / 3.059
+  preview_limit             0.899 / 1.040 / 0.566
+  range_revenue             2.341 / 1.196 / 0.606
+  multi_group_report        11.002 / 2.818 / 2.136
+  high_card_int_group       3.169 / 4.263 / 1.662
+  high_card_string_group    8.451 / 6.788 / 2.676
+  distinct_strings          9.842 / 4.562 / 1.951
+  count_distinct            11.412 / 4.641 / 2.610
+  string_clean_group        14.915 / 9.319 / 4.719
+  string_key_report         9.009 / 2.799 / 2.040
+  case_coalesce_sum         3.014 / 1.278 / 0.635
+  date_expression_group     6.341 / 1.730 / 1.418
+  empty_filter_sum          0.016 / 0.293 / 0.242
+  selectivity_1             2.136 / 0.981 / 0.396
+  selectivity_50            2.152 / 1.073 / 0.565
+  selectivity_99            2.175 / 1.596 / 0.734
+  join_int_report           6.368 / 1.466 / 1.496
+  join_string_report        8.237 / 3.030 / 1.301
+  join_left_report          7.072 / 2.473 / 1.094
+  join_semi_count           3.822 / 1.431 / 0.661
+  join_anti_count           3.558 / 1.099 / 0.571
+  grouped_self_join         8.522 / 2.563 / 1.648
+  expression_width_8        16.136 / 8.727 / 1.521
+  expression_width_32       59.474 / 38.407 / 5.564
+  expression_width_128      233.969 / 147.616 / 18.586
+  repeated_expression_32    1.971 / 2.310 / 1.162
+
+balanced:1048576, 1 workers: milliseconds peGosus / DuckDB / Polars
+  filter_count              12.116 / 3.860 / 3.418
+  selective_count           12.711 / 0.725 / 0.396
+  group_sum                 17.007 / 4.251 / 11.931
+  top10                     32.870 / 15.587 / 16.627
+  top50                     32.834 / 15.317 / 17.744
+  top1000                   33.995 / 16.346 / 18.856
+  string_filter_sum         19.165 / 13.556 / 9.347
+  square_sum                12.589 / 9.326 / 5.215
+  group_day_sum             9.043 / 3.651 / 12.124
+  full_sort_numeric         96.304 / 223.597 / 207.312
+  full_sort_string          281.646 / 356.719 / 229.977
+  wide_materialize          148.374 / 806.456 / 28.286
+  preview_limit             0.913 / 1.551 / 0.494
+  range_revenue             37.903 / 10.905 / 5.129
+  multi_group_report        180.658 / 22.609 / 35.055
+  high_card_int_group       74.707 / 51.710 / 73.617
+  high_card_string_group    167.648 / 74.816 / 119.726
+  distinct_strings          190.382 / 59.207 / 68.832
+  count_distinct            234.559 / 59.593 / 60.393
+  string_clean_group        218.460 / 129.293 / 166.752
+  string_key_report         144.953 / 28.118 / 38.022
+  case_coalesce_sum         46.576 / 14.810 / 5.363
+  date_expression_group     100.951 / 18.848 / 34.510
+  empty_filter_sum          0.013 / 0.492 / 0.228
+  selectivity_1             34.115 / 7.941 / 2.930
+  selectivity_50            34.233 / 12.551 / 6.652
+  selectivity_99            34.925 / 16.367 / 9.830
+  join_int_report           101.059 / 11.153 / 23.911
+  join_string_report        130.734 / 29.028 / 32.032
+  join_left_report          112.114 / 21.672 / 25.536
+  join_semi_count           59.884 / 13.174 / 9.880
+  join_anti_count           55.819 / 9.933 / 7.916
+  grouped_self_join         135.692 / 26.063 / 39.562
+  expression_width_8        261.559 / 128.590 / 39.988
+  expression_width_32       967.976 / 478.107 / 172.898
+  expression_width_128      3731.250 / 2122.785 / 611.001
+  repeated_expression_32    30.886 / 14.003 / 9.319
+
+balanced:1048576, 4 workers: milliseconds peGosus / DuckDB / Polars
+  filter_count              3.326 / 1.512 / 1.415
+  selective_count           3.453 / 0.714 / 0.346
+  group_sum                 4.329 / 1.876 / 8.427
+  top10                     8.559 / 4.567 / 15.256
+  top50                     8.434 / 4.637 / 13.372
+  top1000                   9.998 / 5.254 / 12.645
+  string_filter_sum         5.284 / 3.993 / 2.412
+  square_sum                3.291 / 2.776 / 2.030
+  group_day_sum             2.602 / 1.613 / 4.378
+  full_sort_numeric         82.344 / 177.235 / 56.116
+  full_sort_string          165.910 / 273.689 / 70.362
+  wide_materialize          43.676 / 791.097 / 7.912
+  preview_limit             0.904 / 2.240 / 0.567
+  range_revenue             10.001 / 3.357 / 1.825
+  multi_group_report        46.623 / 8.967 / 19.724
+  high_card_int_group       64.558 / 17.959 / 23.188
+  high_card_string_group    155.089 / 27.007 / 66.373
+  distinct_strings          95.559 / 19.263 / 25.642
+  count_distinct            220.324 / 19.298 / 39.672
+  string_clean_group        59.458 / 37.110 / 47.088
+  string_key_report         40.714 / 9.946 / 16.851
+  case_coalesce_sum         13.238 / 4.062 / 3.778
+  date_expression_group     27.718 / 5.024 / 26.805
+  empty_filter_sum          0.042 / 0.505 / 0.291
+  selectivity_1             9.257 / 2.531 / 1.240
+  selectivity_50            9.685 / 3.553 / 3.268
+  selectivity_99            9.526 / 4.788 / 4.730
+  join_int_report           26.800 / 3.607 / 12.847
+  join_string_report        35.018 / 9.531 / 17.903
+  join_left_report          29.837 / 7.912 / 12.380
+  join_semi_count           16.159 / 4.277 / 6.135
+  join_anti_count           14.775 / 2.866 / 3.805
+  grouped_self_join         57.089 / 7.221 / 24.221
+  expression_width_8        83.051 / 32.421 / 34.720
+  expression_width_32       296.267 / 125.878 / 135.391
+  expression_width_128      1178.209 / 642.134 / 531.249
+  repeated_expression_32    8.451 / 5.699 / 6.191
+
+skewed_nulls:65536, 1 workers: milliseconds peGosus / DuckDB / Polars
+  filter_count              0.697 / 0.530 / 0.969
+  selective_count           0.880 / 0.454 / 0.562
+  group_sum                 0.948 / 1.327 / 0.727
+  top10                     1.668 / 1.059 / 0.781
+  top50                     1.596 / 1.055 / 0.773
+  top1000                   2.430 / 1.538 / 1.323
+  string_filter_sum         1.067 / 0.996 / 0.641
+  square_sum                0.786 / 0.732 / 0.417
+  group_day_sum             0.582 / 0.779 / 0.650
+  full_sort_numeric         3.016 / 7.243 / 5.602
+  full_sort_string          7.530 / 14.457 / 7.316
+  wide_materialize          8.003 / 34.568 / 1.249
+  preview_limit             0.783 / 0.874 / 0.521
+  range_revenue             2.318 / 0.984 / 0.541
+  multi_group_report        11.188 / 1.871 / 1.756
+  high_card_int_group       2.676 / 1.466 / 1.789
+  high_card_string_group    5.940 / 2.234 / 2.181
+  distinct_strings          7.040 / 1.585 / 1.812
+  count_distinct            8.068 / 1.754 / 1.390
+  string_clean_group        12.012 / 7.358 / 8.222
+  string_key_report         8.606 / 2.373 / 2.374
+  case_coalesce_sum         2.861 / 1.238 / 0.447
+  date_expression_group     6.183 / 1.906 / 1.975
+  empty_filter_sum          0.009 / 0.285 / 0.215
+  selectivity_1             2.085 / 0.760 / 0.389
+  selectivity_50            2.122 / 1.150 / 0.573
+  selectivity_99            2.121 / 1.268 / 0.701
+  join_int_report           6.072 / 1.249 / 1.294
+  join_string_report        6.078 / 1.934 / 1.336
+  join_left_report          6.119 / 1.718 / 1.654
+  join_semi_count           3.087 / 1.086 / 0.773
+  join_anti_count           3.219 / 0.912 / 0.768
+  grouped_self_join         6.466 / 1.796 / 1.504
+  expression_width_8        17.250 / 8.500 / 2.211
+  expression_width_32       63.616 / 34.602 / 8.396
+  expression_width_128      250.552 / 140.382 / 33.814
+  repeated_expression_32    1.917 / 1.785 / 1.037
+
+skewed_nulls:65536, 4 workers: milliseconds peGosus / DuckDB / Polars
+  filter_count              0.845 / 0.822 / 0.794
+  selective_count           0.853 / 0.597 / 0.527
+  group_sum                 0.979 / 0.862 / 1.350
+  top10                     1.673 / 2.026 / 0.926
+  top50                     1.618 / 1.154 / 0.986
+  top1000                   2.438 / 1.723 / 0.945
+  string_filter_sum         1.087 / 1.364 / 0.710
+  square_sum                0.799 / 0.885 / 0.477
+  group_day_sum             0.597 / 0.872 / 0.787
+  full_sort_numeric         3.202 / 7.807 / 1.950
+  full_sort_string          6.011 / 14.863 / 3.126
+  wide_materialize          7.502 / 35.425 / 1.325
+  preview_limit             0.788 / 1.038 / 0.523
+  range_revenue             2.325 / 1.034 / 0.646
+  multi_group_report        10.233 / 3.066 / 2.186
+  high_card_int_group       3.018 / 3.103 / 1.231
+  high_card_string_group    6.055 / 5.219 / 2.057
+  distinct_strings          8.068 / 3.202 / 1.465
+  count_distinct            7.814 / 3.828 / 2.194
+  string_clean_group        11.519 / 8.224 / 2.823
+  string_key_report         9.253 / 3.057 / 2.182
+  case_coalesce_sum         2.896 / 1.652 / 0.513
+  date_expression_group     6.286 / 1.659 / 1.311
+  empty_filter_sum          0.016 / 0.298 / 0.231
+  selectivity_1             2.084 / 0.807 / 0.425
+  selectivity_50            2.145 / 1.068 / 0.595
+  selectivity_99            2.142 / 1.266 / 0.729
+  join_int_report           4.687 / 1.376 / 1.137
+  join_string_report        6.029 / 2.308 / 1.030
+  join_left_report          5.981 / 2.062 / 1.250
+  join_semi_count           3.178 / 1.163 / 0.533
+  join_anti_count           3.241 / 0.999 / 0.646
+  grouped_self_join         6.236 / 1.940 / 1.462
+  expression_width_8        18.019 / 10.884 / 1.391
+  expression_width_32       68.103 / 37.632 / 5.244
+  expression_width_128      255.980 / 144.804 / 17.490
+  repeated_expression_32    1.910 / 2.203 / 1.306
+
+plain_strings:65536, 1 workers: milliseconds peGosus / DuckDB / Polars
+  filter_count              0.834 / 0.520 / 0.727
+  selective_count           0.885 / 0.464 / 0.452
+  group_sum                 2.612 / 2.229 / 1.264
+  top10                     2.077 / 1.309 / 1.068
+  top50                     2.066 / 1.297 / 0.987
+  top1000                   2.867 / 1.832 / 1.036
+  string_filter_sum         2.014 / 1.499 / 1.074
+  square_sum                0.786 / 0.850 / 0.470
+  group_day_sum             0.580 / 0.763 / 0.710
+  full_sort_numeric         4.101 / 11.844 / 7.469
+  full_sort_string          20.917 / 30.986 / 7.959
+  wide_materialize          14.524 / 76.620 / 4.647
+  preview_limit             0.787 / 1.025 / 0.514
+  range_revenue             2.324 / 1.108 / 0.601
+  multi_group_report        11.020 / 4.094 / 2.693
+  high_card_int_group       3.242 / 1.856 / 2.026
+  high_card_string_group    11.762 / 4.815 / 3.030
+  distinct_strings          10.440 / 2.799 / 2.595
+  count_distinct            12.543 / 4.379 / 2.856
+  string_clean_group        23.059 / 39.271 / 50.732
+  string_key_report         9.192 / 5.180 / 3.326
+  case_coalesce_sum         2.889 / 1.447 / 0.445
+  date_expression_group     6.197 / 1.723 / 2.439
+  empty_filter_sum          0.015 / 0.277 / 0.193
+  selectivity_1             2.117 / 0.818 / 0.451
+  selectivity_50            2.161 / 1.083 / 0.599
+  selectivity_99            2.166 / 1.358 / 0.736
+  join_int_report           6.463 / 1.410 / 1.632
+  join_string_report        8.518 / 3.933 / 2.188
+  join_left_report          7.094 / 2.021 / 1.714
+  join_semi_count           3.821 / 1.304 / 0.849
+  join_anti_count           3.531 / 1.087 / 0.740
+  grouped_self_join         10.246 / 4.595 / 2.075
+  expression_width_8        21.071 / 8.776 / 5.140
+  expression_width_32       60.359 / 33.755 / 9.398
+  expression_width_128      233.058 / 139.461 / 31.331
+  repeated_expression_32    1.944 / 2.070 / 1.176
+
+plain_strings:65536, 4 workers: milliseconds peGosus / DuckDB / Polars
+  filter_count              0.876 / 1.030 / 0.930
+  selective_count           0.893 / 0.643 / 0.390
+  group_sum                 2.570 / 2.615 / 2.137
+  top10                     2.092 / 1.367 / 1.223
+  top50                     2.080 / 1.536 / 1.345
+  top1000                   3.529 / 2.415 / 1.305
+  string_filter_sum         2.016 / 2.139 / 0.978
+  square_sum                0.897 / 1.264 / 0.593
+  group_day_sum             0.609 / 0.838 / 0.710
+  full_sort_numeric         3.897 / 12.053 / 2.815
+  full_sort_string          12.639 / 33.527 / 6.932
+  wide_materialize          14.290 / 73.117 / 7.275
+  preview_limit             0.809 / 1.455 / 0.585
+  range_revenue             2.351 / 1.085 / 0.531
+  multi_group_report        11.229 / 4.533 / 2.523
+  high_card_int_group       3.189 / 3.628 / 1.547
+  high_card_string_group    11.809 / 6.495 / 4.470
+  distinct_strings          10.387 / 5.546 / 2.050
+  count_distinct            12.599 / 6.710 / 3.399
+  string_clean_group        23.741 / 44.376 / 16.042
+  string_key_report         9.477 / 5.393 / 3.061
+  case_coalesce_sum         2.897 / 1.257 / 0.532
+  date_expression_group     6.152 / 1.987 / 1.589
+  empty_filter_sum          0.018 / 0.300 / 0.192
+  selectivity_1             2.410 / 0.896 / 0.401
+  selectivity_50            2.157 / 1.303 / 0.538
+  selectivity_99            2.176 / 1.402 / 0.614
+  join_int_report           6.390 / 1.456 / 1.485
+  join_string_report        8.530 / 4.198 / 1.867
+  join_left_report          6.993 / 2.539 / 1.417
+  join_semi_count           3.825 / 1.363 / 0.577
+  join_anti_count           3.584 / 1.148 / 0.531
+  grouped_self_join         10.178 / 5.459 / 2.148
+  expression_width_8        16.458 / 11.214 / 1.666
+  expression_width_32       60.266 / 32.702 / 4.981
+  expression_width_128      233.707 / 140.822 / 17.003
+  repeated_expression_32    1.969 / 2.349 / 1.061
+Validation: 0 mismatches; 0 query failures; 30 worker records

@@ -144,7 +144,7 @@ func TestPhysicalJoinFanoutBudgetAndCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := physical.ExecuteWithOptions(context.Background(), a, ExecutionOptions{MemoryBudget: 2500}, func(*store.Batch) bool { t.Fatal("over-budget join reached sink"); return true })
+	result := physical.ExecuteWithOptions(context.Background(), a, ExecutionOptions{MemoryBudget: 512}, func(*store.Batch) bool { t.Fatal("over-budget join reached sink"); return true })
 	if result.Code() != ExecutionResourceExhausted {
 		t.Fatalf("fanout budget result: %v", result.Code())
 	}

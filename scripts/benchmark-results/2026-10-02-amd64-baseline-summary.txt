@@ -1,0 +1,134 @@
+peGosus Linux amd64 baseline — October 2, 2026
+AMD Ryzen 7 7700X (8 cores / 16 threads), Fedora 44, 30 GiB RAM
+Go 1.27.1, DuckDB 1.5.6, Polars 1.34.0; native AVX2 dispatch
+CGO_ENABLED=0, GOAMD64=v1, GOEXPERIMENT unset; powersave governor / adaptive boost
+Package commit: 9ee0f747808eeb2aae6d3df092ced1c93a0bf0da
+Two rounds, two warmups and five timed samples per round; pooled medians below.
+Prepare/fixture generation/fingerprinting excluded; output release measured separately.
+Worker/engine order reversed in round two. Warm filesystem cache.
+No correctness suites or other benchmark runs overlapped this matrix.
+
+2026-10-02-amd64-baseline-workloads.json: 60 worker records, 2220 query observations, 11100 timed samples, 0 failures, 0 mismatches.
+2026-10-02-amd64-baseline-table.json: 12 worker records, 84 query observations, 420 timed samples, 0 failures, 0 mismatches.
+
+1,048,576 balanced rows / parquet / 1 workers — median milliseconds
+Query                            peGosus      DuckDB      Polars
+filter_count                      11.921       3.358       3.127
+selective_count                   12.822       0.681       0.359
+group_sum                         16.282       3.908      10.772
+top10                             32.852      15.065      16.644
+top50                             32.631      15.181      16.910
+top1000                           33.949      16.157      16.857
+string_filter_sum                 19.095      12.997       7.356
+square_sum                        12.574       9.030       5.241
+group_day_sum                      9.288       3.621       8.991
+full_sort_numeric                103.119     215.634     191.132
+full_sort_string                 635.264     347.082     207.194
+wide_materialize                 152.320     794.609      23.945
+preview_limit                      0.892       1.321       0.401
+range_revenue                     37.285      10.821       5.058
+multi_group_report               177.506      22.834      33.301
+high_card_int_group               60.664      48.585      57.261
+high_card_string_group           161.777      71.002     104.412
+distinct_strings                 178.155      51.984      59.858
+count_distinct                   217.296      53.686      51.370
+string_clean_group               203.982     128.848     163.040
+string_key_report                145.956      27.542      36.584
+case_coalesce_sum                 46.219      13.756       5.447
+date_expression_group            100.187      16.377      34.807
+empty_filter_sum                   0.011       0.476       0.177
+selectivity_1                     33.797       7.772       2.897
+selectivity_50                    34.675      12.058       6.431
+selectivity_99                    35.039      15.929       9.172
+join_int_report                  171.117      10.736      23.680
+join_string_report               223.063      27.470      29.696
+join_left_report                 197.435      20.922      24.696
+join_semi_count                  120.248      12.458       9.341
+join_anti_count                  106.130       8.547       7.515
+grouped_self_join                238.515      24.501      39.726
+expression_width_8               260.835     120.343      38.306
+expression_width_32              948.268     459.984     142.937
+expression_width_128            3689.763    1938.088     562.550
+repeated_expression_32            30.983      13.984       9.100
+
+1,048,576 balanced rows / parquet / 4 workers — median milliseconds
+Query                            peGosus      DuckDB      Polars
+filter_count                       3.231       1.282       1.108
+selective_count                    3.383       0.672       0.318
+group_sum                          4.538       1.656       6.308
+top10                              8.494       4.423      12.424
+top50                              8.657       4.593      12.494
+top1000                            9.892       5.329      12.428
+string_filter_sum                  5.100       3.848       2.343
+square_sum                         3.272       2.742       1.821
+group_day_sum                      2.518       1.750       3.365
+full_sort_numeric                 95.974     173.931      54.482
+full_sort_string                 637.847     265.166      68.229
+wide_materialize                  44.952     792.752       8.417
+preview_limit                      0.890       1.307       0.532
+range_revenue                     10.061       3.367       1.809
+multi_group_report                45.785       9.116      18.150
+high_card_int_group               61.957      17.652      23.001
+high_card_string_group           169.166      25.934      60.056
+distinct_strings                 174.376      18.427      25.023
+count_distinct                   211.953      19.199      37.170
+string_clean_group                52.592      36.559      47.216
+string_key_report                 37.849       9.610      15.362
+case_coalesce_sum                 12.230       4.019       3.493
+date_expression_group             27.880       5.048      16.509
+empty_filter_sum                   0.013       0.492       0.207
+selectivity_1                      9.345       2.522       1.083
+selectivity_50                     9.277       3.637       2.483
+selectivity_99                     9.447       4.770       4.131
+join_int_report                  171.377       3.670      12.753
+join_string_report               220.140       9.709      16.181
+join_left_report                 195.857       7.896      12.587
+join_semi_count                  120.057       3.936       5.840
+join_anti_count                  105.950       2.871       3.812
+grouped_self_join                239.868       7.484      22.678
+expression_width_8                84.353      32.803      34.095
+expression_width_32              326.357     128.033     131.788
+expression_width_128            1313.630     622.422     522.264
+repeated_expression_32             8.439       4.870       5.764
+
+1,048,576 balanced rows / table / 1 workers — median milliseconds
+Query                            peGosus      DuckDB      Polars
+group_sum                         20.920       8.091       7.746
+top50                             24.709       9.381      11.789
+full_sort_numeric                 87.562     209.513     180.813
+full_sort_string                 592.402     327.404     192.070
+wide_materialize                   5.107     770.380       0.011
+repeated_expression_32             5.204       8.216       4.794
+expression_width_128            3775.245    1736.154     560.603
+
+1,048,576 balanced rows / table / 4 workers — median milliseconds
+Query                            peGosus      DuckDB      Polars
+group_sum                          5.328       4.945       4.704
+top50                              6.471       3.339      11.929
+full_sort_numeric                 89.414     173.506      53.938
+full_sort_string                 615.354     239.158      69.146
+wide_materialize                   1.494     773.091       0.012
+repeated_expression_32             1.474       3.338       4.120
+expression_width_128            1063.360     661.744     534.339
+
+peGosus parallel scaling on million-row Parquet: one-worker median / four-worker median
+group_sum                    3.59x
+top50                        3.77x
+full_sort_numeric            1.07x
+full_sort_string             1.00x
+wide_materialize             3.39x
+repeated_expression_32       3.67x
+expression_width_128         2.81x
+
+Interpretation limits:
+- Desktop Fedora environment with powersave governor and adaptive CPU boost; no fixed clocks or CPU isolation.
+- Warm-cache synthetic workloads; not official ClickBench/TPC scores.
+- Large DuckDB outputs include Python row conversion; Polars shares column buffers.
+- No Linux process-footprint measurements; macOS libproc harness unavailable.
+- Existing historical ARM64 reports use a different machine and are not paired regressions.
+- Floating values use dyadic arithmetic for exact cross-engine fingerprints; this is not NaN/Inf performance coverage.
+- Full sort and generic joins/distinct remain serial; worker counts are caps rather than a promise that every operator parallelizes.
+- Individual sample ranges and per-round medians are preserved in summary.json; this is a first desktop baseline, not a controlled bare-metal ranking.
+
+Full five-fixture timing matrix and fingerprints: workloads.json.
+Retained-table timings: table.json. Build/machine details and reproduction commands: machine.json.

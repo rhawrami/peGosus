@@ -1,0 +1,29 @@
+File: peg-workloads
+Build ID: 2349d0096d4fbb16ca971fc3277ad6aab9add579
+Type: cpu
+Time: 2026-10-02 19:07:52 CDT
+Duration: 2.56s, Total samples = 2.56s (99.84%)
+Showing nodes accounting for 2.51s, 98.05% of 2.56s total
+Dropped 6 nodes (cum <= 0.01s)
+Showing top 20 nodes out of 42
+      flat  flat%   sum%        cum   cum%
+     0.92s 35.94% 35.94%      1.29s 50.39%  github.com/rhawrami/peGosus/pkg/plan.(*compactSortState).sortStrings
+     0.22s  8.59% 44.53%      2.08s 81.25%  github.com/rhawrami/peGosus/pkg/plan.(*compactSortState).finish
+     0.21s  8.20% 52.73%      0.57s 22.27%  github.com/rhawrami/peGosus/pkg/plan.(*compactSortState).gather
+     0.21s  8.20% 60.94%      0.21s  8.20%  runtime.memmove
+     0.17s  6.64% 67.58%      0.17s  6.64%  github.com/rhawrami/peGosus/pkg/dtype.(*String).View (inline)
+     0.15s  5.86% 73.44%      0.17s  6.64%  github.com/rhawrami/peGosus/pkg/store.(*BitMap).IsSet (inline)
+     0.13s  5.08% 78.52%      0.13s  5.08%  cmpbody
+     0.12s  4.69% 83.20%      0.23s  8.98%  github.com/rhawrami/peGosus/pkg/io/parquet.makeParquetStringVector
+     0.10s  3.91% 87.11%      0.12s  4.69%  github.com/rhawrami/peGosus/pkg/plan.encodeNumericOrderKey
+     0.05s  1.95% 89.06%      0.05s  1.95%  github.com/rhawrami/peGosus/pkg/plan.(*compactSortState).cancelled (inline)
+     0.04s  1.56% 90.62%      0.04s  1.56%  github.com/golang/snappy.decode
+     0.04s  1.56% 92.19%      0.22s  8.59%  github.com/rhawrami/peGosus/pkg/plan.(*compactSortState).add
+     0.03s  1.17% 93.36%      0.03s  1.17%  encoding/binary.bigEndian.Uint64 (inline)
+     0.03s  1.17% 94.53%      0.03s  1.17%  github.com/rhawrami/peGosus/pkg/io/parquet.decodeParquetRuns
+     0.02s  0.78% 95.31%      0.02s  0.78%  github.com/rhawrami/peGosus/pkg/plan.(*PhysicalPlan).batchReservation
+     0.02s  0.78% 96.09%      0.08s  3.12%  github.com/rhawrami/peGosus/pkg/store.(*Vector).StringAt
+     0.02s  0.78% 96.88%      0.02s  0.78%  unicode/utf8.Valid
+     0.01s  0.39% 97.27%      0.11s  4.30%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).next
+     0.01s  0.39% 97.66%      0.04s  1.56%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).startPage
+     0.01s  0.39% 98.05%      0.25s  9.77%  github.com/rhawrami/peGosus/pkg/plan.(*compactSortState).sortStrings.func1 (inline)

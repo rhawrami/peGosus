@@ -1,0 +1,29 @@
+File: peg-workloads
+Build ID: 33cf203d562211e12395de7ef3b8d65e05fab38d
+Type: cpu
+Time: 2026-10-02 18:42:49 CDT
+Duration: 6.81s, Total samples = 6.80s (99.80%)
+Showing nodes accounting for 6.56s, 96.47% of 6.80s total
+Dropped 37 nodes (cum <= 0.03s)
+Showing top 20 nodes out of 32
+      flat  flat%   sum%        cum   cum%
+     2.17s 31.91% 31.91%      6.32s 92.94%  github.com/rhawrami/peGosus/pkg/plan.(*compactSortState).finish
+     1.77s 26.03% 57.94%      1.77s 26.03%  cmpbody
+     0.55s  8.09% 66.03%      0.84s 12.35%  github.com/rhawrami/peGosus/pkg/store.(*BitMap).IsSet (inline)
+     0.54s  7.94% 73.97%      3.45s 50.74%  github.com/rhawrami/peGosus/pkg/plan.(*compactSortState).finish.func1 (inline)
+     0.27s  3.97% 77.94%      0.27s  3.97%  github.com/rhawrami/peGosus/pkg/mem.asBT (inline)
+     0.27s  3.97% 81.91%      0.27s  3.97%  runtime.memmove
+     0.20s  2.94% 84.85%      0.20s  2.94%  github.com/rhawrami/peGosus/pkg/dtype.(*String).View (inline)
+     0.18s  2.65% 87.50%      0.67s  9.85%  github.com/rhawrami/peGosus/pkg/plan.(*compactSortState).gather
+     0.18s  2.65% 90.15%      0.71s 10.44%  github.com/rhawrami/peGosus/pkg/store.(*Vector).StringAt
+     0.13s  1.91% 92.06%      0.27s  3.97%  github.com/rhawrami/peGosus/pkg/io/parquet.makeParquetStringVector
+     0.08s  1.18% 93.24%      0.29s  4.26%  github.com/rhawrami/peGosus/pkg/store.(*BitMap).bytes (inline)
+     0.06s  0.88% 94.12%      0.20s  2.94%  github.com/rhawrami/peGosus/pkg/plan.(*compactSortState).add
+     0.06s  0.88% 95.00%      0.11s  1.62%  github.com/rhawrami/peGosus/pkg/plan.encodeNumericOrderKey
+     0.05s  0.74% 95.74%      0.05s  0.74%  github.com/golang/snappy.decode
+     0.03s  0.44% 96.18%      0.30s  4.41%  github.com/rhawrami/peGosus/pkg/mem.(*Segment).AsBytes (inline)
+     0.02s  0.29% 96.47%      0.14s  2.06%  github.com/rhawrami/peGosus/pkg/store.(*Vector).Strings (inline)
+         0     0% 96.47%      0.05s  0.74%  github.com/golang/snappy.Decode
+         0     0% 96.47%      0.27s  3.97%  github.com/rhawrami/peGosus/pkg/io/parquet.(*ParquetReader).Next
+         0     0% 96.47%      0.27s  3.97%  github.com/rhawrami/peGosus/pkg/io/parquet.(*ParquetReader).next
+         0     0% 96.47%      0.08s  1.18%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).advancePage

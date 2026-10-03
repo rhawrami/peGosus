@@ -52,10 +52,15 @@ func scanExecutionError(err error, scope *mem.AllocationScope) ExecutionResult {
 }
 
 func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, options ExecutionOptions, sink func(*store.Batch) bool) (ExecutionResult, bool) {
+	return p.executeParallelWithScope(ctx, a, options, sink, nil)
+}
+
+func (p *PhysicalPlan) executeParallelWithScope(ctx context.Context, a *mem.Allocator, options ExecutionOptions, sink func(*store.Batch) bool, scope *mem.AllocationScope) (ExecutionResult, bool) {
 	if p.source.table == nil && p.source.parquetPath == "" {
 		return ExecutionResult{}, false
 	}
 	aggregateAt := -1
+	joinAt := -1
 	topNAt := -1
 	for i, step := range p.steps {
 		switch step.operation {
@@ -63,6 +68,11 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 			if aggregateAt >= 0 || topNAt >= 0 {
 				return ExecutionResult{}, false
 			}
+		case physicalJoin:
+			if joinAt >= 0 || aggregateAt >= 0 || topNAt >= 0 {
+				return ExecutionResult{}, false
+			}
+			joinAt = i
 		case physicalAggregate:
 			if aggregateAt >= 0 || topNAt >= 0 {
 				return ExecutionResult{}, false
@@ -75,6 +85,9 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 			aggregateAt = i
 		case physicalSort:
 			if aggregateAt < 0 {
+				if joinAt >= 0 {
+					return ExecutionResult{}, false
+				}
 				if topNAt >= 0 || i+2 != len(p.steps) || p.steps[i+1].operation != physicalLimit || makeCompactTopNState(step) == nil {
 					return ExecutionResult{}, false
 				}
@@ -90,7 +103,7 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 			return ExecutionResult{}, false
 		}
 	}
-	if options.Workers == 0 && p.source.table != nil && aggregateAt < 0 && topNAt < 0 {
+	if options.Workers == 0 && p.source.table != nil && aggregateAt < 0 && topNAt < 0 && joinAt < 0 {
 		return ExecutionResult{}, false
 	}
 	sampleGroup := options.Workers == 0 && aggregateAt >= 0 && len(p.steps[aggregateAt].groupKeys) != 0 && (makeCompactGroupState(p.steps[aggregateAt]) == nil || p.steps[aggregateAt].schema.FieldAt(0).Type().ID() == dtype.STRT)
@@ -113,9 +126,13 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 			return ExecutionResult{}, false
 		}
 	}
-	scope := mem.MakeAllocationScope(a, options.MemoryBudget)
+	if scope == nil {
+		scope = mem.MakeAllocationScope(a, options.MemoryBudget)
+	}
 	scoped := mem.MakeAllocatorWithScope(a, scope)
+	runtimeFilter, _ := makeTopNRuntimeFilter(p.source, p.steps)
 	var cursor scanCursor
+	cursor.runtime = runtimeFilter
 	var tasks int
 	var nonemptyTasks int
 	var totalRows int64
@@ -182,6 +199,49 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 		}
 	}
 
+	var buildJoin *joinState
+	workerJoins := make([]*joinState, workers)
+	if joinAt >= 0 {
+		buildJoin = &joinState{scope: scope}
+		buildJoin.keys.setScope(scope)
+		defer buildJoin.release()
+		if result := buildJoin.build(ctx, scoped, p.steps[joinAt].join, options.MemoryBudget); result.code != ExecutionCompleted {
+			return result, true
+		}
+		filter, err := makeJoinRuntimeFilter(ctx, p.source, p.steps, joinAt, buildJoin)
+		if err != nil {
+			return ExecutionResult{code: ExecutionCancelled, cause: err}, true
+		}
+		cursor.runtime = filter
+		if cursor.parquet != nil {
+			cursor.parquet.SetRuntimePruningFilter(filter)
+		}
+		for worker := range workers {
+			local := *buildJoin
+			if buildJoin.matched != nil {
+				local.matched = scoped.AllocSeg(buildJoin.matched.Len())
+				if local.matched == nil {
+					for _, prior := range workerJoins {
+						if prior != nil && prior.matched != nil {
+							prior.matched.Dec()
+						}
+					}
+					return ExecutionResult{code: ExecutionResourceExhausted}, true
+				}
+				clear(local.matched.AsBytes())
+				local.charged = saturatingAdd(local.charged, int64(local.matched.Len()))
+			}
+			workerJoins[worker] = &local
+		}
+		buildMatched := buildJoin.matched != nil
+		defer func() {
+			if buildMatched {
+				for _, local := range workerJoins {
+					local.matched.Dec()
+				}
+			}
+		}()
+	}
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	var next atomic.Int64
@@ -254,6 +314,10 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 				sorts = make([]*sortState, len(p.steps))
 				sorts[topNAt] = workerSorts[worker]
 			}
+			if joinAt >= 0 {
+				joins = make([]*joinState, len(p.steps))
+				joins[joinAt] = workerJoins[worker]
+			}
 			consume := func(batch *store.Batch) bool {
 				if err := ctx.Err(); err != nil {
 					batch.Release()
@@ -287,6 +351,9 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 				}
 				if outcome.code == ExecutionStopped && ctx.Err() != nil {
 					outcome = ExecutionResult{code: ExecutionCancelled, cause: ctx.Err()}
+				}
+				if topNAt >= 0 {
+					publishTopNRuntimeFilter(cursor.runtime, workerSorts[worker].top, p.steps[topNAt])
 				}
 				record(outcome)
 				return outcome.code == ExecutionCompleted
@@ -348,12 +415,50 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 	if err := ctx.Err(); err != nil {
 		return ExecutionResult{code: ExecutionCancelled, cause: err}, true
 	}
+	if joinAt >= 0 && buildJoin.matched != nil {
+		for _, local := range workerJoins {
+			for row := range buildJoin.length {
+				if row&65535 == 0 {
+					if err := ctx.Err(); err != nil {
+						return ExecutionResult{code: ExecutionCancelled, cause: err}, true
+					}
+				}
+				buildJoin.matched.AsBytes()[row] |= local.matched.AsBytes()[row]
+			}
+		}
+		var aggregates [][]aggregateValue
+		var groups []*groupState
+		if aggregateAt >= 0 {
+			aggregates = make([][]aggregateValue, len(p.steps))
+			aggregates[aggregateAt] = workerStates[0]
+			groups = make([]*groupState, len(p.steps))
+			groups[aggregateAt] = workerGroups[0]
+		}
+		uniques := make([][]*distinctState, len(p.steps))
+		distinct := make([]*distinctState, len(p.steps))
+		sorts := make([]*sortState, len(p.steps))
+		joins := make([]*joinState, len(p.steps))
+		joins[joinAt] = buildJoin
+		outcome := buildJoin.finish(ctx, scoped, p.steps[joinAt], options.MemoryBudget, func(batch *store.Batch) ExecutionResult {
+			return p.executeSteps(ctx, scoped, batch, joinAt+1, nil, nil, aggregates, uniques, distinct, sorts, groups, joins, options.MemoryBudget, sink)
+		})
+		if outcome.code != ExecutionCompleted {
+			return outcome, true
+		}
+	}
 	if topNAt >= 0 {
 		return p.finishParallelTopN(ctx, scoped, scope, workerSorts, topNAt, options.MemoryBudget, sink), true
 	}
 	if aggregateAt >= 0 {
 		step := p.steps[aggregateAt]
+		if buildJoin != nil {
+			buildJoin.release()
+			buildJoin = nil
+		}
 		tail := makeParallelAggregateTail(ctx, scoped, scope, p.steps, aggregateAt, options.MemoryBudget, sink)
+		if tail.sorter != nil && tail.sorter.compact != nil {
+			tail.sorter.compact.workers = workers
+		}
 		defer tail.release()
 		if len(step.groupKeys) != 0 {
 			if result, partitioned := p.executeGroupedShards(ctx, scoped, scope, step, workerGroups, options.MemoryBudget, totalRows, tail.consume); partitioned {
@@ -402,10 +507,7 @@ func (p *PhysicalPlan) executeParallel(ctx context.Context, a *mem.Allocator, op
 				return tail.finish(), true
 			}
 			defer merged.release()
-			length := len(merged.values)
-			if merged.compact != nil {
-				length = merged.compact.length
-			}
+			length := merged.groupCount()
 			if length == 0 {
 				return tail.finish(), true
 			}

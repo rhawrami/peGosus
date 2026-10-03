@@ -1,0 +1,48 @@
+Portable string-prefix sorting: paired measurements, October 2, 2026
+AMD Ryzen 7 7700X, Go 1.27.1, CGO_ENABLED=0, GOAMD64=v1, normal build
+2 rounds, 2 warmups, 5 samples/round; worker/variant order reversed
+48 records; 288 query observations; 1440 timed samples; zero failures/mismatches
+All outputs match previous three-engine fingerprints; live allocator bytes zero
+
+String sort: pooled median milliseconds (before -> after, speedup):
+parquet balanced:512            w=1     0.109 ->     0.077 (1.42x); round medians [0.120231, 0.10012] -> [0.08273, 0.07045]
+parquet balanced:512            w=4     0.123 ->     0.077 (1.60x); round medians [0.119171, 0.12944] -> [0.079541, 0.07231]
+parquet balanced:65536          w=1    19.485 ->     8.908 (2.19x); round medians [20.599911, 18.31599] -> [9.365786, 8.11597]
+parquet balanced:65536          w=4    17.985 ->     8.190 (2.20x); round medians [17.972228, 18.009528] -> [8.523002, 8.056349]
+parquet balanced:1048576        w=1   621.492 ->   251.625 (2.47x); round medians [619.089324, 622.568532] -> [247.207295, 256.05791]
+parquet balanced:1048576        w=4   642.612 ->   239.820 (2.68x); round medians [670.880469, 629.632216] -> [251.411536, 239.220807]
+parquet skewed_nulls:65536      w=1    13.848 ->     6.738 (2.06x); round medians [13.828288, 13.868669] -> [6.738963, 6.736963]
+parquet skewed_nulls:65536      w=4    13.815 ->     6.827 (2.02x); round medians [13.755737, 14.171259] -> [6.771243, 6.860214]
+parquet plain_strings:65536     w=1    19.656 ->    19.226 (1.02x); round medians [19.639717, 19.735297] -> [19.019923, 19.381755]
+parquet plain_strings:65536     w=4    19.870 ->    19.398 (1.02x); round medians [20.004588, 19.771358] -> [19.796578, 19.158524]
+table   balanced:1048576        w=1   559.075 ->   240.692 (2.32x); round medians [555.1108, 560.737087] -> [202.535776, 258.949413]
+table   balanced:1048576        w=4   605.026 ->   207.431 (2.92x); round medians [617.670357, 598.269982] -> [197.038559, 211.365639]
+
+Million-row controls (before -> after, ms):
+parquet w=1 full_sort_numeric           94.531 ->    92.539 (1.02x)
+parquet w=1 group_sum                   16.401 ->    16.438 (1.00x)
+parquet w=1 top50                       32.294 ->    32.377 (1.00x)
+parquet w=1 wide_materialize           152.939 ->   154.060 (0.99x)
+parquet w=1 repeated_expression_32      31.049 ->    31.013 (1.00x)
+parquet w=4 full_sort_numeric           92.944 ->    92.280 (1.01x)
+parquet w=4 group_sum                    4.443 ->     4.723 (0.94x)
+parquet w=4 top50                        8.777 ->     8.706 (1.01x)
+parquet w=4 wide_materialize            62.352 ->    65.326 (0.95x)
+parquet w=4 repeated_expression_32       8.260 ->     8.575 (0.96x)
+table   w=1 full_sort_numeric           89.021 ->    83.640 (1.06x)
+table   w=1 group_sum                   20.653 ->    20.712 (1.00x)
+table   w=1 top50                       24.678 ->    24.511 (1.01x)
+table   w=1 wide_materialize             5.396 ->     5.352 (1.01x)
+table   w=1 repeated_expression_32       4.956 ->     4.747 (1.04x)
+table   w=4 full_sort_numeric           87.546 ->    87.937 (1.00x)
+table   w=4 group_sum                    5.345 ->     5.304 (1.01x)
+table   w=4 top50                        6.534 ->     6.461 (1.01x)
+table   w=4 wide_materialize             1.745 ->     1.778 (0.98x)
+table   w=4 repeated_expression_32       1.640 ->     1.238 (1.32x)
+
+Memory tradeoff: optional prefix cache is 16 bytes/active row (16 MiB at 1,048,576 rows).
+It is released before gathering and declined if scoped budget cannot fit it.
+Requested bytes, retained allocator capacity and process memory are distinct.
+No Linux RSS or physical-footprint claim. Full sort remains serial.
+Desktop variability is visible in ranges and per-round medians; no cross-machine claim.
+Raw commands, source/fixture/binary hashes and all samples are in paired.json.

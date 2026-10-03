@@ -1,0 +1,29 @@
+File: peg-workloads
+Build ID: 33cf203d562211e12395de7ef3b8d65e05fab38d
+Type: cpu
+Time: 2026-10-02 18:42:57 CDT
+Duration: 3.44s, Total samples = 3.47s (100.92%)
+Showing nodes accounting for 3.07s, 88.47% of 3.47s total
+Dropped 31 nodes (cum <= 0.02s)
+Showing top 20 nodes out of 66
+      flat  flat%   sum%        cum   cum%
+     0.76s 21.90% 21.90%      2.93s 84.44%  github.com/rhawrami/peGosus/pkg/plan.(*joinState).probe
+     0.50s 14.41% 36.31%      0.55s 15.85%  github.com/rhawrami/peGosus/pkg/plan.(*packedRows).at
+     0.25s  7.20% 43.52%      0.49s 14.12%  github.com/rhawrami/peGosus/pkg/plan.(*keyIndex).lookup
+     0.25s  7.20% 50.72%      0.64s 18.44%  github.com/rhawrami/peGosus/pkg/plan.(*packedRows).makeBatch
+     0.22s  6.34% 57.06%      0.28s  8.07%  github.com/rhawrami/peGosus/pkg/plan.encodeRowKey
+     0.18s  5.19% 62.25%      0.30s  8.65%  github.com/rhawrami/peGosus/pkg/plan.(*packedRows).appendScalars
+     0.16s  4.61% 66.86%      0.20s  5.76%  github.com/rhawrami/peGosus/pkg/io/parquet.decodeParquetRuns
+     0.14s  4.03% 70.89%      0.14s  4.03%  internal/runtime/maps.memHashAES
+     0.10s  2.88% 73.78%      0.10s  2.88%  github.com/rhawrami/peGosus/pkg/store.makeStringVector
+     0.08s  2.31% 76.08%      0.15s  4.32%  github.com/rhawrami/peGosus/pkg/plan.(*keyIndex).lookupString
+     0.07s  2.02% 78.10%      0.09s  2.59%  github.com/rhawrami/peGosus/pkg/plan.(*keyArena).key (inline)
+     0.05s  1.44% 79.54%      0.06s  1.73%  github.com/rhawrami/peGosus/pkg/plan.(*packedRows).slots (inline)
+     0.05s  1.44% 80.98%      0.11s  3.17%  github.com/rhawrami/peGosus/pkg/plan.scalarAt
+     0.05s  1.44% 82.42%      0.05s  1.44%  runtime.memmove
+     0.04s  1.15% 83.57%      0.04s  1.15%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).materializeValues
+     0.04s  1.15% 84.73%      0.10s  2.88%  github.com/rhawrami/peGosus/pkg/plan.(*packedRows).reserve
+     0.04s  1.15% 85.88%      0.05s  1.44%  github.com/rhawrami/peGosus/pkg/store.(*Vector).I32s (inline)
+     0.03s  0.86% 86.74%      0.23s  6.63%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).startPage
+     0.03s  0.86% 87.61%      0.03s  0.86%  github.com/rhawrami/peGosus/pkg/io/parquet.decodeParquetIndices.func1
+     0.03s  0.86% 88.47%      0.03s  0.86%  github.com/rhawrami/peGosus/pkg/plan.encodedRowKeyLength

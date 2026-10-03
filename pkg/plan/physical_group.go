@@ -132,6 +132,9 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 		if !ok {
 			return false
 		}
+		if len(step.aggregates) == 0 {
+			continue
+		}
 		for len(g.values) <= index {
 			g.values = append(g.values, make([]aggregateValue, len(step.aggregates)))
 			g.stateBytes = saturatingAdd(g.stateBytes, int64(len(step.aggregates))*64)
@@ -193,7 +196,7 @@ func (g *groupState) merge(a *mem.Allocator, src *groupState, step physicalStep,
 		return g.compact != nil && src.compact != nil && g.compact.merge(a, src.compact, budget)
 	}
 	keyValues := make([]Scalar, len(src.keys.rows.types))
-	for row := range src.values {
+	for row := range src.groupCount() {
 		if !g.mergeRow(a, src, step, budget, row, keyValues) {
 			return false
 		}
@@ -209,6 +212,9 @@ func (g *groupState) mergeRow(a *mem.Allocator, src *groupState, step physicalSt
 	index, ok := g.keys.addEncoded(a, key, &src.keys.rows, row, keyValues, budget-g.charged(len(step.aggregates))+g.keys.charged)
 	if !ok {
 		return false
+	}
+	if len(step.aggregates) == 0 {
+		return true
 	}
 	for len(g.values) <= index {
 		g.values = append(g.values, make([]aggregateValue, len(step.aggregates)))
@@ -234,7 +240,7 @@ func (g *groupState) groupCount() int {
 	if g.compact != nil {
 		return g.compact.length
 	}
-	return len(g.values)
+	return g.keys.rows.length
 }
 
 func (g *groupState) encodedKey(row int) []byte {
@@ -245,6 +251,9 @@ func (g *groupState) encodedKey(row int) []byte {
 }
 
 func (g *groupState) finish(a *mem.Allocator, step physicalStep) *store.Batch {
+	if g.compact == nil && len(step.aggregates) == 0 {
+		return g.keys.rows.makeBatch(a, step.schema)
+	}
 	if g.compact != nil {
 		return g.compact.finish(a, step)
 	}

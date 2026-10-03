@@ -2,3 +2,5 @@
 TODO.*
 AGENTS.md
 /testdata/
+/.venv/
+__pycache__/

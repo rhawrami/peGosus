@@ -53,15 +53,24 @@ type ExecutionOptions struct {
 // conservative memory reservations. Sink-retained batches become the caller's
 // responsibility after the sink returns.
 func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator, options ExecutionOptions, sink func(*store.Batch) bool) ExecutionResult {
+	return p.executeWithScope(ctx, a, options, sink, nil)
+}
+
+func (p *PhysicalPlan) executeWithScope(ctx context.Context, a *mem.Allocator, options ExecutionOptions, sink func(*store.Batch) bool, scope *mem.AllocationScope) ExecutionResult {
 	if p == nil || p.source == nil || ctx == nil || a == nil || sink == nil || options.MemoryBudget <= 0 || options.Workers < 0 {
 		return ExecutionResult{code: ExecutionInvalidInvocation}
 	}
 	if options.Workers != 1 {
+		if result, parallel := p.executeParallelDistinct(ctx, a, options, sink); parallel {
+			return result
+		}
 		if result, parallel := p.executeParallel(ctx, a, options, sink); parallel {
 			return result
 		}
 	}
-	scope := mem.MakeAllocationScope(a, options.MemoryBudget)
+	if scope == nil {
+		scope = mem.MakeAllocationScope(a, options.MemoryBudget)
+	}
 	a = mem.MakeAllocatorWithScope(a, scope)
 	limitLeft := make([]int64, len(p.steps))
 	offsetLeft := make([]int64, len(p.steps))
@@ -143,6 +152,7 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 			}
 			if sortStates[i].compact != nil {
 				sortStates[i].compact.scope, sortStates[i].compact.ctx = scope, ctx
+				sortStates[i].compact.workers = compactSortWorkers(options.Workers)
 			}
 			if sortStates[i].top != nil {
 				sortStates[i].top.scope, sortStates[i].top.rows.scope = scope, scope
@@ -151,7 +161,6 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 			joinStates[i] = &joinState{}
 			joinStates[i].scope = scope
 			joinStates[i].keys.setScope(scope)
-			joinStates[i].rightRows.scope = scope
 		}
 	}
 	for i, step := range p.steps {
@@ -162,12 +171,30 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 			}
 		}
 	}
-	cursor := scanCursor{source: p.source}
+	runtimeFilter, runtimeSortAt := makeTopNRuntimeFilter(p.source, p.steps)
+	if runtimeFilter == nil {
+		for i, step := range p.steps {
+			if step.operation == physicalJoin {
+				var err error
+				runtimeFilter, err = makeJoinRuntimeFilter(ctx, p.source, p.steps, i, joinStates[i])
+				if err != nil {
+					return ExecutionResult{code: ExecutionCancelled, cause: err}
+				}
+				if runtimeFilter != nil {
+					break
+				}
+			}
+		}
+	}
+	cursor := scanCursor{source: p.source, runtime: runtimeFilter}
 	defer cursor.close()
 	sourceDone := false
 	for {
 		if err := ctx.Err(); err != nil {
 			return ExecutionResult{code: ExecutionCancelled, cause: err}
+		}
+		if streamingLimitDone(p.steps, limitLeft, 0) {
+			break
 		}
 		for j, step := range p.steps {
 			if step.operation == physicalAggregate || step.operation == physicalDistinct || step.operation == physicalSort || step.operation == physicalJoin && step.join.kind == JoinFull {
@@ -193,6 +220,9 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 			return ExecutionResult{code: ExecutionResourceExhausted}
 		}
 		result := p.executeSteps(ctx, a, batch, 0, limitLeft, offsetLeft, aggregateStates, aggregateUniques, distinctStates, sortStates, groupStates, joinStates, options.MemoryBudget, sink)
+		if runtimeSortAt >= 0 && sortStates[runtimeSortAt] != nil {
+			publishTopNRuntimeFilter(runtimeFilter, sortStates[runtimeSortAt].top, p.steps[runtimeSortAt])
+		}
 		if result.code == ExecutionFailed && scope.Exhausted() {
 			return ExecutionResult{code: ExecutionResourceExhausted}
 		}
@@ -255,14 +285,16 @@ func (p *PhysicalPlan) ExecuteWithOptions(ctx context.Context, a *mem.Allocator,
 			}
 			batch = sortStates[i].finish(a, step)
 		} else {
-			var ok bool
-			batch, ok = joinStates[i].finish(a, step, options.MemoryBudget-aggregateReservation(aggregateStates)-aggregateUniqueReservation(aggregateUniques)-distinctReservation(distinctStates)-sortReservation(sortStates)-groupReservation(groupStates, p.steps)-joinReservation(joinStates)+joinStates[i].charged+joinStates[i].keys.charged)
-			if !ok {
-				return ExecutionResult{code: ExecutionResourceExhausted}
-			}
-			if batch == nil {
+			if streamingLimitDone(p.steps, limitLeft, i+1) {
 				continue
 			}
+			result := joinStates[i].finish(ctx, a, step, options.MemoryBudget-aggregateReservation(aggregateStates)-aggregateUniqueReservation(aggregateUniques)-distinctReservation(distinctStates)-sortReservation(sortStates)-groupReservation(groupStates, p.steps)-joinReservation(joinStates)+joinStates[i].charged+joinStates[i].keys.charged, func(output *store.Batch) ExecutionResult {
+				return p.executeSteps(ctx, a, output, i+1, limitLeft, offsetLeft, aggregateStates, aggregateUniques, distinctStates, sortStates, groupStates, joinStates, options.MemoryBudget, sink)
+			})
+			if result.code != ExecutionCompleted {
+				return result
+			}
+			continue
 		}
 		if batch == nil {
 			if err := ctx.Err(); err != nil {
@@ -360,15 +392,19 @@ func (p *PhysicalPlan) executeSteps(ctx context.Context, a *mem.Allocator, batch
 		case physicalPushedFilter:
 			continue
 		case physicalJoin:
-			joined, result := joins[j].probe(a, batch, step, budget-aggregateReservation(aggregates)-aggregateUniqueReservation(uniques)-distinctReservation(distinct)-sortReservation(sorts)-groupReservation(groups, p.steps)-joinReservation(joins)+joins[j].charged+joins[j].keys.charged)
-			if result.Code() != ExecutionCompleted {
+			limited := false
+			result := joins[j].probe(ctx, a, batch, step, budget-aggregateReservation(aggregates)-aggregateUniqueReservation(uniques)-distinctReservation(distinct)-sortReservation(sorts)-groupReservation(groups, p.steps)-joinReservation(joins)+joins[j].charged+joins[j].keys.charged, func(output *store.Batch) ExecutionResult {
+				result := p.executeSteps(ctx, a, output, j+1, limits, offsets, aggregates, uniques, distinct, sorts, groups, joins, budget, sink)
+				if result.code == ExecutionCompleted && streamingLimitDone(p.steps, limits, j+1) {
+					limited = true
+					return ExecutionResult{code: ExecutionStopped}
+				}
 				return result
+			})
+			if limited {
+				return ExecutionResult{code: ExecutionCompleted}
 			}
-			if joined == nil {
-				return result
-			}
-			batch.Release()
-			batch = joined
+			return result
 		case physicalLimit:
 			if limits[j] == 0 {
 				return ExecutionResult{code: ExecutionCompleted}
@@ -432,6 +468,23 @@ func (p *PhysicalPlan) executeSteps(ctx context.Context, a *mem.Allocator, batch
 		return ExecutionResult{code: ExecutionStopped}
 	}
 	return ExecutionResult{code: ExecutionCompleted}
+}
+
+func streamingLimitDone(steps []physicalStep, limits []int64, start int) bool {
+	if limits == nil {
+		return false
+	}
+	for i := start; i < len(steps); i++ {
+		switch steps[i].operation {
+		case physicalAggregate, physicalDistinct, physicalSort:
+			return false
+		case physicalLimit:
+			if limits[i] == 0 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func executePhysicalLimit(a *mem.Allocator, batch *store.Batch, remaining, skipped *int64) bool {

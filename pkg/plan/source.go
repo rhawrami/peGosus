@@ -87,6 +87,7 @@ type scanCursor struct {
 	csv     *csv.CSVReader
 	parquet *parquet.ParquetReader
 	index   int
+	runtime *parquet.RuntimePruningFilter
 }
 
 func (c *scanCursor) close() {
@@ -197,6 +198,10 @@ func (c *scanCursor) openParquet(a *mem.Allocator) error {
 		}
 	}
 	reader.SetPruningPredicates(makeParquetPruningPredicates(c.source))
+	if !reader.SetRuntimePruningFilter(c.runtime) {
+		reader.Close()
+		return parquet.MakeParquetError(parquet.ParquetInvalid, errors.New("invalid runtime Parquet filter"))
+	}
 	if len(c.source.parquetDictionaries) != 0 && !reader.SetDictionaryColumns(c.source.parquetDictionaries) {
 		reader.Close()
 		return parquet.MakeParquetError(parquet.ParquetInvalid, errors.New("invalid dictionary scan columns"))

@@ -1,0 +1,54 @@
+goos: linux
+goarch: amd64
+pkg: github.com/rhawrami/peGosus/pkg/plan
+cpu: AMD Ryzen 7 7700X 8-Core Processor
+BenchmarkParallelCompactSort/rows=1048576/string=false/workers=1-8         	       3	  75044248 ns/op	20983776 B/op	      24 allocs/op
+BenchmarkParallelCompactSort/rows=1048576/string=false/workers=1-8         	       3	  77026034 ns/op	20983770 B/op	      24 allocs/op
+BenchmarkParallelCompactSort/rows=1048576/string=false/workers=2-8         	       3	  55695228 ns/op	20985338 B/op	      43 allocs/op
+BenchmarkParallelCompactSort/rows=1048576/string=false/workers=2-8         	       3	  60426411 ns/op	20985018 B/op	      43 allocs/op
+BenchmarkParallelCompactSort/rows=1048576/string=false/workers=4-8         	       3	  41821655 ns/op	20987480 B/op	      60 allocs/op
+BenchmarkParallelCompactSort/rows=1048576/string=false/workers=4-8         	       3	  44129534 ns/op	20986189 B/op	      57 allocs/op
+BenchmarkParallelCompactSort/rows=1048576/string=false/workers=8-8         	       3	  36221284 ns/op	20993946 B/op	      96 allocs/op
+BenchmarkParallelCompactSort/rows=1048576/string=false/workers=8-8         	       3	  37866212 ns/op	20991322 B/op	      91 allocs/op
+BenchmarkParallelCompactSort/rows=1048576/string=true/workers=1-8          	       3	 149737447 ns/op	46149786 B/op	      27 allocs/op
+BenchmarkParallelCompactSort/rows=1048576/string=true/workers=1-8          	       3	 146136239 ns/op	46149749 B/op	      27 allocs/op
+BenchmarkParallelCompactSort/rows=1048576/string=true/workers=2-8          	       3	 182909456 ns/op	46153578 B/op	      48 allocs/op
+BenchmarkParallelCompactSort/rows=1048576/string=true/workers=2-8          	       3	 182939056 ns/op	46153584 B/op	      48 allocs/op
+BenchmarkParallelCompactSort/rows=1048576/string=true/workers=4-8          	       3	 166334310 ns/op	41961202 B/op	      65 allocs/op
+BenchmarkParallelCompactSort/rows=1048576/string=true/workers=4-8          	       3	 167393948 ns/op	41960434 B/op	      64 allocs/op
+BenchmarkParallelCompactSort/rows=1048576/string=true/workers=8-8          	       3	 146289340 ns/op	40919152 B/op	     100 allocs/op
+BenchmarkParallelCompactSort/rows=1048576/string=true/workers=8-8          	       3	 141384088 ns/op	40922901 B/op	     109 allocs/op
+PASS
+ok  	github.com/rhawrami/peGosus/pkg/plan	8.445s
+goos: linux
+goarch: amd64
+pkg: github.com/rhawrami/peGosus/pkg/plan
+cpu: AMD Ryzen 7 7700X 8-Core Processor
+BenchmarkParallelDistinct/groups=64/compound/workers=1-8         	       3	  13527401 ns/op	  19379099 rows/s	   11784 B/op	     141 allocs/op
+BenchmarkParallelDistinct/groups=64/compound/workers=1-8         	       3	  13425507 ns/op	  19526133 rows/s	   11778 B/op	     141 allocs/op
+BenchmarkParallelDistinct/groups=64/compound/workers=4-8         	       3	   3315133 ns/op	  79079322 rows/s	   42858 B/op	     644 allocs/op
+BenchmarkParallelDistinct/groups=64/compound/workers=4-8         	       3	   3305890 ns/op	  79298851 rows/s	   41866 B/op	     638 allocs/op
+BenchmarkParallelDistinct/groups=64/count-string/workers=1-8     	       3	  10238071 ns/op	  25605314 rows/s	   23200 B/op	     524 allocs/op
+BenchmarkParallelDistinct/groups=64/count-string/workers=1-8     	       3	  10674557 ns/op	  24558502 rows/s	   23200 B/op	     524 allocs/op
+BenchmarkParallelDistinct/groups=64/count-string/workers=4-8     	       3	   1957907 ns/op	 133901791 rows/s	   27248 B/op	     520 allocs/op
+BenchmarkParallelDistinct/groups=64/count-string/workers=4-8     	       3	   1402750 ns/op	 186892399 rows/s	   26949 B/op	     521 allocs/op
+BenchmarkParallelDistinct/groups=262144/compound/workers=1-8     	       3	  47482813 ns/op	   5520868 rows/s	 6305090 B/op	     194 allocs/op
+BenchmarkParallelDistinct/groups=262144/compound/workers=1-8     	       3	  45672745 ns/op	   5739673 rows/s	 6304712 B/op	     192 allocs/op
+BenchmarkParallelDistinct/groups=262144/compound/workers=4-8     	       3	  38445672 ns/op	   6818624 rows/s	11608376 B/op	     837 allocs/op
+BenchmarkParallelDistinct/groups=262144/compound/workers=4-8     	       3	  37190599 ns/op	   7048716 rows/s	 9511938 B/op	     842 allocs/op
+BenchmarkParallelDistinct/groups=262144/count-string/workers=1-8 	       3	  33847235 ns/op	   7744967 rows/s	 8416522 B/op	     551 allocs/op
+BenchmarkParallelDistinct/groups=262144/count-string/workers=1-8 	       3	  31446554 ns/op	   8336259 rows/s	   23584 B/op	     530 allocs/op
+BenchmarkParallelDistinct/groups=262144/count-string/workers=4-8 	       3	  26485639 ns/op	   9897692 rows/s	 6332690 B/op	     611 allocs/op
+BenchmarkParallelDistinct/groups=262144/count-string/workers=4-8 	       3	  25331990 ns/op	  10348443 rows/s	 6342925 B/op	     600 allocs/op
+PASS
+ok  	github.com/rhawrami/peGosus/pkg/plan	1.503s
+goos: linux
+goarch: amd64
+pkg: github.com/rhawrami/peGosus/pkg/io/parquet
+cpu: AMD Ryzen 7 7700X 8-Core Processor
+BenchmarkRuntimePruningParquet/disabled-8         	      10	    221098 ns/op	      4097 decoded-rows/op	         0 pruned-groups/op	   43883 B/op	     236 allocs/op
+BenchmarkRuntimePruningParquet/disabled-8         	      10	    184967 ns/op	      4097 decoded-rows/op	         0 pruned-groups/op	   43884 B/op	     237 allocs/op
+BenchmarkRuntimePruningParquet/enabled-8          	      10	     83227 ns/op	      2048 decoded-rows/op	         2.000 pruned-groups/op	   21144 B/op	     122 allocs/op
+BenchmarkRuntimePruningParquet/enabled-8          	      10	     83508 ns/op	      2048 decoded-rows/op	         2.000 pruned-groups/op	   21144 B/op	     122 allocs/op
+PASS
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	0.010s

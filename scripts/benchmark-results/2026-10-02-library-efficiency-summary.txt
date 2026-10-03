@@ -1,0 +1,91 @@
+Library efficiency: paired measurements, October 2, 2026
+AMD Ryzen 7 7700X, Go 1.27.1, CGO_ENABLED=0, GOAMD64=v1, normal build
+Comparator: frozen string-prefix runner; gains are incremental to prior work.
+2 rounds, 2 warmups, 5 samples/round; worker/variant order reversed
+48 records; 672 observations; 3360 timed samples; zero failures/mismatches
+All outputs match previous DuckDB/Polars-validated fingerprints; live allocator bytes zero
+
+Million-row pooled medians, milliseconds (before -> after, speedup):
+parquet w=1 join_int_report            173.765 ->   103.970 (1.67x)
+parquet w=1 join_string_report         226.090 ->   129.546 (1.75x)
+parquet w=1 join_left_report           199.960 ->   111.620 (1.79x)
+parquet w=1 join_semi_count            120.722 ->    59.735 (2.02x)
+parquet w=1 join_anti_count            106.415 ->    55.667 (1.91x)
+parquet w=1 grouped_self_join          247.492 ->   135.139 (1.83x)
+parquet w=1 full_sort_numeric           98.229 ->   100.250 (0.98x)
+parquet w=1 full_sort_string           257.102 ->   279.041 (0.92x)
+parquet w=1 distinct_strings           170.613 ->   179.723 (0.95x)
+parquet w=1 count_distinct             208.078 ->   218.124 (0.95x)
+parquet w=1 multi_group_report         175.807 ->   175.769 (1.00x)
+parquet w=1 group_sum                   16.536 ->    16.651 (0.99x)
+parquet w=1 top50                       32.280 ->    32.665 (0.99x)
+parquet w=1 wide_materialize           154.126 ->   151.706 (1.02x)
+parquet w=4 join_int_report            173.136 ->    27.438 (6.31x)
+parquet w=4 join_string_report         224.763 ->    35.538 (6.32x)
+parquet w=4 join_left_report           199.288 ->    31.001 (6.43x)
+parquet w=4 join_semi_count            119.532 ->    16.609 (7.20x)
+parquet w=4 join_anti_count            106.450 ->    15.190 (7.01x)
+parquet w=4 grouped_self_join          242.958 ->    55.869 (4.35x)
+parquet w=4 full_sort_numeric           97.437 ->    82.978 (1.17x)
+parquet w=4 full_sort_string           267.002 ->   190.048 (1.40x)
+parquet w=4 distinct_strings           184.480 ->   101.296 (1.82x)
+parquet w=4 count_distinct             219.019 ->   227.604 (0.96x)
+parquet w=4 multi_group_report          47.239 ->    46.968 (1.01x)
+parquet w=4 group_sum                    4.792 ->     4.615 (1.04x)
+parquet w=4 top50                        8.736 ->     8.884 (0.98x)
+parquet w=4 wide_materialize            69.932 ->    62.511 (1.12x)
+table   w=1 join_int_report            155.915 ->    79.736 (1.96x)
+table   w=1 join_string_report         189.549 ->   100.050 (1.89x)
+table   w=1 join_left_report           177.935 ->    94.005 (1.89x)
+table   w=1 join_semi_count            101.864 ->    41.921 (2.43x)
+table   w=1 join_anti_count             87.944 ->    37.527 (2.34x)
+table   w=1 grouped_self_join          211.918 ->   109.824 (1.93x)
+table   w=1 full_sort_numeric           86.245 ->    85.358 (1.01x)
+table   w=1 full_sort_string           215.490 ->   223.549 (0.96x)
+table   w=1 distinct_strings           141.747 ->   140.040 (1.01x)
+table   w=1 count_distinct             153.126 ->   154.468 (0.99x)
+table   w=1 multi_group_report         115.505 ->   116.376 (0.99x)
+table   w=1 group_sum                   20.658 ->    20.223 (1.02x)
+table   w=1 top50                       24.458 ->    24.692 (0.99x)
+table   w=1 wide_materialize             5.087 ->     5.046 (1.01x)
+table   w=4 join_int_report            155.753 ->    21.183 (7.35x)
+table   w=4 join_string_report         189.888 ->    26.555 (7.15x)
+table   w=4 join_left_report           178.484 ->    25.089 (7.11x)
+table   w=4 join_semi_count            102.228 ->    11.073 (9.23x)
+table   w=4 join_anti_count             88.296 ->     9.907 (8.91x)
+table   w=4 grouped_self_join          211.718 ->    46.245 (4.58x)
+table   w=4 full_sort_numeric           90.157 ->    71.145 (1.27x)
+table   w=4 full_sort_string           228.242 ->   129.243 (1.77x)
+table   w=4 distinct_strings           138.931 ->    87.684 (1.58x)
+table   w=4 count_distinct             153.799 ->   153.417 (1.00x)
+table   w=4 multi_group_report          30.335 ->    30.366 (1.00x)
+table   w=4 group_sum                    5.314 ->     5.296 (1.00x)
+table   w=4 top50                        6.440 ->     6.453 (1.00x)
+table   w=4 wide_materialize             1.556 ->     1.523 (1.02x)
+
+All cases with >10% slower pooled medians:
+parquet balanced:512            w=1 full_sort_numeric        0.046 -> 0.057; per-round [0.04562, 0.045621] -> [0.058161, 0.05673]
+parquet balanced:512            w=4 full_sort_string         0.069 -> 0.079; per-round [0.06788, 0.07308] -> [0.06858, 0.08996]
+parquet balanced:512            w=4 distinct_strings         0.083 -> 0.104; per-round [0.08235, 0.08569] -> [0.09956, 0.11671]
+
+Eligibility and limits:
+Join build remains serial; eligible single-join probing shares immutable build columns/index.
+Parallel full-sort collection and owned gathering remain serial. Primary string merge prefixes are optional.
+Standalone DISTINCT, a single global DISTINCT aggregate, and DISTINCT followed by terminal ordinary aggregates parallelize.
+Multiple/grouped DISTINCT aggregates, multiple joins, and join-to-TopN parallel pipelines retain serial fallback.
+Runtime Parquet filters prune unopened row groups for proven direct signed integer TopN/inner/semi bounds.
+The ordinary balanced fixture overlaps statistics; use dedicated pruning counters, not Top50 timings, to assess avoided work.
+
+Memory and methodology:
+Join output uses bounded candidate batches (up to 1024 rows); the parent scope includes nested retained build allocations.
+Sort scratch remains 8 bytes/row; optional string caches cost at most 16 bytes/row during each phase and release before gathering.
+Requested bytes, Go heap allocation, retained slab capacity, and process memory are distinct.
+No Linux process footprint or native arm64 timing claim. Cross-compilation is compilation only.
+Desktop timing variability is visible in raw ranges and per-round medians; no universal or cross-machine claim.
+Full 37-query cross-engine smoke uses one sample for correctness, not ranking.
+Raw commands, source/fixture/binary hashes, all samples and allocator snapshots are in paired.json.
+Microbenchmarks are stage-oriented worker comparisons, not a frozen before/after engine comparison.
+
+Full validation: six native test suites passed; arm64 normal/SIMD compilation passed.
+Cross-engine smoke: 1110 observations; zero failures/mismatches.
+Source hashes remain unchanged after all measurements and smoke validation.

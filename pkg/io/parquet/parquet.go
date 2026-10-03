@@ -434,6 +434,7 @@ type ParquetReader struct {
 	scanColumns       []int
 	scanStates        []parquetPredicateState
 	dictionaryColumns []bool
+	runtimeFilter     *RuntimePruningFilter
 }
 
 // ColumnCount returns the number of columns in the file schema.

@@ -44,6 +44,10 @@ func (r *ParquetReader) SetPruningPredicates(predicates []PruningPredicate) bool
 }
 
 func (r *ParquetReader) groupCannotMatch(group parquetGroup) bool {
+	if r.runtimeFilter != nil && r.runtimeFilter.cannotMatch(group.chunks[r.runtimeFilter.column]) {
+		r.runtimeFilter.pruned.Add(1)
+		return true
+	}
 	for _, predicate := range r.pruning {
 		chunk := group.chunks[predicate.Column]
 		if chunk.allNull {

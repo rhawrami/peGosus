@@ -1,0 +1,32 @@
+Fixture balanced:1048576: 21.52 MiB; source=table
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+
+balanced:1048576, 1 workers: milliseconds peGosus / DuckDB / Polars
+  full_sort_numeric         87.562 / 209.513 / 180.813
+  full_sort_string          592.402 / 327.404 / 192.070
+  repeated_expression_32    5.204 / 8.216 / 4.794
+  expression_width_128      3775.245 / 1736.154 / 560.603
+  wide_materialize          5.107 / 770.380 / 0.011
+  group_sum                 20.920 / 8.091 / 7.746
+  top50                     24.709 / 9.381 / 11.789
+
+balanced:1048576, 4 workers: milliseconds peGosus / DuckDB / Polars
+  full_sort_numeric         89.414 / 173.506 / 53.938
+  full_sort_string          615.354 / 239.158 / 69.146
+  repeated_expression_32    1.474 / 3.338 / 4.120
+  expression_width_128      1063.360 / 661.744 / 534.339
+  wide_materialize          1.494 / 773.091 / 0.012
+  group_sum                 5.328 / 4.945 / 4.704
+  top50                     6.471 / 3.339 / 11.929
+Validation: 0 mismatches; 0 query failures; 12 worker records

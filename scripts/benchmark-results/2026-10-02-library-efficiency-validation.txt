@@ -1,0 +1,105 @@
+$ go test -count=1 ./...
+ok  	github.com/rhawrami/peGosus/pkg/dtype	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	0.046s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	1.121s
+ok  	github.com/rhawrami/peGosus/pkg/mem	0.174s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	0.004s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.009s
+ok  	github.com/rhawrami/peGosus/pkg/plan	1.122s
+ok  	github.com/rhawrami/peGosus/pkg/store	0.028s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.004s
+
+$ go test -race -count=1 ./...
+ok  	github.com/rhawrami/peGosus/pkg/dtype	1.014s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	1.279s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	14.331s
+ok  	github.com/rhawrami/peGosus/pkg/mem	1.361s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	1.021s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	1.010s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	1.023s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	1.014s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	1.029s
+ok  	github.com/rhawrami/peGosus/pkg/peg	1.045s
+ok  	github.com/rhawrami/peGosus/pkg/plan	14.779s
+ok  	github.com/rhawrami/peGosus/pkg/store	1.149s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	1.017s
+
+$ go test -gcflags=all=-d=checkptr=2 -count=1 ./...
+ok  	github.com/rhawrami/peGosus/pkg/dtype	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	0.041s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	1.111s
+ok  	github.com/rhawrami/peGosus/pkg/mem	0.158s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	0.004s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	0.003s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	0.004s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.015s
+ok  	github.com/rhawrami/peGosus/pkg/plan	3.160s
+ok  	github.com/rhawrami/peGosus/pkg/store	0.031s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.004s
+
+$ GOEXPERIMENT=simd go test -count=1 ./...
+ok  	github.com/rhawrami/peGosus/pkg/dtype	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	0.036s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	1.025s
+ok  	github.com/rhawrami/peGosus/pkg/mem	0.162s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	0.004s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	0.004s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.009s
+ok  	github.com/rhawrami/peGosus/pkg/plan	1.143s
+ok  	github.com/rhawrami/peGosus/pkg/store	0.026s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.004s
+
+$ GOEXPERIMENT=simd go test -race -count=1 ./...
+ok  	github.com/rhawrami/peGosus/pkg/dtype	1.011s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	1.304s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	15.159s
+ok  	github.com/rhawrami/peGosus/pkg/mem	1.377s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	1.020s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	1.010s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	1.021s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	1.014s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	1.034s
+ok  	github.com/rhawrami/peGosus/pkg/peg	1.047s
+ok  	github.com/rhawrami/peGosus/pkg/plan	13.834s
+ok  	github.com/rhawrami/peGosus/pkg/store	1.141s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	1.017s
+
+$ GOEXPERIMENT=simd go test -gcflags=all=-d=checkptr=2 -count=1 ./...
+ok  	github.com/rhawrami/peGosus/pkg/dtype	0.003s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	0.041s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	1.205s
+ok  	github.com/rhawrami/peGosus/pkg/mem	0.171s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	0.006s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	0.004s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.014s
+ok  	github.com/rhawrami/peGosus/pkg/plan	3.116s
+ok  	github.com/rhawrami/peGosus/pkg/store	0.032s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.004s
+
+$ GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go test -vet=off -exec=/usr/bin/true ./pkg/plan ./pkg/peg ./pkg/io/parquet
+ok  	github.com/rhawrami/peGosus/pkg/plan	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	0.000s
+
+$ GOOS=linux GOARCH=arm64 GOEXPERIMENT=simd CGO_ENABLED=0 go test -vet=off -exec=/usr/bin/true ./pkg/plan ./pkg/peg ./pkg/io/parquet
+ok  	github.com/rhawrami/peGosus/pkg/plan	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	0.000s

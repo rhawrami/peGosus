@@ -41,6 +41,8 @@ type compactSortState struct {
 	ctx      context.Context
 	batches  []*store.Batch
 	length   int
+	offset   int
+	workers  int
 	capacity int
 	chargedB int64
 }
@@ -289,55 +291,47 @@ func (s *compactSortState) finish(a *mem.Allocator, step physicalStep) *store.Ba
 	}
 	defer temp.Dec()
 	source, destination := s.items.AsU64T()[:s.length], temp.AsU64T()
+	if s.workers > 1 && s.length >= parallelSortMinRows {
+		var ok bool
+		source, destination, ok = s.sortParallel(a, step, source, destination)
+		if !ok {
+			return nil
+		}
+	} else {
+		var ok bool
+		source, destination, ok = s.sortItems(a, step, source, destination)
+		if !ok {
+			return nil
+		}
+	}
 	rows := s.rows.AsU64T()
+	for i, id := range source {
+		source[i] = rows[id]
+	}
+	return s.gather(a, step.schema, source)
+}
+
+func (s *compactSortState) sortItems(a *mem.Allocator, step physicalStep, source, destination []uint64) ([]uint64, []uint64, bool) {
 	for k := len(s.keys) - 1; k >= 0; k-- {
 		if s.cancelled() {
-			return nil
+			return nil, nil, false
 		}
 		key, order := &s.keys[k], step.order[k]
 		if key.stringKey {
-			less := func(left, right uint64) bool {
-				l, r := rows[left], rows[right]
-				lv, rv := &key.vectors[l>>32], &key.vectors[r>>32]
-				li, ri := int(uint32(l)), int(uint32(r))
-				ln, rn := lv.Validity() != nil && !lv.Validity().IsSet(li), rv.Validity() != nil && !rv.Validity().IsSet(ri)
-				if ln != rn {
-					return ln == order.nullsFirst
-				}
-				if ln {
-					return false
-				}
-				ltext, rtext := lv.StringAt(li).View(), rv.StringAt(ri).View()
-				if order.descending {
-					return ltext > rtext
-				}
-				return ltext < rtext
-			}
-			for width := 1; width < s.length; width *= 2 {
-				for start := 0; start < s.length; start += 2 * width {
-					if s.cancelled() {
-						return nil
-					}
-					middle, end := min(start+width, s.length), min(start+2*width, s.length)
-					l, r := start, middle
-					for on := start; on < end; on++ {
-						if l < middle && (r == end || !less(source[r], source[l])) {
-							destination[on] = source[l]
-							l++
-						} else {
-							destination[on] = source[r]
-							r++
-						}
-					}
-				}
-				source, destination = destination, source
+			var ok bool
+			source, destination, ok = s.sortStrings(a, key, order, source, destination)
+			if !ok {
+				return nil, nil, false
 			}
 			continue
 		}
-		values := key.values.AsU64T()
+		values := key.values.AsU64T()[s.offset*2:]
 		var vary uint64
 		first := values[source[0]*2]
-		for _, id := range source {
+		for i, id := range source {
+			if i&65535 == 0 && s.cancelled() {
+				return nil, nil, false
+			}
 			vary |= values[id*2] ^ first
 		}
 		for shift := uint(0); shift < 64; shift += 8 {
@@ -347,7 +341,7 @@ func (s *compactSortState) finish(a *mem.Allocator, step physicalStep) *store.Ba
 			var counts [256]int
 			for i, id := range source {
 				if i&65535 == 0 && s.cancelled() {
-					return nil
+					return nil, nil, false
 				}
 				counts[byte(values[id*2]>>shift)]++
 			}
@@ -357,7 +351,10 @@ func (s *compactSortState) finish(a *mem.Allocator, step physicalStep) *store.Ba
 				counts[i] = position
 				position += n
 			}
-			for _, id := range source {
+			for i, id := range source {
+				if i&65535 == 0 && s.cancelled() {
+					return nil, nil, false
+				}
 				bucket := byte(values[id*2] >> shift)
 				destination[counts[bucket]] = id
 				counts[bucket]++
@@ -366,7 +363,10 @@ func (s *compactSortState) finish(a *mem.Allocator, step physicalStep) *store.Ba
 		}
 		on := 0
 		for _, null := range []bool{order.nullsFirst, !order.nullsFirst} {
-			for _, id := range source {
+			for i, id := range source {
+				if i&65535 == 0 && s.cancelled() {
+					return nil, nil, false
+				}
 				if (values[id*2+1] != 0) == null {
 					destination[on] = id
 					on++
@@ -375,10 +375,7 @@ func (s *compactSortState) finish(a *mem.Allocator, step physicalStep) *store.Ba
 		}
 		source, destination = destination, source
 	}
-	for i, id := range source {
-		source[i] = rows[id]
-	}
-	return s.gather(a, step.schema, source)
+	return source, destination, !s.cancelled()
 }
 
 func (s *compactSortState) gather(a *mem.Allocator, schema Schema, ids []uint64) *store.Batch {

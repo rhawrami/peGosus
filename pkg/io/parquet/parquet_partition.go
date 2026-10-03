@@ -31,5 +31,6 @@ func (r *ParquetReader) MakeRowGroupReader(i int, a *mem.Allocator) *ParquetRead
 		columns: r.columns, groups: r.groups[i : i+1], selected: r.selected,
 		groupBase: r.groupBase + i, pruning: r.pruning, predicates: r.predicates,
 		dictionaryColumns: r.dictionaryColumns,
+		runtimeFilter:     r.runtimeFilter,
 	}
 }

@@ -77,6 +77,11 @@ func (p *PhysicalPlan) executeGroupedShards(ctx context.Context, a *mem.Allocato
 	position := append([]int(nil), offsets[:shards]...)
 	for sourceIndex, source := range sources {
 		for row := range source.groupCount() {
+			if row&1023 == 0 {
+				if err := ctx.Err(); err != nil {
+					return ExecutionResult{code: ExecutionCancelled, cause: err}, true
+				}
+			}
 			shard := int(maphash.Bytes(seed, source.encodedKey(row)) & uint64(shards-1))
 			assigned[position[shard]] = uint64(uint32(sourceIndex))<<32 | uint64(uint32(row))
 			position[shard]++
