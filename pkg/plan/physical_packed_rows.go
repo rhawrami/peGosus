@@ -288,7 +288,7 @@ func (r *packedRows) makeBatch(a *mem.Allocator, schema Schema) *store.Batch {
 			}
 		}
 	}
-	result := store.MakeBatch(vectors)
+	result := store.MakeBatchWithLength(vectors, r.length)
 	if result == nil {
 		for i := range vectors {
 			vectors[i].Release()

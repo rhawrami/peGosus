@@ -418,23 +418,24 @@ func physicalWidth(typ int64) int64 {
 
 // ParquetReader scans selected flat columns into independently owned batches.
 type ParquetReader struct {
-	input             io.ReaderAt
-	allocator         *mem.Allocator
-	options           ParquetOptions
-	columns           []parquetColumn
-	groups            []parquetGroup
-	selected          []int
-	groupBase         int
-	group             int
-	row               int64
-	cursors           []parquetCursor
-	closed            bool
-	pruning           []PruningPredicate
-	predicates        []ScanPredicate
-	scanColumns       []int
-	scanStates        []parquetPredicateState
-	dictionaryColumns []bool
-	runtimeFilter     *RuntimePruningFilter
+	input                   io.ReaderAt
+	allocator               *mem.Allocator
+	options                 ParquetOptions
+	columns                 []parquetColumn
+	groups                  []parquetGroup
+	selected                []int
+	groupBase               int
+	group                   int
+	row                     int64
+	cursors                 []parquetCursor
+	closed                  bool
+	pruning                 []PruningPredicate
+	predicates              []ScanPredicate
+	scanColumns             []int
+	scanStates              []parquetPredicateState
+	dictionaryColumns       []bool
+	selectedMaterialization bool
+	runtimeFilter           *RuntimePruningFilter
 }
 
 // ColumnCount returns the number of columns in the file schema.
@@ -537,29 +538,6 @@ func (r *ParquetReader) next(ctx context.Context) (*store.Batch, *ParquetError) 
 			return nil, failure
 		}
 	}
-	if mask != nil && mask.ViN() == 0 {
-		for i := range r.selected {
-			c := &r.cursors[i]
-			if c.chunk.codec != 0 && c.chunk.codec != 1 {
-				return nil, c.failure(ParquetUnsupported, errors.New("unsupported codec"))
-			}
-			for row := range n {
-				if row&1023 == 0 {
-					if err := ctx.Err(); err != nil {
-						return nil, c.failure(ParquetCancelled, err)
-					}
-				}
-				if _, _, failure := c.next(ctx); failure != nil {
-					return nil, failure
-				}
-			}
-		}
-		batch := store.MakeBatchWithLength(nil, n)
-		batch.SetSelection(store.MakeRowSelectionFromBitMap(mask))
-		mask = nil
-		r.row += int64(n)
-		return batch, nil
-	}
 	vectors := make([]store.Vector, len(r.selected))
 	defer func() {
 		if vectors != nil {
@@ -568,32 +546,57 @@ func (r *ParquetReader) next(ctx context.Context) (*store.Batch, *ParquetError) 
 			}
 		}
 	}()
-	for i := range r.selected {
-		c := &r.cursors[i]
-		if c.chunk.codec != 0 && c.chunk.codec != 1 {
-			return nil, c.failure(ParquetUnsupported, errors.New("unsupported codec"))
-		}
-		if c.column.typ.ID() == dtype.STRT {
-			var failure *ParquetError
-			if i < len(r.dictionaryColumns) && r.dictionaryColumns[i] && (c.encoding == 8 || c.encoding == 2) && c.dictCount <= max(4096, n*4) {
-				vectors[i], failure = c.materializeDictionaryStrings(ctx, n)
-			} else {
-				vectors[i], failure = makeParquetStringVector(ctx, c, n)
+	if r.selectedMaterialization && mask != nil {
+		for i := range r.selected {
+			if mask.ViN() == 0 {
+				break
 			}
+			if len(r.scanStates[i].predicates) == 0 {
+				continue
+			}
+			var selection *store.BitMap
+			if mask.ViN() != n {
+				selection = mask
+			}
+			var failure *ParquetError
+			vectors[i], failure = r.materializeColumn(ctx, i, n, selection)
 			if failure != nil {
 				return nil, failure
 			}
-		} else {
-			vectors[i] = store.MakeVector(r.allocator, n, c.column.typ, c.column.optional)
-			if vectors[i].Kind() == store.VectorInvalid {
-				return nil, c.failure(ParquetResourceExhausted, errors.New("vector allocation failed"))
+			r.scanStates[i].filterVector(&vectors[i], mask)
+		}
+	}
+	if mask != nil && mask.ViN() == 0 {
+		for i := range r.selected {
+			if vectors[i].Kind() != store.VectorInvalid {
+				continue
 			}
-			if failure := c.materializeFixed(ctx, &vectors[i]); failure != nil {
+			c := &r.cursors[i]
+			if c.chunk.codec != 0 && c.chunk.codec != 1 {
+				return nil, c.failure(ParquetUnsupported, errors.New("unsupported codec"))
+			}
+			if failure := c.skip(ctx, n); failure != nil {
 				return nil, failure
 			}
 		}
-		if vectors[i].Kind() == store.VectorInvalid {
-			return nil, c.failure(ParquetResourceExhausted, errors.New("string allocation failed"))
+		batch := store.MakeBatchWithLength(nil, n)
+		batch.SetSelection(store.MakeRowSelectionFromBitMap(mask))
+		mask = nil
+		r.row += int64(n)
+		return batch, nil
+	}
+	for i := range r.selected {
+		if vectors[i].Kind() != store.VectorInvalid {
+			continue
+		}
+		var selection *store.BitMap
+		if r.selectedMaterialization && mask != nil && mask.ViN() != n {
+			selection = mask
+		}
+		var failure *ParquetError
+		vectors[i], failure = r.materializeColumn(ctx, i, n, selection)
+		if failure != nil {
+			return nil, failure
 		}
 		if mask != nil && len(r.scanStates[i].predicates) != 0 {
 			r.scanStates[i].filterVector(&vectors[i], mask)
@@ -615,6 +618,10 @@ func (r *ParquetReader) next(ctx context.Context) (*store.Batch, *ParquetError) 
 }
 
 func makeParquetStringVector(ctx context.Context, c *parquetCursor, n int) (store.Vector, *ParquetError) {
+	return makeParquetSelectedStringVector(ctx, c, n, nil)
+}
+
+func makeParquetSelectedStringVector(ctx context.Context, c *parquetCursor, n int, selection *store.BitMap) (store.Vector, *ParquetError) {
 	if n < 0 || n > (math.MaxInt-7)/(dtype.StringSize*8) {
 		return store.Vector{}, c.failure(ParquetResourceExhausted, errors.New("string vector overflow"))
 	}
@@ -662,6 +669,9 @@ func makeParquetStringVector(ctx context.Context, c *parquetCursor, n int) (stor
 		}
 		if validity != nil {
 			validity.Set(j)
+		}
+		if selection != nil && !selection.IsSet(j) {
+			continue
 		}
 		descriptors[j] = dtype.MakeString(value)
 		if len(value) <= dtype.StringInlineSize {

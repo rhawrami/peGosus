@@ -3,8 +3,126 @@
 Research checked October 2, 2026. The goal is an efficient, embeddable, pure-Go
 analytical engine across supported architectures. The amd64 baseline is one
 measurement source; representation, scheduling, ownership, and avoiding work
-matter across machines. The string-prefix foundation and the next five execution/scan steps are now
-implemented; remaining work and eligibility limits are identified below.
+matter across machines. The string-prefix foundation, first five execution/scan
+steps, second five-step efficiency round, and DISTINCT/spill memory follow-on are
+implemented. Their concrete
+eligibility boundaries and the remaining work are identified below.
+
+## Current implementation: the second efficiency round
+
+Checkpoint `48c9640` contains the first round and has been pushed. The second
+round remains uncommitted; these are implementation facts, not speedup claims.
+The timing/validation record is in
+[the round-two report](../scripts/benchmark-results/2026-10-02-efficiency-round2-summary.json).
+Historical reports later in this document measure earlier changes. Paired
+four-worker million-row Parquet multiple DISTINCT counts improve 1.48x; the
+new chained-join/TopN shape scales 3.22x in its focused microbenchmark. Selected
+string copies drop from 62,664 to 560 bytes for 38 active rows. Controls remain
+disabled after measured hit regressions. External grouping's high cumulative
+metadata allocation rate is a remaining efficiency problem, despite bounded
+requested live payload storage. See the report for controls, regressions,
+scope/process-memory distinctions and synthetic/adaptor limitations.
+
+- Multiple global and grouped DISTINCT aggregates now use local/merge/final
+  execution. Identical bound DISTINCT expressions share deduplication sets
+  across COUNT/SUM/AVG and other eligible kinds. Global sets merge independently
+  within worker limits; disjoint shard keys transfer owned state. Nulls, canonical
+  NaNs, signed-zero extrema and field IDs have differential tests.
+- Eligible parallel pipelines support chained equality joins and join-to-TopN,
+  including full-join unmatched tails. Conservative ordinals cover source tasks,
+  duplicate fanout and later tails; overflow or unsupported shapes fall back.
+  Build work and full-sort collection/final gathering remain serial.
+- Engine Parquet scans selectively copy active flat-string payloads after pushed
+  predicates while retaining physical domains, validity and row selections.
+  Encoded dictionaries remain available; the default reader still preserves every
+  physical value. Short equal-prefix string-sort groups have an exact equality
+  proof from complete cached bytes and equal lengths, with binary/long-collision
+  tests rather than assumptions about text encoding.
+- Scalar control-byte fingerprint probing and experiment-gated AVX2/NEON masks
+  are implemented and differentially tested. Default cache activation is disabled
+  because the measured hit-heavy costs do not support a universal replacement.
+  Experimental benchmarks remain useful for miss-heavy and cache-resident cases;
+  SIMD availability alone is not a performance claim.
+- `ExecutionOptions.SpillDirectory` opts eligible sort/TopN, aggregation,
+  standalone DISTINCT and single joins into temporary-file execution. Stable
+  bounded sort merges underpin streaming group/DISTINCT lanes. DISTINCT lanes
+  restore first-occurrence order before floating reductions; pairwise file merges
+  bound their final state. Eligible spilled single joins accept filter/project
+  streaming tails or terminal ordinary aggregate tails. Join sort/limit tails,
+  multiple joins and unsupported build pipelines retain the normal fallback.
+
+External execution is explicitly selected, not an adaptive spill transition.
+Requested live segment bytes remain budgeted, including retained outputs. An
+individual row, decoded page or fully retained result must still fit; streaming
+sinks avoid retaining the whole result. IO failures and cancellation release
+query files and state. Linux process metrics and DataFusion comparisons should
+be separately named, versioned and validated, rather than conflated with the
+allocator's byte budget.
+
+## DISTINCT and spill memory follow-on
+
+The third pass transfers local DISTINCT merge sets, frees consumed state, and
+uses encoded keys without representative row payload for shared COUNT/MIN/MAX
+lanes. Shared SUM/AVG lanes retain original values, and floating SUM/AVG keeps
+its existing merge order. This improves the representation without changing
+logical equality, extrema, aliases or stable field IDs.
+
+Reusable allocator-backed spill frames and offsets remove per-record owned batch
+construction from sort/lane merging. Scans materialize bounded owned batches;
+borrowed string values never escape frame reuse. Deduplication retains only the
+columns needed for equality and reuses their packed buffers. Retained output,
+empty global reductions, cancellation, resource errors and malformed frames are
+covered by normal/race/checkptr tests. These changes require no ISA feature,
+assembly or new dependency.
+
+[The follow-on report](../scripts/benchmark-results/2026-10-02-efficiency-round3-summary.json)
+records a 2.02x four-worker million-row Parquet COUNT DISTINCT improvement and
+38.6% lower cold sampled RSS growth. Grouped spill is 2.11x faster with 92.4% less
+cumulative Go allocation, while reusable buffers slightly raise live segment
+peaks. Five Parquet fixtures plus a retained table, four-engine correctness,
+resource/ownership tests and a tiny-control recheck bound these claims. These are
+synthetic amd64 measurements; source/binary provenance, controls, regressions and
+memory-method limitations remain in the reports.
+
+## Next experiments
+
+The [focused four-engine comparison](../scripts/benchmark-results/2026-10-02-cross-engine-followon-summary.json)
+adds 6,440 timing samples at one/four/eight workers on million/ten-million-row
+balanced, skewed/null and long-string inputs, 112 fresh-process memory records
+and three isolated CPU profiles. Successful outputs have zero mismatches; 32
+peGosus budget failures reproduce across 16 configurations. Spilling is disabled
+for peGosus in this matrix, while competitor budget/output accounting differs.
+
+1. Parallelize grouped aggregation followed by a global reduction. The current
+   second-aggregate rejection makes high-cardinality group-then-count/SUM shapes
+   serial: the ten-million-row integer query is 1.12 s at one worker and 1.14 s
+   at eight. Its profile uses about one core and spends 65.25% flat CPU in
+   `u64Index.get`. Measure specialized/dense integer grouping alongside boundary
+   support, with allocator budgets and exact local/merge/final semantics.
+2. Improve string hash/index/merge state and retained capacity. Ten-million-row
+   COUNT DISTINCT only improves 1.09x from four to eight workers, and uses about
+   2.4 GiB cold sampled RSS at eight despite a 1 GiB requested-byte budget. Its
+   profile spends 47.58% flat CPU in lookup and 29.39% cumulative CPU in DISTINCT
+   merging; those values overlap. String grouping and long-string DISTINCT fail
+   at that budget. Keep alternative index activation conditional on measured
+   hit/miss mix, load factor, key widths and complete queries.
+3. Reduce grouping/key interpretation and string materialization, then measure
+   factorized join-to-aggregate execution. The grouped report scales 7.16x within
+   peGosus but remains about 6x slower than DataFusion at ten million rows/eight
+   workers. Generic group accumulation is 61.86% cumulative profile CPU and
+   selected string materialization is 21.06%. Dictionary preservation, typed
+   composite grouping and exact expression sharing are measurable candidates.
+
+Block-oriented spill encoding, merge fan-in, wide/skewed spill workloads, additional
+blocking composition and explicit spill/streaming comparisons remain important.
+Extend join sort/limit and multiple-join support only with exact residual, outer
+and stable-order semantics. Preserve floating reduction order rather than applying
+algebraic reassociation. Broader runtime filters, real datasets and native arm64
+timings remain open; the new evidence is synthetic amd64 execution, not proof of
+cross-platform superiority.
+
+The research sections below explain the architectural choices. Earlier open
+items are marked as historical where this round has since implemented them.
 
 ## First implementation: normalized string prefixes
 
@@ -43,7 +161,11 @@ has about 5% flat samples in string comparison; radix work and gathering now
 account for more of the remaining time. Profiles use ten timed executions and
 exclude loading, warmups and result hashing.
 
-## Implemented follow-on: join output and parallel blocking operators
+## First follow-on: historical join/output and parallel blocking work
+
+The implementation limits in this section describe the first checkpoint. The
+current second-round capabilities above supersede its DISTINCT and pipeline
+fallbacks.
 
 1. **Batch join output.** The previous integer-join profile attributed about
    84% of samples to probing, including packed-row reads, writes, and output
@@ -115,12 +237,14 @@ arithmetic or introduce approximate reciprocals.
 and bucket designs on multiple architectures. It supports testing compact
 metadata/fingerprint probing, not assuming one SIMD layout wins everywhere.
 
-Start with allocator-backed control bytes and concrete key/payload arrays;
-compare against the current specialized hash paths. Sweep load factor,
+The second round implements allocator-backed control bytes and scalar/AVX2/NEON
+masks while retaining the default probe path. Compare future concrete key/payload
+layouts and cache activation against the specialized hash paths. Sweep load factor,
 cardinality, duplicates, key width, cache residency, and batch selection density.
-Then use Go 1.27.1 `simd/archsimd` behind `GOEXPERIMENT=simd`, separate amd64 AVX2
-and arm64 NEON implementations, detected CPU features, scalar fallbacks, and
-random differential tests. Keep IEEE behavior and the kernel ABI intact.
+The implementations use Go 1.27.1 `simd/archsimd` behind `GOEXPERIMENT=simd`,
+with separate amd64 AVX2 and arm64 NEON files. AVX2 dispatch checks CPU support;
+normal and unsupported builds retain scalar masks. Random differential tests
+check identical results. Keep IEEE behavior and the kernel ABI intact.
 CSV byte classification and Parquet decoding are separate measurable SIMD
 targets; this change adds no new computation-kernel assembly.
 
@@ -133,10 +257,11 @@ requires explicit eligibility and fallback.
 
 ## Memory limits and evidence needed for competitiveness
 
-Preserve spill boundaries while implementing bounded local states. A future
-spill format should use page-relative offsets and serialized strings, not raw
-German-string pointers. Start with sort runs, then partitioned aggregation and
-hash joins. Independently measure requested live bytes, reusable slab capacity,
+The second round preserves spill boundaries with stable sort runs, group/DISTINCT
+lanes and bounded single-join partitions/chunks. Temporary records serialize
+values and strings instead of raw German-string pointers. Extend their adaptive
+admission and pipeline eligibility only with measured budgets and skew.
+Independently measure requested live bytes, reusable slab capacity,
 Go heap, and a clearly named Linux process metric. Allocator budget is not RSS;
 maintenance still requires quiescence.
 
@@ -155,13 +280,13 @@ is a September 2026 pre-release describing a planned default streaming engine;
 its stated join/group ordering changes must not weaken our own semantics.
 Published engine speedups and microbenchmark results are not peGosus claims.
 
-The five-step follow-on is delivered: bounded typed join gathers and batched
-residuals, immutable shared join build/private probing, stable parallel compact
-sorts, partitioned standalone DISTINCT and eligible global reductions, and
-runtime integer TopN/inner/semi Parquet filters. Exact eligibility and ownership
-are recorded in [HANDOFF.md](../HANDOFF.md). Measurements are in the
-[library-efficiency report](../scripts/benchmark-results/2026-10-02-library-efficiency-summary.txt).
-Multiple/grouped DISTINCT aggregates, multi-join parallel pipelines, join-to-TopN
-parallel execution, late payload materialization, SIMD hash metadata, and
-spilling remain open. The next experiments should measure those boundaries
-against these representations, rather than assume every pipeline now scales.
+The first and second five-step rounds are delivered within the eligibility in
+[HANDOFF.md](../HANDOFF.md). First-round measurements remain in the
+[library-efficiency report](../scripts/benchmark-results/2026-10-02-library-efficiency-summary.txt);
+second-round evidence is being assembled in
+[its own report](../scripts/benchmark-results/2026-10-02-efficiency-round2-summary.json).
+Remaining work includes adaptive spill selection, broader spilled join tails,
+additional blocking-stage combinations, richer runtime filters, reduced generic
+state/merge costs, factorized joins, and measured hash-cache activation. These
+are boundaries to investigate against the current representations, not grounds
+to assume every pipeline scales or every query now completes under any budget.

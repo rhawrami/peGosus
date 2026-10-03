@@ -478,7 +478,7 @@ func (s *compactSortState) gather(a *mem.Allocator, schema Schema, ids []uint64)
 			}
 		}
 	}
-	result := store.MakeBatch(vectors)
+	result := store.MakeBatchWithLength(vectors, len(ids))
 	if result != nil {
 		vectors = nil
 	}

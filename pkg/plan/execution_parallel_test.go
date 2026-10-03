@@ -200,7 +200,7 @@ func TestParallelAutoAggregateAndSerialFallback(t *testing.T) {
 	if result.Code() != ExecutionCompleted || count != 5 {
 		t.Fatalf("LIMIT serial fallback %v/%v, %d rows", result.Code(), result.Err(), count)
 	}
-	for _, query := range []LogicalPlan{scan.OrderBy(MakeOrderKey(MakeColumn("id"))), scan.Distinct(), scan.GroupBy([]Expr{MakeColumn("id")}, MakeCountDistinct(MakeColumn("id")))} {
+	for _, query := range []LogicalPlan{scan.OrderBy(MakeOrderKey(MakeColumn("id"))), scan.Distinct(), scan.GroupBy([]Expr{MakeColumn("id")}, MakeCountDistinct(MakeColumn("id"))).Limit(3)} {
 		blocking, err := MakePhysicalPlan(query)
 		if err != nil {
 			t.Fatal(err)

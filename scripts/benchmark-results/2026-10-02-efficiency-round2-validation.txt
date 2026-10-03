@@ -1,0 +1,124 @@
+all-normal
+ok  	github.com/rhawrami/peGosus/pkg/dtype	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/mem	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.317s
+ok  	github.com/rhawrami/peGosus/pkg/plan	4.248s
+ok  	github.com/rhawrami/peGosus/pkg/store	(cached)
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.004s
+
+all-simd
+ok  	github.com/rhawrami/peGosus/pkg/dtype	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/mem	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.322s
+ok  	github.com/rhawrami/peGosus/pkg/plan	4.276s
+ok  	github.com/rhawrami/peGosus/pkg/store	(cached)
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.003s
+
+all-race
+ok  	github.com/rhawrami/peGosus/pkg/dtype	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/mem	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/peg	6.961s
+ok  	github.com/rhawrami/peGosus/pkg/plan	92.972s
+ok  	github.com/rhawrami/peGosus/pkg/store	(cached)
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	1.021s
+
+all-simd-race
+ok  	github.com/rhawrami/peGosus/pkg/dtype	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/mem	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/peg	6.793s
+ok  	github.com/rhawrami/peGosus/pkg/plan	97.901s
+ok  	github.com/rhawrami/peGosus/pkg/store	(cached)
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	1.018s
+
+all-checkptr
+ok  	github.com/rhawrami/peGosus/pkg/dtype	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/mem	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.615s
+ok  	github.com/rhawrami/peGosus/pkg/plan	8.360s
+ok  	github.com/rhawrami/peGosus/pkg/store	(cached)
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.004s
+
+all-simd-checkptr
+ok  	github.com/rhawrami/peGosus/pkg/dtype	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/mem	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	(cached)
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.693s
+ok  	github.com/rhawrami/peGosus/pkg/plan	8.261s
+ok  	github.com/rhawrami/peGosus/pkg/store	(cached)
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.004s
+
+arm64-compile
+ok  	github.com/rhawrami/peGosus/pkg/plan	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	0.000s
+
+arm64-simd-compile
+ok  	github.com/rhawrami/peGosus/pkg/plan	0.001s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	0.001s
+
+avx2-off
+ok  	github.com/rhawrami/peGosus/pkg/plan	1.698s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	0.133s
+
+all-python
+ss.............
+----------------------------------------------------------------------
+Ran 15 tests in 1.466s
+
+OK (skipped=2)
+
+all-null-race
+ok  	github.com/rhawrami/peGosus/pkg/plan	1.020s
+
+Provided-parent-scope targeted regressions
+ok  	github.com/rhawrami/peGosus/pkg/plan	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/plan	1.038s
+ok  	github.com/rhawrami/peGosus/pkg/plan	0.010s

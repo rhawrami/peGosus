@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
@@ -431,7 +432,10 @@ func TestJoinRuntimeBoundsAndCancellation(t *testing.T) {
 	}
 }
 
-func TestJoinTopNParallelFallback(t *testing.T) {
+func TestJoinTopNParallelEligibility(t *testing.T) {
+	if runtime.GOMAXPROCS(0) < 2 {
+		t.Skip("requires two workers")
+	}
 	a := mem.MakeAllocatorWithProfiles([]int{1 << 20}, []int{1 << 20})
 	var batches []*store.Batch
 	for i, keys := range [][]int32{{1, 1}, {2}, {3}} {
@@ -461,8 +465,8 @@ func TestJoinTopNParallelFallback(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, used := p.executeParallel(context.Background(), a, ExecutionOptions{MemoryBudget: 32 << 20, Workers: 4}, func(*store.Batch) bool { t.Fatal("unsupported join TopN invoked parallel sink"); return true }); used {
-			t.Fatal("join TopN used source-row sequence numbering")
+		if result, used := p.executeParallel(context.Background(), a, ExecutionOptions{MemoryBudget: 32 << 20, Workers: 4}, func(*store.Batch) bool { return true }); !used || result.Code() != ExecutionCompleted {
+			t.Fatalf("join TopN parallel=%t result=%v", used, result.Code())
 		}
 		var want []Scalar
 		for _, workers := range []int{1, 4} {

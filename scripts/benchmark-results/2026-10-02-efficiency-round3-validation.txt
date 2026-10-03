@@ -1,0 +1,264 @@
+Full suites cover the key-only DISTINCT revision. Final compatibility/admission follow-ups rerun full normal/SIMD and affected package race/checkptr in both modes. ARM64 is compilation only, with existing assembly vet debt excluded.
+
+final-normal
+ok  	github.com/rhawrami/peGosus/pkg/dtype	0.011s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	0.067s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	1.524s
+ok  	github.com/rhawrami/peGosus/pkg/mem	0.200s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	0.006s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	0.006s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	0.003s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	0.007s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.309s
+ok  	github.com/rhawrami/peGosus/pkg/plan	5.314s
+ok  	github.com/rhawrami/peGosus/pkg/store	0.054s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.014s
+
+final-simd
+ok  	github.com/rhawrami/peGosus/pkg/dtype	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	0.035s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	1.057s
+ok  	github.com/rhawrami/peGosus/pkg/mem	0.136s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	0.003s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	0.004s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.198s
+ok  	github.com/rhawrami/peGosus/pkg/plan	3.597s
+ok  	github.com/rhawrami/peGosus/pkg/store	0.027s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.004s
+
+final-race
+ok  	github.com/rhawrami/peGosus/pkg/dtype	1.010s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	1.284s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	15.133s
+ok  	github.com/rhawrami/peGosus/pkg/mem	1.391s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	1.020s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	1.011s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	1.022s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	1.013s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	1.032s
+ok  	github.com/rhawrami/peGosus/pkg/peg	3.535s
+ok  	github.com/rhawrami/peGosus/pkg/plan	63.510s
+ok  	github.com/rhawrami/peGosus/pkg/store	1.139s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	1.018s
+
+final-simd-race
+ok  	github.com/rhawrami/peGosus/pkg/dtype	1.011s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	1.307s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	17.459s
+ok  	github.com/rhawrami/peGosus/pkg/mem	1.376s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	1.023s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	1.011s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	1.023s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	1.013s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	1.031s
+ok  	github.com/rhawrami/peGosus/pkg/peg	3.752s
+ok  	github.com/rhawrami/peGosus/pkg/plan	71.209s
+ok  	github.com/rhawrami/peGosus/pkg/store	1.170s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	1.024s
+
+final-checkptr
+ok  	github.com/rhawrami/peGosus/pkg/dtype	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	0.045s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	1.164s
+ok  	github.com/rhawrami/peGosus/pkg/mem	0.130s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	0.006s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	0.004s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.518s
+ok  	github.com/rhawrami/peGosus/pkg/plan	7.011s
+ok  	github.com/rhawrami/peGosus/pkg/store	0.031s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.004s
+
+final-simd-checkptr
+ok  	github.com/rhawrami/peGosus/pkg/dtype	0.003s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	0.038s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	1.146s
+ok  	github.com/rhawrami/peGosus/pkg/mem	0.132s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	0.004s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	0.003s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.522s
+ok  	github.com/rhawrami/peGosus/pkg/plan	6.879s
+ok  	github.com/rhawrami/peGosus/pkg/store	0.030s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.004s
+
+final-arm64
+ok  	github.com/rhawrami/peGosus/pkg/dtype	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/mem	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	0.001s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	0.000s
+?   	github.com/rhawrami/peGosus/pkg/op/dateop	[no test files]
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.001s
+ok  	github.com/rhawrami/peGosus/pkg/plan	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/store	0.000s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.000s
+
+final-arm64-simd
+ok  	github.com/rhawrami/peGosus/pkg/dtype	0.001s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/mem	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	0.000s
+?   	github.com/rhawrami/peGosus/pkg/op/dateop	[no test files]
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/plan	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/store	0.000s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.001s
+
+final-avx2-off
+ok  	github.com/rhawrami/peGosus/pkg/plan	2.314s
+
+final-freeze-normal
+ok  	github.com/rhawrami/peGosus/pkg/dtype	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	0.041s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	1.110s
+ok  	github.com/rhawrami/peGosus/pkg/mem	0.149s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	0.004s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	0.004s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	0.003s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.204s
+ok  	github.com/rhawrami/peGosus/pkg/plan	3.447s
+ok  	github.com/rhawrami/peGosus/pkg/store	0.026s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.004s
+
+final-freeze-simd
+ok  	github.com/rhawrami/peGosus/pkg/dtype	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	0.036s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	1.031s
+ok  	github.com/rhawrami/peGosus/pkg/mem	0.184s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	0.003s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	0.001s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	0.004s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.200s
+ok  	github.com/rhawrami/peGosus/pkg/plan	3.873s
+ok  	github.com/rhawrami/peGosus/pkg/store	0.026s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.004s
+
+final-freeze-race
+ok  	github.com/rhawrami/peGosus/pkg/plan	20.020s
+
+final-freeze-simd-race
+ok  	github.com/rhawrami/peGosus/pkg/plan	15.084s
+
+final-freeze-checkptr
+ok  	github.com/rhawrami/peGosus/pkg/plan	2.075s
+
+final-freeze-simd-checkptr
+ok  	github.com/rhawrami/peGosus/pkg/plan	1.912s
+
+owned-normal
+ok  	github.com/rhawrami/peGosus/pkg/dtype	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	0.043s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	1.105s
+ok  	github.com/rhawrami/peGosus/pkg/mem	0.152s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	0.004s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	0.003s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.198s
+ok  	github.com/rhawrami/peGosus/pkg/plan	3.576s
+ok  	github.com/rhawrami/peGosus/pkg/store	0.026s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.003s
+
+owned-simd
+ok  	github.com/rhawrami/peGosus/pkg/dtype	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/io/csv	0.037s
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	1.037s
+ok  	github.com/rhawrami/peGosus/pkg/mem	0.142s
+ok  	github.com/rhawrami/peGosus/pkg/op/bitop	0.004s
+ok  	github.com/rhawrami/peGosus/pkg/op/boolop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/cmpop	0.004s
+ok  	github.com/rhawrami/peGosus/pkg/op/numop	0.002s
+ok  	github.com/rhawrami/peGosus/pkg/op/strop	0.005s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.197s
+ok  	github.com/rhawrami/peGosus/pkg/plan	3.632s
+ok  	github.com/rhawrami/peGosus/pkg/store	0.026s
+?   	github.com/rhawrami/peGosus/scripts	[no test files]
+ok  	github.com/rhawrami/peGosus/scripts/workload_peg	0.004s
+
+owned-race
+ok  	github.com/rhawrami/peGosus/pkg/plan	20.890s
+ok  	github.com/rhawrami/peGosus/pkg/peg	3.422s
+
+owned-simd-race
+ok  	github.com/rhawrami/peGosus/pkg/plan	21.276s
+ok  	github.com/rhawrami/peGosus/pkg/peg	3.700s
+
+owned-checkptr
+ok  	github.com/rhawrami/peGosus/pkg/plan	1.924s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.491s
+
+owned-simd-checkptr
+ok  	github.com/rhawrami/peGosus/pkg/plan	1.910s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.489s
+
+owned-arm64
+ok  	github.com/rhawrami/peGosus/pkg/plan	0.000s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.000s
+
+owned-arm64-simd
+ok  	github.com/rhawrami/peGosus/pkg/plan	0.001s
+ok  	github.com/rhawrami/peGosus/pkg/peg	0.000s
+
+python
+test_missing_rss_is_not_zero (test_process_memory_linux.LinuxMemoryTests.test_missing_rss_is_not_zero) ... ok
+test_parser_preserves_rss_and_lifetime_peak_separately (test_process_memory_linux.LinuxMemoryTests.test_parser_preserves_rss_and_lifetime_peak_separately) ... ok
+test_parser_rejects_bad_units_and_negative_sizes (test_process_memory_linux.LinuxMemoryTests.test_parser_rejects_bad_units_and_negative_sizes) ... ok
+test_sampler_stops_when_worker_operation_raises (test_process_memory_linux.LinuxMemoryTests.test_sampler_stops_when_worker_operation_raises) ... ok
+test_snapshot_optional_pss_and_io (test_process_memory_linux.LinuxMemoryTests.test_snapshot_optional_pss_and_io) ... ok
+test_stage_peak_does_not_reuse_lifetime_hwm (test_process_memory_linux.LinuxMemoryTests.test_stage_peak_does_not_reuse_lifetime_hwm) ... ok
+test_all_queries_match_duckdb_on_null_and_string_profiles (test_workload_datafusion.DataFusionWorkloadTests.test_all_queries_match_duckdb_on_null_and_string_profiles) ... ok
+test_csv_is_rejected_instead_of_ranking_wrong_nulls (test_workload_datafusion.DataFusionWorkloadTests.test_csv_is_rejected_instead_of_ranking_wrong_nulls) ... ok
+test_sql_dialect_preserves_left_side_semantics (test_workload_datafusion.DataFusionWorkloadTests.test_sql_dialect_preserves_left_side_semantics) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.971s
+
+OK
+
+python-other
+test_interval_peak_captures_released_allocation (compare_parquet_memory_test.FootprintCounterTest.test_interval_peak_captures_released_allocation) ... skipped 'requires macOS footprint counters'
+test_mismatched_stage_is_rejected (compare_parquet_memory_test.FootprintCounterTest.test_mismatched_stage_is_rejected) ... skipped 'requires macOS footprint counters'
+test_fingerprint_preserves_null_type_and_multiplicity (workload_suite_test.WorkloadTest.test_fingerprint_preserves_null_type_and_multiplicity) ... ok
+test_fixture_cache_preserves_old_generator_and_checks_content (workload_suite_test.WorkloadTest.test_fixture_cache_preserves_old_generator_and_checks_content) ... ok
+test_fixtures_native_differential_and_preview (workload_suite_test.WorkloadTest.test_fixtures_native_differential_and_preview) ... ok
+test_mismatches_and_missing_results_are_rejected (workload_suite_test.WorkloadTest.test_mismatches_and_missing_results_are_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.533s
+
+OK (skipped=2)
+

@@ -232,7 +232,7 @@ func accumulateAggregates(a *mem.Allocator, batch *store.Batch, step physicalSte
 					values.release()
 					return false
 				}
-				if uniques[i].rows.length == before {
+				if uniques[i].rows.length == before && aggregate.kind != AggregateMin && aggregate.kind != AggregateMax {
 					continue
 				}
 			}

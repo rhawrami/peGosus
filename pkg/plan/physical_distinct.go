@@ -22,7 +22,10 @@ type distinctState struct {
 	scratch *mem.Segment
 	charged int64
 	scope   *mem.AllocationScope
+	keyOnly bool
 }
+
+func (s *distinctState) length() int { return s.keys.entries }
 
 func (s *distinctState) setScope(scope *mem.AllocationScope) {
 	s.scope, s.index.scope, s.keys.scope, s.rows.scope = scope, scope, scope, scope
@@ -88,39 +91,43 @@ func (s *distinctState) addString(a *mem.Allocator, batch *store.Batch, row int,
 }
 
 func (s *distinctState) appendRow(a *mem.Allocator, encoded []byte, batch *store.Batch, row int, budget int64) (int, bool) {
+	index := s.length()
 	priorKeyBytes, priorIndexBytes := s.keys.bytes(), s.index.bytes()
 	other := s.charged - priorKeyBytes - priorIndexBytes
-	if !s.keys.append(a, encoded, budget-other-priorIndexBytes) || !s.index.put(a, encoded, s.rows.length, budget-other-s.keys.bytes()) || !s.rows.append(a, batch, row, budget-s.keys.bytes()-s.index.bytes()) {
+	if !s.keys.append(a, encoded, budget-other-priorIndexBytes) || !s.index.put(a, encoded, index, budget-other-s.keys.bytes()) || !s.keyOnly && !s.rows.append(a, batch, row, budget-s.keys.bytes()-s.index.bytes()) {
 		return 0, false
 	}
 	s.charged = saturatingAdd(saturatingAdd(s.keys.bytes(), s.index.bytes()), s.rows.bytes()+int64(s.scratch.Len()))
-	return s.rows.length - 1, true
+	return index, true
 }
 
 func (s *distinctState) addEncoded(a *mem.Allocator, encoded []byte, rows *packedRows, row int, values []Scalar, budget int64) (int, bool) {
-	if len(values) != len(rows.types) || int64(len(encoded)) > budget-s.charged {
+	if !s.keyOnly && (rows == nil || len(values) != len(rows.types)) || int64(len(encoded)) > budget-s.charged {
 		return 0, false
 	}
 	if index, exists := s.index.lookup(encoded, &s.keys); exists {
 		return index, true
 	}
+	index := s.length()
 	priorKeyBytes, priorIndexBytes := s.keys.bytes(), s.index.bytes()
 	other := s.charged - priorKeyBytes - priorIndexBytes
-	if !s.keys.append(a, encoded, budget-other-priorIndexBytes) || !s.index.put(a, encoded, s.rows.length, budget-other-s.keys.bytes()) {
+	if !s.keys.append(a, encoded, budget-other-priorIndexBytes) || !s.index.put(a, encoded, index, budget-other-s.keys.bytes()) {
 		return 0, false
 	}
-	for i := range values {
-		values[i] = rows.at(row, i)
-	}
-	if !s.rows.appendScalars(a, values, budget-s.keys.bytes()-s.index.bytes()) {
-		return 0, false
+	if !s.keyOnly {
+		for i := range values {
+			values[i] = rows.at(row, i)
+		}
+		if !s.rows.appendScalars(a, values, budget-s.keys.bytes()-s.index.bytes()) {
+			return 0, false
+		}
 	}
 	scratchBytes := int64(0)
 	if s.scratch != nil {
 		scratchBytes = int64(s.scratch.Len())
 	}
 	s.charged = saturatingAdd(saturatingAdd(s.keys.bytes(), s.index.bytes()), s.rows.bytes()+scratchBytes)
-	return s.rows.length - 1, true
+	return index, true
 }
 
 func (s *distinctState) lookup(a *mem.Allocator, batch *store.Batch, row int) (int, bool) {

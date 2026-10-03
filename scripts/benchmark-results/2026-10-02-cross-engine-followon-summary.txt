@@ -1,0 +1,233 @@
+# peGosus cross-engine comparison: October 2, 2026 (local time)
+
+Current uncommitted normal pure-Go amd64 build; Ryzen 7 7700X, Go 1.27.1, GOAMD64=v1.
+DuckDB 1.5.6; Polars 1.34.0; DataFusion 54.0.0 / PyArrow 25.0.1.
+
+360 timing records, 112 fresh-process memory records, 1432 observations and 6440 timed samples.
+32 query/harness failures; 0 result mismatches.
+Source and binary hashes unchanged: True / True.
+
+Timings below are pooled medians in milliseconds; lower is better. FAIL means no ranked timing.
+
+## Findings
+
+- High-cardinality integer grouping runs in about 1.12 s at one worker and 1.14 s at eight. The profile has 5.87 s sampled CPU over 5.83 s wall time, about one active core; u64Index.get accounts for 65.25% flat CPU. The two-aggregate plan is rejected by execution_parallel.go:82-85, which supports one aggregate boundary, and falls back to serial execution.
+- COUNT DISTINCT at eight workers improves only 1.09x over four workers on balanced ten-million-row input. Its profile spends 47.58% flat CPU in lookupString plus lookup; mergeDistinctSet accounts for 29.39% cumulative CPU. These percentages overlap and must not be added.
+- The eight-worker grouped report profile uses about 7.83 cores on average; groupState.add accounts for 61.86% cumulative CPU and selected string materialization for 21.06%. The groups include string keys and multiple reductions. Those cumulative costs include child functions.
+- On balanced ten-million-row input, peGosus ordinary aggregates and join reports improve 6.63-7.16x from one to eight workers, but their eight-worker timings still trail DuckDB and DataFusion.
+- The 32 failures are all peGosus ErrorResourceExhausted outcomes across 16 unique configurations, each reproduced in two rounds. No competitor query failed. This harness disables peGosus spill execution; output accounting and native budgets differ between engines.
+- At eight workers on balanced ten-million-row COUNT DISTINCT, peGosus cold sampled RSS is 2486.6 MiB versus DuckDB 611.2, Polars 1070.5 and DataFusion 1461.3. Final peGosus live payload returns to zero, but reusable capacity and process memory remain high. The 1 GiB query budget is not an RSS cap.
+- The ten-million-row grouped report stays small in peGosus (38.2 MiB cold sampled RSS at eight workers), versus DuckDB 85.8, Polars 1696.2 and DataFusion 248.3. Memory behavior varies substantially by query.
+
+The three diagnostic CPU profiles are excluded from comparison sample counts and timings; their output fingerprints also match the matrix. Raw profiles persist under ignored testdata/cross-engine-followon/.
+
+## Next priorities
+
+1. Support parallel execution across grouped-aggregate-to-global-reduction boundaries; preserve exact integer, floating, null, selection, ownership and cancellation semantics.
+2. Measure specialized/dense integer grouping and string hash/index/merge representations. Reduce string-group/DISTINCT state and allocator retained capacity; do not activate an experimental index based on a single profile.
+3. Measure dictionary-preserving grouping and scalar/key-encoding overhead, then factorized join-to-aggregate execution. Extend spill composition and benchmark explicit spill and streaming output separately from this no-spill retained-result matrix.
+
+## core: balanced:1048576, 4 workers
+
+| Query | peGosus | DuckDB | Polars | DataFusion |
+| --- | ---: | ---: | ---: | ---: |
+| count_distinct | 100.327 | 20.097 | 44.763 | 60.760 |
+| multi_group_report | 45.606 | 9.249 | 19.785 | 9.417 |
+| group_sum | 4.721 | 1.651 | 5.741 | 3.412 |
+| join_int_report | 28.337 | 3.830 | 13.330 | 5.374 |
+| join_string_report | 35.991 | 10.148 | 17.021 | 6.825 |
+
+## core: balanced:10000000, 8 workers
+
+| Query | peGosus | DuckDB | Polars | DataFusion |
+| --- | ---: | ---: | ---: | ---: |
+| count_distinct | 1315.376 | 117.956 | 682.329 | 635.309 |
+| multi_group_report | 226.739 | 43.140 | 190.169 | 37.891 |
+| group_sum | 24.109 | 7.657 | 56.847 | 13.840 |
+| join_int_report | 143.127 | 17.253 | 118.352 | 20.761 |
+| join_string_report | 189.061 | 47.587 | 167.246 | 26.806 |
+
+## core: skewed_nulls:10000000, 8 workers
+
+| Query | peGosus | DuckDB | Polars | DataFusion |
+| --- | ---: | ---: | ---: | ---: |
+| count_distinct | 815.637 | 85.549 | 485.404 | 413.771 |
+| multi_group_report | 207.984 | 39.483 | 188.384 | 32.324 |
+| group_sum | 20.780 | 7.603 | 59.910 | 12.360 |
+| join_int_report | 104.836 | 12.932 | 80.367 | 15.416 |
+| join_string_report | 131.580 | 32.426 | 113.162 | 19.972 |
+
+## core: plain_strings:10000000, 8 workers
+
+| Query | peGosus | DuckDB | Polars | DataFusion |
+| --- | ---: | ---: | ---: | ---: |
+| count_distinct | FAIL | 198.447 | 988.462 | 752.570 |
+| multi_group_report | 235.050 | 87.299 | 202.638 | 50.634 |
+| group_sum | 57.808 | 36.753 | 62.907 | 21.432 |
+| join_int_report | 144.818 | 17.084 | 122.494 | 21.108 |
+| join_string_report | 194.456 | 74.798 | 180.513 | 30.758 |
+
+## table: balanced:1048576, 4 workers
+
+| Query | peGosus | DuckDB | Polars | DataFusion |
+| --- | ---: | ---: | ---: | ---: |
+| count_distinct | 73.676 | 23.964 | 31.201 | 50.674 |
+| multi_group_report | 28.886 | 11.712 | 15.317 | 4.934 |
+| group_sum | 5.365 | 4.810 | 4.356 | 1.712 |
+| join_int_report | 21.264 | 2.088 | 11.648 | 4.673 |
+| join_string_report | 26.549 | 12.635 | 14.296 | 6.967 |
+
+## materialization: balanced:1048576, 8 workers
+
+| Query | peGosus | DuckDB | Polars | DataFusion |
+| --- | ---: | ---: | ---: | ---: |
+| full_sort_numeric | 79.622 | 168.154 | 35.542 | 31.534 |
+| full_sort_string | 148.527 | 248.363 | 51.154 | 67.514 |
+| distinct_strings | 80.591 | 11.872 | 22.399 | 22.950 |
+
+## materialization: balanced:10000000, 8 workers
+
+| Query | peGosus | DuckDB | Polars | DataFusion |
+| --- | ---: | ---: | ---: | ---: |
+| full_sort_numeric | FAIL | 1688.606 | 724.080 | 281.411 |
+| full_sort_string | FAIL | 2682.514 | 612.489 | 527.428 |
+| distinct_strings | FAIL | 112.533 | 234.226 | 502.787 |
+
+## high-cardinality: balanced:1048576, 8 workers
+
+| Query | peGosus | DuckDB | Polars | DataFusion |
+| --- | ---: | ---: | ---: | ---: |
+| high_card_int_group | 61.138 | 10.873 | 19.874 | 9.248 |
+| high_card_string_group | 156.768 | 15.227 | 53.759 | 24.267 |
+
+## high-cardinality: balanced:10000000, 8 workers
+
+| Query | peGosus | DuckDB | Polars | DataFusion |
+| --- | ---: | ---: | ---: | ---: |
+| high_card_int_group | 1142.235 | 111.436 | 406.671 | 167.998 |
+| high_card_string_group | FAIL | 178.061 | 866.214 | 563.511 |
+
+## Scaling on balanced ten-million-row Parquet input
+
+| Query / engine | 1 worker ms | 4 workers ms | 8 workers ms | 1→8 speedup |
+| --- | ---: | ---: | ---: | ---: |
+| count_distinct / peGosus | FAIL | 1431.492 | 1315.376 | — |
+| count_distinct / DuckDB | 779.099 | 179.056 | 117.956 | 6.61x |
+| count_distinct / Polars | 848.958 | 700.213 | 682.329 | 1.24x |
+| count_distinct / DataFusion | 636.161 | 699.675 | 635.309 | 1.00x |
+| multi_group_report / peGosus | 1622.664 | 427.996 | 226.739 | 7.16x |
+| multi_group_report / DuckDB | 212.088 | 68.678 | 43.140 | 4.92x |
+| multi_group_report / Polars | 394.363 | 195.689 | 190.169 | 2.07x |
+| multi_group_report / DataFusion | 213.518 | 59.915 | 37.891 | 5.64x |
+| group_sum / peGosus | 159.837 | 42.542 | 24.109 | 6.63x |
+| group_sum / DuckDB | 34.173 | 11.267 | 7.657 | 4.46x |
+| group_sum / Polars | 117.687 | 57.158 | 56.847 | 2.07x |
+| group_sum / DataFusion | 53.336 | 20.754 | 13.840 | 3.85x |
+| join_int_report / peGosus | 973.765 | 257.127 | 143.127 | 6.80x |
+| join_int_report / DuckDB | 96.533 | 27.706 | 17.253 | 5.60x |
+| join_int_report / Polars | 296.387 | 131.309 | 118.352 | 2.50x |
+| join_int_report / DataFusion | 105.533 | 31.169 | 20.761 | 5.08x |
+| join_string_report / peGosus | 1267.552 | 332.976 | 189.061 | 6.70x |
+| join_string_report / DuckDB | 255.493 | 79.557 | 47.587 | 5.37x |
+| join_string_report / Polars | 370.468 | 177.087 | 167.246 | 2.22x |
+| join_string_report / DataFusion | 136.863 | 39.555 | 26.806 | 5.11x |
+
+## Fresh-process memory
+
+Median sampled cold peak and growth above immediate pre-query RSS, MiB; separate runs from timing. Startup/ready is reported separately.
+
+| Case / query / workers | Engine | Startup RSS | Cold sampled peak | Cold growth | Final-GC RSS |
+| --- | --- | ---: | ---: | ---: | ---: |
+| balanced:1048576 / count_distinct / 4 | peGosus | 5.8 | 201.7 | 195.9 | 247.1 |
+| balanced:1048576 / multi_group_report / 4 | peGosus | 6.1 | 18.9 | 13.1 | 21.2 |
+| balanced:1048576 / full_sort_string / 4 | peGosus | 6.0 | 135.5 | 129.7 | 164.3 |
+| balanced:1048576 / count_distinct / 4 | DuckDB | 63.0 | 136.8 | 73.8 | 168.8 |
+| balanced:1048576 / multi_group_report / 4 | DuckDB | 63.0 | 71.8 | 8.7 | 77.6 |
+| balanced:1048576 / full_sort_string / 4 | DuckDB | 63.0 | 310.3 | 247.3 | 175.3 |
+| balanced:1048576 / count_distinct / 4 | Polars | 46.5 | 173.8 | 127.3 | 201.7 |
+| balanced:1048576 / multi_group_report / 4 | Polars | 46.6 | 271.6 | 225.0 | 318.8 |
+| balanced:1048576 / full_sort_string / 4 | Polars | 46.5 | 211.9 | 165.4 | 217.6 |
+| balanced:1048576 / count_distinct / 4 | DataFusion | 128.9 | 431.9 | 303.0 | 438.0 |
+| balanced:1048576 / multi_group_report / 4 | DataFusion | 128.8 | 193.1 | 64.3 | 205.1 |
+| balanced:1048576 / full_sort_string / 4 | DataFusion | 128.9 | 349.8 | 221.0 | 558.3 |
+| balanced:1048576 / count_distinct / 8 | peGosus | 6.2 | 255.3 | 249.1 | 287.4 |
+| balanced:1048576 / multi_group_report / 8 | peGosus | 6.2 | 29.8 | 23.6 | 32.2 |
+| balanced:1048576 / full_sort_string / 8 | peGosus | 6.3 | 134.2 | 127.9 | 180.8 |
+| balanced:1048576 / count_distinct / 8 | DuckDB | 63.0 | 160.9 | 97.9 | 187.1 |
+| balanced:1048576 / multi_group_report / 8 | DuckDB | 63.0 | 77.2 | 14.2 | 86.7 |
+| balanced:1048576 / full_sort_string / 8 | DuckDB | 63.1 | 340.0 | 276.9 | 228.1 |
+| balanced:1048576 / count_distinct / 8 | Polars | 47.0 | 179.5 | 132.5 | 206.7 |
+| balanced:1048576 / multi_group_report / 8 | Polars | 47.1 | 277.2 | 230.1 | 319.0 |
+| balanced:1048576 / full_sort_string / 8 | Polars | 47.0 | 216.1 | 169.1 | 224.4 |
+| balanced:1048576 / count_distinct / 8 | DataFusion | 128.9 | 495.1 | 366.3 | 548.0 |
+| balanced:1048576 / multi_group_report / 8 | DataFusion | 128.9 | 227.4 | 98.5 | 251.4 |
+| balanced:1048576 / full_sort_string / 8 | DataFusion | 128.9 | 356.1 | 227.3 | 505.1 |
+| balanced:10000000 / multi_group_report / 4 | peGosus | 12.1 | 26.1 | 18.7 | 32.5 |
+| balanced:10000000 / multi_group_report / 4 | DuckDB | 64.9 | 80.0 | 15.2 | 85.3 |
+| balanced:10000000 / multi_group_report / 4 | Polars | 46.6 | 1683.1 | 1636.6 | 1889.0 |
+| balanced:10000000 / multi_group_report / 4 | DataFusion | 130.8 | 201.2 | 70.4 | 211.8 |
+| balanced:10000000 / multi_group_report / 8 | peGosus | 13.8 | 38.2 | 28.9 | 53.9 |
+| balanced:10000000 / multi_group_report / 8 | DuckDB | 65.0 | 85.8 | 20.8 | 95.8 |
+| balanced:10000000 / multi_group_report / 8 | Polars | 47.1 | 1696.2 | 1649.1 | 2039.8 |
+| balanced:10000000 / multi_group_report / 8 | DataFusion | 130.8 | 248.3 | 117.5 | 261.7 |
+| balanced:10000000 / count_distinct / 4 | peGosus | 15.0 | 2254.1 | 2239.1 | 2470.2 |
+| balanced:10000000 / count_distinct / 4 | DuckDB | 65.0 | 582.2 | 517.2 | 851.8 |
+| balanced:10000000 / count_distinct / 4 | Polars | 46.6 | 1064.7 | 1018.1 | 1361.0 |
+| balanced:10000000 / count_distinct / 4 | DataFusion | 130.8 | 1556.2 | 1425.3 | 1695.4 |
+| balanced:10000000 / count_distinct / 8 | peGosus | 15.2 | 2486.6 | 2471.4 | 2684.4 |
+| balanced:10000000 / count_distinct / 8 | DuckDB | 65.2 | 611.2 | 546.0 | 755.0 |
+| balanced:10000000 / count_distinct / 8 | Polars | 47.0 | 1070.5 | 1023.5 | 1452.3 |
+| balanced:10000000 / count_distinct / 8 | DataFusion | 130.8 | 1461.3 | 1330.5 | 1771.3 |
+
+Maximum observed sampling gap: 7.548 ms; sampling errors: 0.
+peGosus live allocator bytes after release_all errors: 0.
+Ten-million-row COUNT DISTINCT memory omits the failed serial configuration; the successful four/eight-worker configurations are measured separately.
+
+## Failures
+
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "core", "public_error_name": "ErrorResourceExhausted", "query": "count_distinct", "round": 1, "workers": 1}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "core", "public_error_name": "ErrorResourceExhausted", "query": "count_distinct", "round": 2, "workers": 1}
+- {"case": "plain_strings:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "core", "public_error_name": "ErrorResourceExhausted", "query": "count_distinct", "round": 1, "workers": 1}
+- {"case": "plain_strings:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "core", "public_error_name": "ErrorResourceExhausted", "query": "count_distinct", "round": 1, "workers": 4}
+- {"case": "plain_strings:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "core", "public_error_name": "ErrorResourceExhausted", "query": "count_distinct", "round": 1, "workers": 8}
+- {"case": "plain_strings:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "core", "public_error_name": "ErrorResourceExhausted", "query": "count_distinct", "round": 2, "workers": 8}
+- {"case": "plain_strings:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "core", "public_error_name": "ErrorResourceExhausted", "query": "count_distinct", "round": 2, "workers": 4}
+- {"case": "plain_strings:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "core", "public_error_name": "ErrorResourceExhausted", "query": "count_distinct", "round": 2, "workers": 1}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "full_sort_numeric", "round": 1, "workers": 1}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "full_sort_string", "round": 1, "workers": 1}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "distinct_strings", "round": 1, "workers": 1}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "full_sort_numeric", "round": 1, "workers": 4}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "full_sort_string", "round": 1, "workers": 4}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "distinct_strings", "round": 1, "workers": 4}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "full_sort_numeric", "round": 1, "workers": 8}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "full_sort_string", "round": 1, "workers": 8}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "distinct_strings", "round": 1, "workers": 8}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "full_sort_numeric", "round": 2, "workers": 8}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "full_sort_string", "round": 2, "workers": 8}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "distinct_strings", "round": 2, "workers": 8}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "full_sort_numeric", "round": 2, "workers": 4}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "full_sort_string", "round": 2, "workers": 4}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "distinct_strings", "round": 2, "workers": 4}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "full_sort_numeric", "round": 2, "workers": 1}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "full_sort_string", "round": 2, "workers": 1}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "materialization", "public_error_name": "ErrorResourceExhausted", "query": "distinct_strings", "round": 2, "workers": 1}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "high-cardinality", "public_error_name": "ErrorResourceExhausted", "query": "high_card_string_group", "round": 1, "workers": 1}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "high-cardinality", "public_error_name": "ErrorResourceExhausted", "query": "high_card_string_group", "round": 1, "workers": 4}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "high-cardinality", "public_error_name": "ErrorResourceExhausted", "query": "high_card_string_group", "round": 1, "workers": 8}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "high-cardinality", "public_error_name": "ErrorResourceExhausted", "query": "high_card_string_group", "round": 2, "workers": 8}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "high-cardinality", "public_error_name": "ErrorResourceExhausted", "query": "high_card_string_group", "round": 2, "workers": 4}
+- {"case": "balanced:10000000", "code": 9, "engine": "peGosus", "error": "query execution failed", "label": "high-cardinality", "public_error_name": "ErrorResourceExhausted", "query": "high_card_string_group", "round": 2, "workers": 1}
+
+## Interpretation limits
+
+- Warm-cache synthetic fixtures; these are not production datasets, an official benchmark score, or universal engine rankings.
+- Two reversed-order rounds; timings are pooled medians of ten samples per engine/case/query/worker setting. Failed queries are excluded entirely from timing rankings.
+- peGosus Prepare is excluded; DuckDB execute includes SQL planning, Polars collect includes optimization, and DataFusion includes SQL planning and Arrow collection.
+- DuckDB fetchall converts outputs to Python rows inside timing; peGosus returns owned results, Polars native DataFrames and DataFusion Arrow batches. Large-output timings are adapter-inclusive.
+- Output release is excluded from execution timing and available separately in raw reports; result fingerprints are outside timing windows.
+- peGosus and DuckDB use a 1 GiB query budget. peGosus spill execution is disabled here; DuckDB and DataFusion may spill, and Polars has no equivalent configured hard budget.
+- Worker settings differ by runtime and are not a strict OS thread quota. The desktop CPU uses its existing governor and adaptive boost.
+- Linux sampled RSS peaks are lower bounds. Cold growth is relative to the immediate pre-query RSS, which can differ from ready/startup RSS. Exact endpoint RSS/PSS, scope payload bytes and retained allocator capacity are separate metrics.
+- Numeric fixtures use dyadic values and exclude NaN/Inf/rounding stress; package tests, not this matrix, cover those semantics.
+
+Raw samples, release timings, round medians, checksummed fixtures, exact RSS/PSS endpoints, commands and full source/binary provenance are retained in the matching JSON reports.

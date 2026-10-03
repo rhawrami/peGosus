@@ -228,6 +228,13 @@ func (s *sortState) siftDown(index int) {
 
 func compareOrdered(x, y Scalar) int {
 	switch x.Type().ID() {
+	case dtype.BOOLT:
+		if x.bits < y.bits {
+			return -1
+		}
+		if x.bits > y.bits {
+			return 1
+		}
 	case dtype.INT32T, dtype.DATET:
 		if x.i32() < y.i32() {
 			return -1

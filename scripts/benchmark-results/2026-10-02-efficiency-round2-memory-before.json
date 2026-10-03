@@ -1,0 +1,2367 @@
+{
+  "paper": "https://www.cs.cit.tum.de/fileadmin/w00cfj/dis/papers/getreal.pdf",
+  "limitations": [
+    "Synthetic workloads informed by the Tableau Public study, not a replay or a representative production query distribution.",
+    "Warm filesystem cache; compilation, source loading and peGosus Prepare excluded. DuckDB Python execute includes per-execution SQL planning; Polars collect includes optimization.",
+    "Native materialization: peGosus owned Result, Polars DataFrame, DuckDB Python fetchall rows. DuckDB Python conversion is included in execution and process memory; fingerprints are outside timing windows.",
+    "Output release measured separately; process startup and retained-table input loading excluded from timing and included in process-memory baseline.",
+    "No collation, dirty string-to-number/date casts, window functions, percentile, spilling, many-to-many join stress, or cancellation timing; no official TPC/ClickBench score.",
+    "Dyadic numeric values permit exact fingerprints but exclude floating-point reduction rounding stress, NaN and infinity performance.",
+    "Go and DuckDB query memory budget 1 GiB; Polars has no equivalent configured hard budget. Thread counts cap runtimes but not every operator parallelizes.",
+    "Unordered wide output uses a multiset fingerprint; unordered LIMIT validates row membership and uniqueness rather than equal subsets.",
+    "peGosus has a configurable per-execution guard deadline (default 10s). Native whole-worker watchdog is 1800s. Failures and cancellations have no comparison timing; completed partial samples are not ranked."
+  ],
+  "source": "parquet",
+  "engines": [
+    "peGosus"
+  ],
+  "platform": "Linux-7.2.8-200.fc44.x86_64-x86_64-with-glibc2.43",
+  "processor": "x86_64",
+  "warmup": 2,
+  "runs": 3,
+  "rounds": 2,
+  "peg_timeout_seconds": 10.0,
+  "source_hashes": {
+    "scripts/compare_workload_engines.py": "104235e8317f9bb6f26a7e70f67c6203624ee24e660e99a9621a4e3faa6cc36d",
+    "scripts/workload_suite.py": "b04dd971479929f283a60b5a2f9aa092401885944996ec263486b0a4b26387e3",
+    "scripts/workload_peg/main.go": "2bc298be382de168af8b251eeac3d307f6d6fdaee2691ae8058fc494652e18a2",
+    "scripts/workload_datafusion.py": "7340991fd7736b1b0eb7ce2240f1e08c50f30de611d68cf4a9ca648fbe18ba2e",
+    "scripts/compare_parquet_memory.py": "b5d258d7c4b56966a6edbda1b323b50ac0e04b51caa9cd7a3a7d8acd26043390",
+    "scripts/process_memory_linux.py": "54c8fb70a26c91bf68baff0b4a5c206d0dee7e401730c633cdd4be579d08cd30"
+  },
+  "fixtures": [
+    {
+      "case": "balanced:1048576",
+      "rows": 1048576,
+      "profile": "balanced",
+      "null_percentage": 5,
+      "customer_domain": 786433,
+      "generator_sql": "SELECT i::INTEGER AS id, CASE WHEN (i*17+3)%100 < 5 THEN NULL ELSE ((i*104729)%65536-32768)::DOUBLE/128 END AS score, CASE WHEN (i*17+7)%100 < 5 THEN NULL ELSE i%3=0 END AS active, DATE '1970-01-01' + (19000+(i*13)%365)::INTEGER AS day, CASE WHEN (i*17+11)%100 < 5 THEN NULL ELSE (['north','south','east','west','central','island','Caf\u00e9','\u6771\u4eac'])[(i%8)+1] END AS category, CASE WHEN (i*17+19)%100 < 5 THEN NULL ELSE 'Event-' || printf('%04d', i%128) || ' Caf\u00e9 \u6771\u4eac' END AS message, CASE WHEN (i*17+23)%100 < 5 THEN NULL ELSE ((i*48271)%786433)::INTEGER END AS customer_key, CASE WHEN (i*17+23)%100 < 5 THEN NULL ELSE 'cust-' || printf('%08d', (i*48271)%786433) END AS customer_code, CASE WHEN (i*17+31)%100 < 5 THEN NULL ELSE ((i*17)%536)::INTEGER END AS segment_key, CASE WHEN (i*17+31)%100 < 5 THEN NULL ELSE 'seg-' || printf('%04d', (i*17)%536) END AS segment_code, CASE WHEN (i*17+37)%100 < 5 THEN NULL ELSE CASE WHEN i%29=0 THEN '?' WHEN i%2=0 THEN 'Y' ELSE 'N' END END AS flag_text, printf('%d/%02d', 2017+i%6, (18+i%6)) AS fiscal_year, CASE WHEN (i*17+41)%100 < 5 THEN NULL ELSE (i%1024+1)::DOUBLE/8 END AS price, CASE WHEN (i*17+43)%100 < 5 THEN NULL ELSE (CASE WHEN i%127=0 THEN 0 ELSE (1 << (i%4)) END)::INTEGER END AS quantity, CASE WHEN (i*17+47)%100 < 5 THEN NULL ELSE (i%4)::DOUBLE/8 END AS discount, ((i*37)%100)::INTEGER AS selectivity FROM range(1048576) AS t(i)",
+      "dimension_sql": "SELECT i::INTEGER AS segment_key, 'seg-' || printf('%04d', i) AS segment_code, 'region-' || (i%8)::VARCHAR AS region, i%5!=0 AS enabled FROM range(512) AS t(i)",
+      "fields": [
+        {
+          "name": "id",
+          "kind": "int32",
+          "nullable": false
+        },
+        {
+          "name": "score",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "active",
+          "kind": "bool",
+          "nullable": true
+        },
+        {
+          "name": "day",
+          "kind": "date",
+          "nullable": false
+        },
+        {
+          "name": "category",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "message",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "customer_key",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "customer_code",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "segment_key",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "segment_code",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "flag_text",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "fiscal_year",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "price",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "quantity",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "discount",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "selectivity",
+          "kind": "int32",
+          "nullable": false
+        }
+      ],
+      "dimension_fields": [
+        {
+          "name": "segment_key",
+          "kind": "int32",
+          "nullable": false
+        },
+        {
+          "name": "segment_code",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "region",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "enabled",
+          "kind": "bool",
+          "nullable": false
+        }
+      ],
+      "encodings": [
+        [
+          "active",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "category",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "customer_code",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "customer_key",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "day",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "discount",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "fiscal_year",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "flag_text",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "id",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "message",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "price",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "quantity",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "score",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "segment_code",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "segment_key",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "selectivity",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ]
+      ],
+      "files": {
+        "parquet": {
+          "bytes": 22562604,
+          "sha256": "5a98814d4c6917fbf6eec00751682d0538d398c04997f4c7d31fa7a113fce3c7"
+        },
+        "dimension": {
+          "bytes": 4846,
+          "sha256": "6282e2909ae8c3147c9906fed3398ffa620f9aafe41bcd0855e1927dc071ea61"
+        },
+        "csv": {
+          "bytes": 128048903,
+          "sha256": "06dd69aaa5a96c906e0fe2065e9f97adbb849b61543767bf07c3aa0af55f193b"
+        },
+        "dimension_csv": {
+          "bytes": 13857,
+          "sha256": "6701cac4eb6d7e5e63f3a6ace6bee2fb137d0d2ead885c29cf3972f4564f0e64"
+        }
+      },
+      "parquet": "/home/rhawrami/Documents/cases/peGosus/testdata/amd64-baseline/fixtures/balanced-1048576/facts.parquet",
+      "dimension": "/home/rhawrami/Documents/cases/peGosus/testdata/amd64-baseline/fixtures/balanced-1048576/dimension.parquet",
+      "csv": "/home/rhawrami/Documents/cases/peGosus/testdata/amd64-baseline/fixtures/balanced-1048576/facts.csv",
+      "dimension_csv": "/home/rhawrami/Documents/cases/peGosus/testdata/amd64-baseline/fixtures/balanced-1048576/dimension.csv"
+    }
+  ],
+  "records": [
+    {
+      "engine": "peGosus",
+      "workers": 4,
+      "query": "full_sort_string",
+      "version": "go1.27.1",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "lifetime_max_resident_size": 6721536,
+            "resident_size": 6098944,
+            "anonymous_resident_size": 1998848,
+            "file_resident_size": 4100096,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 6086656,
+            "resident_size_smaps": 6098944,
+            "private_clean_size": 4087808,
+            "private_dirty_size": 1998848,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1048576,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 0,
+              "ScratchRequests": 2
+            },
+            "heap_alloc": 2261936,
+            "heap_sys": 8060928,
+            "held_results": 0,
+            "signature": null,
+            "stage": "ready",
+            "version": "go1.27.1"
+          }
+        },
+        "cold": {
+          "before": {
+            "lifetime_max_resident_size": 6721536,
+            "resident_size": 6098944,
+            "anonymous_resident_size": 1998848,
+            "file_resident_size": 4100096,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 6086656,
+            "resident_size_smaps": 6098944,
+            "private_clean_size": 4087808,
+            "private_dirty_size": 1998848,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 142000128,
+            "resident_size": 142000128,
+            "anonymous_resident_size": 137506816,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 141987840,
+            "resident_size_smaps": 142000128,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 137506816,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 145123008,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 34183616,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1317,
+              "ScratchRequests": 1396
+            },
+            "heap_alloc": 150128864,
+            "heap_sys": 154763264,
+            "held_results": 1,
+            "signature": null,
+            "stage": "cold",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 142000128,
+          "peak_growth_bytes": 135901184,
+          "elapsed_ns": 239815979,
+          "interval_peak_sampled_rss_bytes": 142000128,
+          "rss_samples": 48,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5284646,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "release": {
+          "before": {
+            "lifetime_max_resident_size": 142000128,
+            "resident_size": 142000128,
+            "anonymous_resident_size": 137506816,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 141987840,
+            "resident_size_smaps": 142000128,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 137506816,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 142004224,
+            "resident_size": 142004224,
+            "anonymous_resident_size": 137510912,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 141991936,
+            "resident_size_smaps": 142004224,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 137510912,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 145123008,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1317,
+              "ScratchRequests": 1396
+            },
+            "heap_alloc": 150132168,
+            "heap_sys": 154763264,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 142004224,
+          "peak_growth_bytes": 4096,
+          "elapsed_ns": 1950429,
+          "interval_peak_sampled_rss_bytes": 142004224,
+          "rss_samples": 2,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 2975515,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "warmup": {
+          "before": {
+            "lifetime_max_resident_size": 142004224,
+            "resident_size": 142004224,
+            "anonymous_resident_size": 137510912,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 141991936,
+            "resident_size_smaps": 142004224,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 137510912,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 168669184,
+            "resident_size": 168669184,
+            "anonymous_resident_size": 164175872,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 168656896,
+            "resident_size_smaps": 168669184,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 164175872,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 164547968,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 3951,
+              "ScratchRequests": 4184
+            },
+            "heap_alloc": 169385760,
+            "heap_sys": 175669248,
+            "held_results": 0,
+            "signature": null,
+            "stage": "warmup",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 168669184,
+          "peak_growth_bytes": 26664960,
+          "elapsed_ns": 399494635,
+          "interval_peak_sampled_rss_bytes": 168669184,
+          "rss_samples": 79,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5716758,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "steady": {
+          "before": {
+            "lifetime_max_resident_size": 168669184,
+            "resident_size": 168669184,
+            "anonymous_resident_size": 164175872,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 168656896,
+            "resident_size_smaps": 168669184,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 164175872,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 172154880,
+            "resident_size": 172154880,
+            "anonymous_resident_size": 167661568,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 172142592,
+            "resident_size_smaps": 172154880,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 167661568,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 164547968,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 7902,
+              "ScratchRequests": 8366
+            },
+            "heap_alloc": 170617288,
+            "heap_sys": 175669248,
+            "held_results": 0,
+            "signature": null,
+            "stage": "steady",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 172154880,
+          "peak_growth_bytes": 3485696,
+          "elapsed_ns": 548483199,
+          "interval_peak_sampled_rss_bytes": 172154880,
+          "rss_samples": 107,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5876259,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "retain": {
+          "before": {
+            "lifetime_max_resident_size": 172154880,
+            "resident_size": 172154880,
+            "anonymous_resident_size": 167661568,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 172142592,
+            "resident_size_smaps": 172154880,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 167661568,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 233422848,
+            "resident_size": 233422848,
+            "anonymous_resident_size": 228929536,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 233410560,
+            "resident_size_smaps": 233422848,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 228929536,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 234304576,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 68367232,
+              "ScratchUsed": 0,
+              "GeneralRequests": 10536,
+              "ScratchRequests": 11154
+            },
+            "heap_alloc": 241248496,
+            "heap_sys": 255328256,
+            "held_results": 2,
+            "signature": null,
+            "stage": "retain",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 233422848,
+          "peak_growth_bytes": 61267968,
+          "elapsed_ns": 392728783,
+          "interval_peak_sampled_rss_bytes": 233422848,
+          "rss_samples": 77,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5993810,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "release_all": {
+          "before": {
+            "lifetime_max_resident_size": 233422848,
+            "resident_size": 233422848,
+            "anonymous_resident_size": 228929536,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 233410560,
+            "resident_size_smaps": 233422848,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 228929536,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 233422848,
+            "resident_size": 233422848,
+            "anonymous_resident_size": 228929536,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 233410560,
+            "resident_size_smaps": 233422848,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 228929536,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 234304576,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 10536,
+              "ScratchRequests": 11154
+            },
+            "heap_alloc": 241250752,
+            "heap_sys": 255328256,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release_all",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 233422848,
+          "peak_growth_bytes": 0,
+          "elapsed_ns": 1367177,
+          "interval_peak_sampled_rss_bytes": 233422848,
+          "rss_samples": 2,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 3049035,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "gc": {
+          "before": {
+            "lifetime_max_resident_size": 233422848,
+            "resident_size": 233422848,
+            "anonymous_resident_size": 228929536,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 233410560,
+            "resident_size_smaps": 233422848,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 228929536,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 233492480,
+            "resident_size": 233492480,
+            "anonymous_resident_size": 228999168,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 233480192,
+            "resident_size_smaps": 233492480,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 228999168,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 234304576,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 10536,
+              "ScratchRequests": 11154
+            },
+            "heap_alloc": 239192432,
+            "heap_sys": 255328256,
+            "held_results": 0,
+            "signature": null,
+            "stage": "gc",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 233492480,
+          "peak_growth_bytes": 69632,
+          "elapsed_ns": 1687639,
+          "interval_peak_sampled_rss_bytes": 233492480,
+          "rss_samples": 2,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 2957334,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "validate": {
+          "before": {
+            "lifetime_max_resident_size": 233492480,
+            "resident_size": 233492480,
+            "anonymous_resident_size": 228999168,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 233480192,
+            "resident_size_smaps": 233492480,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 228999168,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 256249856,
+            "resident_size": 256249856,
+            "anonymous_resident_size": 251756544,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 256237568,
+            "resident_size_smaps": 256249856,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 251756544,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 234304576,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 11853,
+              "ScratchRequests": 12548
+            },
+            "heap_alloc": 256652616,
+            "heap_sys": 259522560,
+            "held_results": 0,
+            "signature": {
+              "rows": 1048576,
+              "sha256": "be2c19245767afd274915901377dc3b261fa289322c80ccc4cdd747e3d266000"
+            },
+            "stage": "validate",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 256249856,
+          "peak_growth_bytes": 22757376,
+          "elapsed_ns": 255596577,
+          "interval_peak_sampled_rss_bytes": 256249856,
+          "rss_samples": 51,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5854759,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        }
+      },
+      "memory_method": "Linux /proc approximate VmRSS sampled every 5 ms plus stage endpoints; sampled peaks can miss transient allocations and are not resettable kernel peaks or macOS physical footprint. VmHWM is lifetime-only; precise smaps_rollup RSS/PSS endpoints are also recorded when available.",
+      "queries": [
+        {
+          "name": "full_sort_string",
+          "signature": {
+            "rows": 1048576,
+            "sha256": "be2c19245767afd274915901377dc3b261fa289322c80ccc4cdd747e3d266000"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "peGosus",
+      "workers": 4,
+      "query": "count_distinct",
+      "version": "go1.27.1",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "lifetime_max_resident_size": 6590464,
+            "resident_size": 6049792,
+            "anonymous_resident_size": 1884160,
+            "file_resident_size": 4165632,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 6037504,
+            "resident_size_smaps": 6049792,
+            "private_clean_size": 4153344,
+            "private_dirty_size": 1884160,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1048576,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 0,
+              "ScratchRequests": 2
+            },
+            "heap_alloc": 2261472,
+            "heap_sys": 12255232,
+            "held_results": 0,
+            "signature": null,
+            "stage": "ready",
+            "version": "go1.27.1"
+          }
+        },
+        "cold": {
+          "before": {
+            "lifetime_max_resident_size": 6590464,
+            "resident_size": 6049792,
+            "anonymous_resident_size": 1884160,
+            "file_resident_size": 4165632,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 6037504,
+            "resident_size_smaps": 6049792,
+            "private_clean_size": 4153344,
+            "private_dirty_size": 1884160,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 161558528,
+            "resident_size": 161558528,
+            "anonymous_resident_size": 156999680,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 161546240,
+            "resident_size_smaps": 161558528,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 156999680,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 225574912,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 128,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1383,
+              "ScratchRequests": 1493
+            },
+            "heap_alloc": 228893664,
+            "heap_sys": 255459328,
+            "held_results": 1,
+            "signature": null,
+            "stage": "cold",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 161558528,
+          "peak_growth_bytes": 155508736,
+          "elapsed_ns": 309593144,
+          "interval_peak_sampled_rss_bytes": 161558528,
+          "rss_samples": 61,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5848929,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "release": {
+          "before": {
+            "lifetime_max_resident_size": 161558528,
+            "resident_size": 161558528,
+            "anonymous_resident_size": 156999680,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 161546240,
+            "resident_size_smaps": 161558528,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 156999680,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 161566720,
+            "resident_size": 161566720,
+            "anonymous_resident_size": 157007872,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 161554432,
+            "resident_size_smaps": 161566720,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 157007872,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 225574912,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1383,
+              "ScratchRequests": 1493
+            },
+            "heap_alloc": 228896968,
+            "heap_sys": 255459328,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 161566720,
+          "peak_growth_bytes": 8192,
+          "elapsed_ns": 2799564,
+          "interval_peak_sampled_rss_bytes": 161566720,
+          "rss_samples": 2,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 4688553,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "warmup": {
+          "before": {
+            "lifetime_max_resident_size": 161566720,
+            "resident_size": 161566720,
+            "anonymous_resident_size": 157007872,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 161554432,
+            "resident_size_smaps": 161566720,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 157007872,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 229031936,
+            "resident_size": 229031936,
+            "anonymous_resident_size": 224473088,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 229019648,
+            "resident_size_smaps": 229031936,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 224473088,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 288489472,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 4149,
+              "ScratchRequests": 4475
+            },
+            "heap_alloc": 291640864,
+            "heap_sys": 326762496,
+            "held_results": 0,
+            "signature": null,
+            "stage": "warmup",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 229031936,
+          "peak_growth_bytes": 67465216,
+          "elapsed_ns": 482459433,
+          "interval_peak_sampled_rss_bytes": 229031936,
+          "rss_samples": 95,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5684998,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "steady": {
+          "before": {
+            "lifetime_max_resident_size": 229031936,
+            "resident_size": 229031936,
+            "anonymous_resident_size": 224473088,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 229019648,
+            "resident_size_smaps": 229031936,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 224473088,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 247959552,
+            "resident_size": 247959552,
+            "anonymous_resident_size": 243400704,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 247947264,
+            "resident_size_smaps": 247959552,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243400704,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 288489472,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 8298,
+              "ScratchRequests": 8948
+            },
+            "heap_alloc": 292588824,
+            "heap_sys": 326762496,
+            "held_results": 0,
+            "signature": null,
+            "stage": "steady",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 247959552,
+          "peak_growth_bytes": 18927616,
+          "elapsed_ns": 689552722,
+          "interval_peak_sampled_rss_bytes": 247959552,
+          "rss_samples": 136,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5838269,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "retain": {
+          "before": {
+            "lifetime_max_resident_size": 247959552,
+            "resident_size": 247959552,
+            "anonymous_resident_size": 243400704,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 247947264,
+            "resident_size_smaps": 247959552,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243400704,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 247988224,
+            "resident_size": 247988224,
+            "anonymous_resident_size": 243429376,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 247975936,
+            "resident_size_smaps": 247988224,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243429376,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 288489472,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 256,
+              "ScratchUsed": 0,
+              "GeneralRequests": 11064,
+              "ScratchRequests": 11930
+            },
+            "heap_alloc": 293212136,
+            "heap_sys": 326762496,
+            "held_results": 2,
+            "signature": null,
+            "stage": "retain",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 247988224,
+          "peak_growth_bytes": 28672,
+          "elapsed_ns": 454689377,
+          "interval_peak_sampled_rss_bytes": 247988224,
+          "rss_samples": 90,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5730738,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "release_all": {
+          "before": {
+            "lifetime_max_resident_size": 247988224,
+            "resident_size": 247988224,
+            "anonymous_resident_size": 243429376,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 247975936,
+            "resident_size_smaps": 247988224,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243429376,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 247988224,
+            "resident_size": 247988224,
+            "anonymous_resident_size": 243429376,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 247975936,
+            "resident_size_smaps": 247988224,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243429376,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 288489472,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 11064,
+              "ScratchRequests": 11930
+            },
+            "heap_alloc": 293212928,
+            "heap_sys": 326762496,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release_all",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 247988224,
+          "peak_growth_bytes": 0,
+          "elapsed_ns": 2406972,
+          "interval_peak_sampled_rss_bytes": 247988224,
+          "rss_samples": 2,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 4576662,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "gc": {
+          "before": {
+            "lifetime_max_resident_size": 247988224,
+            "resident_size": 247988224,
+            "anonymous_resident_size": 243429376,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 247975936,
+            "resident_size_smaps": 247988224,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243429376,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 248016896,
+            "resident_size": 248016896,
+            "anonymous_resident_size": 243458048,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 248004608,
+            "resident_size_smaps": 248016896,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243458048,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 288489472,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 11064,
+              "ScratchRequests": 11930
+            },
+            "heap_alloc": 291646400,
+            "heap_sys": 326762496,
+            "held_results": 0,
+            "signature": null,
+            "stage": "gc",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 248016896,
+          "peak_growth_bytes": 28672,
+          "elapsed_ns": 1719558,
+          "interval_peak_sampled_rss_bytes": 248016896,
+          "rss_samples": 2,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 3481447,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "validate": {
+          "before": {
+            "lifetime_max_resident_size": 248016896,
+            "resident_size": 248016896,
+            "anonymous_resident_size": 243458048,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 248004608,
+            "resident_size_smaps": 248016896,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243458048,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 248016896,
+            "resident_size": 248016896,
+            "anonymous_resident_size": 243458048,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 248004608,
+            "resident_size_smaps": 248016896,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243458048,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 288489472,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 12447,
+              "ScratchRequests": 13421
+            },
+            "heap_alloc": 291961296,
+            "heap_sys": 326762496,
+            "held_results": 0,
+            "signature": {
+              "rows": 1,
+              "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+            },
+            "stage": "validate",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 248016896,
+          "peak_growth_bytes": 0,
+          "elapsed_ns": 234213972,
+          "interval_peak_sampled_rss_bytes": 248016896,
+          "rss_samples": 47,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5890529,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        }
+      },
+      "memory_method": "Linux /proc approximate VmRSS sampled every 5 ms plus stage endpoints; sampled peaks can miss transient allocations and are not resettable kernel peaks or macOS physical footprint. VmHWM is lifetime-only; precise smaps_rollup RSS/PSS endpoints are also recorded when available.",
+      "queries": [
+        {
+          "name": "count_distinct",
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "peGosus",
+      "workers": 4,
+      "query": "full_sort_string",
+      "version": "go1.27.1",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "lifetime_max_resident_size": 6721536,
+            "resident_size": 6066176,
+            "anonymous_resident_size": 1966080,
+            "file_resident_size": 4100096,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 6053888,
+            "resident_size_smaps": 6066176,
+            "private_clean_size": 4087808,
+            "private_dirty_size": 1966080,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1048576,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 0,
+              "ScratchRequests": 2
+            },
+            "heap_alloc": 2261776,
+            "heap_sys": 8060928,
+            "held_results": 0,
+            "signature": null,
+            "stage": "ready",
+            "version": "go1.27.1"
+          }
+        },
+        "cold": {
+          "before": {
+            "lifetime_max_resident_size": 6721536,
+            "resident_size": 6066176,
+            "anonymous_resident_size": 1966080,
+            "file_resident_size": 4100096,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 6053888,
+            "resident_size_smaps": 6066176,
+            "private_clean_size": 4087808,
+            "private_dirty_size": 1966080,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 142192640,
+            "resident_size": 142192640,
+            "anonymous_resident_size": 137699328,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 142180352,
+            "resident_size_smaps": 142192640,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 137699328,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 145123008,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 34183616,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1317,
+              "ScratchRequests": 1396
+            },
+            "heap_alloc": 150129088,
+            "heap_sys": 154763264,
+            "held_results": 1,
+            "signature": null,
+            "stage": "cold",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 142192640,
+          "peak_growth_bytes": 136126464,
+          "elapsed_ns": 232872586,
+          "interval_peak_sampled_rss_bytes": 142192640,
+          "rss_samples": 47,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 6041890,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "release": {
+          "before": {
+            "lifetime_max_resident_size": 142192640,
+            "resident_size": 142192640,
+            "anonymous_resident_size": 137699328,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 142180352,
+            "resident_size_smaps": 142192640,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 137699328,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 142196736,
+            "resident_size": 142196736,
+            "anonymous_resident_size": 137703424,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 142184448,
+            "resident_size_smaps": 142196736,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 137703424,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 145123008,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1317,
+              "ScratchRequests": 1396
+            },
+            "heap_alloc": 150132392,
+            "heap_sys": 154763264,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 142196736,
+          "peak_growth_bytes": 4096,
+          "elapsed_ns": 886494,
+          "interval_peak_sampled_rss_bytes": 142196736,
+          "rss_samples": 2,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 1911049,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "warmup": {
+          "before": {
+            "lifetime_max_resident_size": 142196736,
+            "resident_size": 142196736,
+            "anonymous_resident_size": 137703424,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 142184448,
+            "resident_size_smaps": 142196736,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 137703424,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 168841216,
+            "resident_size": 168841216,
+            "anonymous_resident_size": 164347904,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 168828928,
+            "resident_size_smaps": 168841216,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 164347904,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 164547968,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 3951,
+              "ScratchRequests": 4184
+            },
+            "heap_alloc": 169387872,
+            "heap_sys": 175702016,
+            "held_results": 0,
+            "signature": null,
+            "stage": "warmup",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 168841216,
+          "peak_growth_bytes": 26644480,
+          "elapsed_ns": 393323765,
+          "interval_peak_sampled_rss_bytes": 168841216,
+          "rss_samples": 77,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5817119,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "steady": {
+          "before": {
+            "lifetime_max_resident_size": 168841216,
+            "resident_size": 168841216,
+            "anonymous_resident_size": 164347904,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 168828928,
+            "resident_size_smaps": 168841216,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 164347904,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 172331008,
+            "resident_size": 172331008,
+            "anonymous_resident_size": 167837696,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 172318720,
+            "resident_size_smaps": 172331008,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 167837696,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 164547968,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 7902,
+              "ScratchRequests": 8366
+            },
+            "heap_alloc": 170616408,
+            "heap_sys": 175702016,
+            "held_results": 0,
+            "signature": null,
+            "stage": "steady",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 172331008,
+          "peak_growth_bytes": 3489792,
+          "elapsed_ns": 584687096,
+          "interval_peak_sampled_rss_bytes": 172331008,
+          "rss_samples": 114,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 6007200,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "retain": {
+          "before": {
+            "lifetime_max_resident_size": 172331008,
+            "resident_size": 172331008,
+            "anonymous_resident_size": 167837696,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 172318720,
+            "resident_size_smaps": 172331008,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 167837696,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 233209856,
+            "resident_size": 233209856,
+            "anonymous_resident_size": 228716544,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 233197568,
+            "resident_size_smaps": 233209856,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 228716544,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 234304576,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 68367232,
+              "ScratchUsed": 0,
+              "GeneralRequests": 10536,
+              "ScratchRequests": 11154
+            },
+            "heap_alloc": 241245136,
+            "heap_sys": 255393792,
+            "held_results": 2,
+            "signature": null,
+            "stage": "retain",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 233209856,
+          "peak_growth_bytes": 60878848,
+          "elapsed_ns": 402205788,
+          "interval_peak_sampled_rss_bytes": 233209856,
+          "rss_samples": 79,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5803938,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "release_all": {
+          "before": {
+            "lifetime_max_resident_size": 233209856,
+            "resident_size": 233209856,
+            "anonymous_resident_size": 228716544,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 233197568,
+            "resident_size_smaps": 233209856,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 228716544,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 233209856,
+            "resident_size": 233209856,
+            "anonymous_resident_size": 228716544,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 233197568,
+            "resident_size_smaps": 233209856,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 228716544,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 234304576,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 10536,
+              "ScratchRequests": 11154
+            },
+            "heap_alloc": 241245928,
+            "heap_sys": 255393792,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release_all",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 233209856,
+          "peak_growth_bytes": 0,
+          "elapsed_ns": 2355342,
+          "interval_peak_sampled_rss_bytes": 233209856,
+          "rss_samples": 2,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 4052800,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "gc": {
+          "before": {
+            "lifetime_max_resident_size": 233209856,
+            "resident_size": 233209856,
+            "anonymous_resident_size": 228716544,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 233197568,
+            "resident_size_smaps": 233209856,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 228716544,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 233218048,
+            "resident_size": 233218048,
+            "anonymous_resident_size": 228724736,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 233205760,
+            "resident_size_smaps": 233218048,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 228724736,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 234304576,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 10536,
+              "ScratchRequests": 11154
+            },
+            "heap_alloc": 239188072,
+            "heap_sys": 255393792,
+            "held_results": 0,
+            "signature": null,
+            "stage": "gc",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 233218048,
+          "peak_growth_bytes": 8192,
+          "elapsed_ns": 1648788,
+          "interval_peak_sampled_rss_bytes": 233218048,
+          "rss_samples": 2,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 3245616,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "validate": {
+          "before": {
+            "lifetime_max_resident_size": 233218048,
+            "resident_size": 233218048,
+            "anonymous_resident_size": 228724736,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 233205760,
+            "resident_size_smaps": 233218048,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 228724736,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 255893504,
+            "resident_size": 255893504,
+            "anonymous_resident_size": 251400192,
+            "file_resident_size": 4493312,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 255881216,
+            "resident_size_smaps": 255893504,
+            "private_clean_size": 4481024,
+            "private_dirty_size": 251400192,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 234304576,
+              "ScratchCapacity": 4248704,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 11853,
+              "ScratchRequests": 12548
+            },
+            "heap_alloc": 256649304,
+            "heap_sys": 259588096,
+            "held_results": 0,
+            "signature": {
+              "rows": 1048576,
+              "sha256": "be2c19245767afd274915901377dc3b261fa289322c80ccc4cdd747e3d266000"
+            },
+            "stage": "validate",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 255893504,
+          "peak_growth_bytes": 22675456,
+          "elapsed_ns": 267167654,
+          "interval_peak_sampled_rss_bytes": 255893504,
+          "rss_samples": 54,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5492527,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        }
+      },
+      "memory_method": "Linux /proc approximate VmRSS sampled every 5 ms plus stage endpoints; sampled peaks can miss transient allocations and are not resettable kernel peaks or macOS physical footprint. VmHWM is lifetime-only; precise smaps_rollup RSS/PSS endpoints are also recorded when available.",
+      "queries": [
+        {
+          "name": "full_sort_string",
+          "signature": {
+            "rows": 1048576,
+            "sha256": "be2c19245767afd274915901377dc3b261fa289322c80ccc4cdd747e3d266000"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "peGosus",
+      "workers": 4,
+      "query": "count_distinct",
+      "version": "go1.27.1",
+      "snapshots": {
+        "ready": {
+          "process": {
+            "lifetime_max_resident_size": 6852608,
+            "resident_size": 6098944,
+            "anonymous_resident_size": 1933312,
+            "file_resident_size": 4165632,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 6086656,
+            "resident_size_smaps": 6098944,
+            "private_clean_size": 4153344,
+            "private_dirty_size": 1933312,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 1048576,
+              "ScratchCapacity": 1048576,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 0,
+              "ScratchRequests": 2
+            },
+            "heap_alloc": 2261312,
+            "heap_sys": 8060928,
+            "held_results": 0,
+            "signature": null,
+            "stage": "ready",
+            "version": "go1.27.1"
+          }
+        },
+        "cold": {
+          "before": {
+            "lifetime_max_resident_size": 6852608,
+            "resident_size": 6098944,
+            "anonymous_resident_size": 1933312,
+            "file_resident_size": 4165632,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 6086656,
+            "resident_size_smaps": 6098944,
+            "private_clean_size": 4153344,
+            "private_dirty_size": 1933312,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 161067008,
+            "resident_size": 161067008,
+            "anonymous_resident_size": 156508160,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 161054720,
+            "resident_size_smaps": 161067008,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 156508160,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 225574912,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 128,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1383,
+              "ScratchRequests": 1493
+            },
+            "heap_alloc": 228893808,
+            "heap_sys": 255459328,
+            "held_results": 1,
+            "signature": null,
+            "stage": "cold",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 161067008,
+          "peak_growth_bytes": 154968064,
+          "elapsed_ns": 290468119,
+          "interval_peak_sampled_rss_bytes": 161067008,
+          "rss_samples": 58,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5842969,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "release": {
+          "before": {
+            "lifetime_max_resident_size": 161067008,
+            "resident_size": 161067008,
+            "anonymous_resident_size": 156508160,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 161054720,
+            "resident_size_smaps": 161067008,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 156508160,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 161075200,
+            "resident_size": 161075200,
+            "anonymous_resident_size": 156516352,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 161062912,
+            "resident_size_smaps": 161075200,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 156516352,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 225574912,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 1383,
+              "ScratchRequests": 1493
+            },
+            "heap_alloc": 228897112,
+            "heap_sys": 255459328,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 161075200,
+          "peak_growth_bytes": 8192,
+          "elapsed_ns": 1121756,
+          "interval_peak_sampled_rss_bytes": 161075200,
+          "rss_samples": 2,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 2727823,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "warmup": {
+          "before": {
+            "lifetime_max_resident_size": 161075200,
+            "resident_size": 161075200,
+            "anonymous_resident_size": 156516352,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 161062912,
+            "resident_size_smaps": 161075200,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 156516352,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 228696064,
+            "resident_size": 228696064,
+            "anonymous_resident_size": 224137216,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 228683776,
+            "resident_size_smaps": 228696064,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 224137216,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 288489472,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 4149,
+              "ScratchRequests": 4475
+            },
+            "heap_alloc": 291640752,
+            "heap_sys": 326762496,
+            "held_results": 0,
+            "signature": null,
+            "stage": "warmup",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 228696064,
+          "peak_growth_bytes": 67620864,
+          "elapsed_ns": 463986053,
+          "interval_peak_sampled_rss_bytes": 228696064,
+          "rss_samples": 91,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5873939,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "steady": {
+          "before": {
+            "lifetime_max_resident_size": 228696064,
+            "resident_size": 228696064,
+            "anonymous_resident_size": 224137216,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 228683776,
+            "resident_size_smaps": 228696064,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 224137216,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 247681024,
+            "resident_size": 247681024,
+            "anonymous_resident_size": 243122176,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 247668736,
+            "resident_size_smaps": 247681024,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243122176,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 288489472,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 8298,
+              "ScratchRequests": 8948
+            },
+            "heap_alloc": 292590208,
+            "heap_sys": 326762496,
+            "held_results": 0,
+            "signature": null,
+            "stage": "steady",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 247681024,
+          "peak_growth_bytes": 18984960,
+          "elapsed_ns": 671634694,
+          "interval_peak_sampled_rss_bytes": 247681024,
+          "rss_samples": 132,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5963160,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "retain": {
+          "before": {
+            "lifetime_max_resident_size": 247681024,
+            "resident_size": 247681024,
+            "anonymous_resident_size": 243122176,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 247668736,
+            "resident_size_smaps": 247681024,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243122176,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 247963648,
+            "resident_size": 247963648,
+            "anonymous_resident_size": 243404800,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 247951360,
+            "resident_size_smaps": 247963648,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243404800,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 288489472,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 256,
+              "ScratchUsed": 0,
+              "GeneralRequests": 11064,
+              "ScratchRequests": 11930
+            },
+            "heap_alloc": 293214984,
+            "heap_sys": 326762496,
+            "held_results": 2,
+            "signature": null,
+            "stage": "retain",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 247963648,
+          "peak_growth_bytes": 282624,
+          "elapsed_ns": 441885514,
+          "interval_peak_sampled_rss_bytes": 247963648,
+          "rss_samples": 88,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5953559,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "release_all": {
+          "before": {
+            "lifetime_max_resident_size": 247963648,
+            "resident_size": 247963648,
+            "anonymous_resident_size": 243404800,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 247951360,
+            "resident_size_smaps": 247963648,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243404800,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 247963648,
+            "resident_size": 247963648,
+            "anonymous_resident_size": 243404800,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 247951360,
+            "resident_size_smaps": 247963648,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243404800,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 288489472,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 11064,
+              "ScratchRequests": 11930
+            },
+            "heap_alloc": 293215776,
+            "heap_sys": 326762496,
+            "held_results": 0,
+            "signature": null,
+            "stage": "release_all",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 247963648,
+          "peak_growth_bytes": 0,
+          "elapsed_ns": 1442918,
+          "interval_peak_sampled_rss_bytes": 247963648,
+          "rss_samples": 2,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 3311486,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "gc": {
+          "before": {
+            "lifetime_max_resident_size": 247963648,
+            "resident_size": 247963648,
+            "anonymous_resident_size": 243404800,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 247951360,
+            "resident_size_smaps": 247963648,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243404800,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 248000512,
+            "resident_size": 248000512,
+            "anonymous_resident_size": 243441664,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 247988224,
+            "resident_size_smaps": 248000512,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243441664,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 288489472,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 11064,
+              "ScratchRequests": 11930
+            },
+            "heap_alloc": 291647832,
+            "heap_sys": 326762496,
+            "held_results": 0,
+            "signature": null,
+            "stage": "gc",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 248000512,
+          "peak_growth_bytes": 36864,
+          "elapsed_ns": 1633007,
+          "interval_peak_sampled_rss_bytes": 248000512,
+          "rss_samples": 2,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 2970944,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        },
+        "validate": {
+          "before": {
+            "lifetime_max_resident_size": 248000512,
+            "resident_size": 248000512,
+            "anonymous_resident_size": 243441664,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 247988224,
+            "resident_size_smaps": 248000512,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243441664,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "process": {
+            "lifetime_max_resident_size": 248094720,
+            "resident_size": 248094720,
+            "anonymous_resident_size": 243535872,
+            "file_resident_size": 4558848,
+            "shared_resident_size": 0,
+            "memory_metric": "rss",
+            "proportional_set_size": 248082432,
+            "resident_size_smaps": 248094720,
+            "private_clean_size": 4546560,
+            "private_dirty_size": 243535872,
+            "swap_size": 0,
+            "diskio_bytesread": 0,
+            "diskio_byteswritten": 0
+          },
+          "event": {
+            "allocator": {
+              "GeneralCapacity": 288489472,
+              "ScratchCapacity": 2648640,
+              "GeneralUsed": 0,
+              "ScratchUsed": 0,
+              "GeneralRequests": 12447,
+              "ScratchRequests": 13421
+            },
+            "heap_alloc": 291962728,
+            "heap_sys": 326762496,
+            "held_results": 0,
+            "signature": {
+              "rows": 1,
+              "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+            },
+            "stage": "validate",
+            "version": "go1.27.1"
+          },
+          "memory_metric": "sampled_rss",
+          "peak_memory_bytes": 248094720,
+          "peak_growth_bytes": 94208,
+          "elapsed_ns": 225826352,
+          "interval_peak_sampled_rss_bytes": 248094720,
+          "rss_samples": 46,
+          "requested_sample_period_ns": 5000000,
+          "largest_sample_gap_ns": 5873139,
+          "sampling_errors": [],
+          "peak_is_lower_bound": true
+        }
+      },
+      "memory_method": "Linux /proc approximate VmRSS sampled every 5 ms plus stage endpoints; sampled peaks can miss transient allocations and are not resettable kernel peaks or macOS physical footprint. VmHWM is lifetime-only; precise smaps_rollup RSS/PSS endpoints are also recorded when available.",
+      "queries": [
+        {
+          "name": "count_distinct",
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    }
+  ],
+  "validation_errors": [],
+  "query_failures": []
+}

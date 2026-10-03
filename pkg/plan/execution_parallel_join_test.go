@@ -175,7 +175,7 @@ func TestParallelJoinBuildRemainsImmutable(t *testing.T) {
 	}
 	snapshot := func() [32]byte {
 		hash := sha256.New()
-		for _, segment := range []*mem.Segment{state.rows, state.head, state.next, state.keys.index.slots, state.keys.keys.data, state.keys.keys.refs, state.keys.rows.values, state.keys.rows.strings} {
+		for _, segment := range []*mem.Segment{state.rows, state.head, state.next, state.keys.index.slots, state.keys.index.controls, state.keys.keys.data, state.keys.keys.refs, state.keys.rows.values, state.keys.rows.strings} {
 			if segment != nil {
 				hash.Write(segment.AsBytes())
 			}

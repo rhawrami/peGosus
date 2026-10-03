@@ -132,6 +132,26 @@ func (s *compactSortState) sortStrings(a *mem.Allocator, key *compactSortKey, or
 				start = end
 				continue
 			}
+			// Equal lengths make complete cached prefixes exact, including embedded NULs.
+			row := rows[source[start]]
+			length := key.vectors[row>>32].StringAt(int(uint32(row))).Len()
+			if length <= 15 {
+				equal := true
+				for i := start + 1; i < end; i++ {
+					if i&65535 == 0 && s.cancelled() {
+						return nil, nil, false
+					}
+					row = rows[source[i]]
+					if key.vectors[row>>32].StringAt(int(uint32(row))).Len() != length {
+						equal = false
+						break
+					}
+				}
+				if equal {
+					start = end
+					continue
+				}
+			}
 		}
 		// Zero padding is only a prefix: embedded NULs and suffixes need exact comparison.
 		src, dst := source[start:end], destination[start:end]

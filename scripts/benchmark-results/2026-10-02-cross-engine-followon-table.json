@@ -1,0 +1,3285 @@
+{
+  "paper": "https://www.cs.cit.tum.de/fileadmin/w00cfj/dis/papers/getreal.pdf",
+  "limitations": [
+    "Synthetic workloads informed by the Tableau Public study, not a replay or a representative production query distribution.",
+    "Warm filesystem cache; compilation, source loading and peGosus Prepare excluded. DuckDB Python execute includes per-execution SQL planning; Polars collect includes optimization.",
+    "Native materialization: peGosus owned Result, Polars DataFrame, DuckDB Python fetchall rows. DuckDB Python conversion is included in execution and process memory; fingerprints are outside timing windows.",
+    "Output release measured separately; process startup and retained-table input loading excluded from timing and included in process-memory baseline.",
+    "No collation, dirty string-to-number/date casts, window functions, percentile, spilling, many-to-many join stress, or cancellation timing; no official TPC/ClickBench score.",
+    "Dyadic numeric values permit exact fingerprints but exclude floating-point reduction rounding stress, NaN and infinity performance.",
+    "Go and DuckDB query memory budget 1 GiB; Polars has no equivalent configured hard budget. Thread counts cap runtimes but not every operator parallelizes.",
+    "Unordered wide output uses a multiset fingerprint; unordered LIMIT validates row membership and uniqueness rather than equal subsets.",
+    "peGosus has a configurable per-execution guard deadline (default 10s). Native whole-worker watchdog is 1800s. Failures and cancellations have no comparison timing; completed partial samples are not ranked.",
+    "DataFusion Python collects native Arrow record batches; row conversion is excluded from timing and included only in validation. Each execution includes SQL planning and collect. Target partitions cap query partitioning, not every runtime thread; its fair spill pool is 1 GiB and disk spilling is enabled."
+  ],
+  "source": "table",
+  "engines": [
+    "peGosus",
+    "DuckDB",
+    "Polars",
+    "DataFusion"
+  ],
+  "platform": "Linux-7.2.8-200.fc44.x86_64-x86_64-with-glibc2.43",
+  "processor": "x86_64",
+  "warmup": 2,
+  "runs": 5,
+  "rounds": 2,
+  "peg_timeout_seconds": 120.0,
+  "source_hashes": {
+    "scripts/compare_workload_engines.py": "104235e8317f9bb6f26a7e70f67c6203624ee24e660e99a9621a4e3faa6cc36d",
+    "scripts/workload_suite.py": "b04dd971479929f283a60b5a2f9aa092401885944996ec263486b0a4b26387e3",
+    "scripts/workload_peg/main.go": "2bc298be382de168af8b251eeac3d307f6d6fdaee2691ae8058fc494652e18a2",
+    "scripts/workload_datafusion.py": "7340991fd7736b1b0eb7ce2240f1e08c50f30de611d68cf4a9ca648fbe18ba2e",
+    "scripts/compare_parquet_memory.py": "b5d258d7c4b56966a6edbda1b323b50ac0e04b51caa9cd7a3a7d8acd26043390",
+    "scripts/process_memory_linux.py": "54c8fb70a26c91bf68baff0b4a5c206d0dee7e401730c633cdd4be579d08cd30"
+  },
+  "fixtures": [
+    {
+      "case": "balanced:1048576",
+      "rows": 1048576,
+      "profile": "balanced",
+      "null_percentage": 5,
+      "customer_domain": 786433,
+      "generator_sql": "SELECT i::INTEGER AS id, CASE WHEN (i*17+3)%100 < 5 THEN NULL ELSE ((i*104729)%65536-32768)::DOUBLE/128 END AS score, CASE WHEN (i*17+7)%100 < 5 THEN NULL ELSE i%3=0 END AS active, DATE '1970-01-01' + (19000+(i*13)%365)::INTEGER AS day, CASE WHEN (i*17+11)%100 < 5 THEN NULL ELSE (['north','south','east','west','central','island','Caf\u00e9','\u6771\u4eac'])[(i%8)+1] END AS category, CASE WHEN (i*17+19)%100 < 5 THEN NULL ELSE 'Event-' || printf('%04d', i%128) || ' Caf\u00e9 \u6771\u4eac' END AS message, CASE WHEN (i*17+23)%100 < 5 THEN NULL ELSE ((i*48271)%786433)::INTEGER END AS customer_key, CASE WHEN (i*17+23)%100 < 5 THEN NULL ELSE 'cust-' || printf('%08d', (i*48271)%786433) END AS customer_code, CASE WHEN (i*17+31)%100 < 5 THEN NULL ELSE ((i*17)%536)::INTEGER END AS segment_key, CASE WHEN (i*17+31)%100 < 5 THEN NULL ELSE 'seg-' || printf('%04d', (i*17)%536) END AS segment_code, CASE WHEN (i*17+37)%100 < 5 THEN NULL ELSE CASE WHEN i%29=0 THEN '?' WHEN i%2=0 THEN 'Y' ELSE 'N' END END AS flag_text, printf('%d/%02d', 2017+i%6, (18+i%6)) AS fiscal_year, CASE WHEN (i*17+41)%100 < 5 THEN NULL ELSE (i%1024+1)::DOUBLE/8 END AS price, CASE WHEN (i*17+43)%100 < 5 THEN NULL ELSE (CASE WHEN i%127=0 THEN 0 ELSE (1 << (i%4)) END)::INTEGER END AS quantity, CASE WHEN (i*17+47)%100 < 5 THEN NULL ELSE (i%4)::DOUBLE/8 END AS discount, ((i*37)%100)::INTEGER AS selectivity FROM range(1048576) AS t(i)",
+      "dimension_sql": "SELECT i::INTEGER AS segment_key, 'seg-' || printf('%04d', i) AS segment_code, 'region-' || (i%8)::VARCHAR AS region, i%5!=0 AS enabled FROM range(512) AS t(i)",
+      "fields": [
+        {
+          "name": "id",
+          "kind": "int32",
+          "nullable": false
+        },
+        {
+          "name": "score",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "active",
+          "kind": "bool",
+          "nullable": true
+        },
+        {
+          "name": "day",
+          "kind": "date",
+          "nullable": false
+        },
+        {
+          "name": "category",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "message",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "customer_key",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "customer_code",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "segment_key",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "segment_code",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "flag_text",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "fiscal_year",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "price",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "quantity",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "discount",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "selectivity",
+          "kind": "int32",
+          "nullable": false
+        }
+      ],
+      "dimension_fields": [
+        {
+          "name": "segment_key",
+          "kind": "int32",
+          "nullable": false
+        },
+        {
+          "name": "segment_code",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "region",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "enabled",
+          "kind": "bool",
+          "nullable": false
+        }
+      ],
+      "encodings": [
+        [
+          "active",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "category",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "customer_code",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "customer_key",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "day",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "discount",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "fiscal_year",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "flag_text",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "id",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "message",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "price",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "quantity",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "score",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "segment_code",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "segment_key",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "selectivity",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ]
+      ],
+      "files": {
+        "parquet": {
+          "bytes": 22562604,
+          "sha256": "5a98814d4c6917fbf6eec00751682d0538d398c04997f4c7d31fa7a113fce3c7"
+        },
+        "dimension": {
+          "bytes": 4846,
+          "sha256": "6282e2909ae8c3147c9906fed3398ffa620f9aafe41bcd0855e1927dc071ea61"
+        },
+        "csv": {
+          "bytes": 128048903,
+          "sha256": "06dd69aaa5a96c906e0fe2065e9f97adbb849b61543767bf07c3aa0af55f193b"
+        },
+        "dimension_csv": {
+          "bytes": 13857,
+          "sha256": "6701cac4eb6d7e5e63f3a6ace6bee2fb137d0d2ead885c29cf3972f4564f0e64"
+        }
+      },
+      "parquet": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/balanced-1048576/facts.parquet",
+      "dimension": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/balanced-1048576/dimension.parquet",
+      "csv": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/balanced-1048576/facts.csv",
+      "dimension_csv": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/balanced-1048576/dimension.csv"
+    }
+  ],
+  "records": [
+    {
+      "allocator": {
+        "GeneralCapacity": 150077440,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 89792,
+        "ScratchRequests": 32872
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 277529527,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "build_ns": 11210,
+          "prepare_ns": 109591,
+          "times_ns": [
+            105610110,
+            104352813,
+            104638454,
+            103941631,
+            105079397
+          ],
+          "release_ns": [
+            170,
+            390,
+            180,
+            110,
+            110
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "build_ns": 7600,
+          "prepare_ns": 147601,
+          "times_ns": [
+            112679476,
+            111999602,
+            111617500,
+            112930177,
+            111744560
+          ],
+          "release_ns": [
+            170,
+            160,
+            180,
+            580,
+            170
+          ],
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 11000,
+          "prepare_ns": 285952,
+          "times_ns": [
+            20104683,
+            20157793,
+            20143213,
+            20004202,
+            20022512
+          ],
+          "release_ns": [
+            70,
+            100,
+            60,
+            60,
+            110
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "build_ns": 7940,
+          "prepare_ns": 248021,
+          "times_ns": [
+            80661592,
+            80191999,
+            80398471,
+            80646552,
+            80307850
+          ],
+          "release_ns": [
+            60,
+            70,
+            60,
+            70,
+            170
+          ],
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "build_ns": 16650,
+          "prepare_ns": 241891,
+          "times_ns": [
+            101614599,
+            101421188,
+            101791190,
+            101261397,
+            100678984
+          ],
+          "release_ns": [
+            70,
+            90,
+            130,
+            140,
+            130
+          ],
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "source": "table",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "table",
+      "workers": 1,
+      "load_ns": 308314624,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            55373493,
+            52952591,
+            56242307,
+            56067576,
+            52519828
+          ],
+          "release_ns": [
+            1080,
+            1530,
+            1240,
+            930,
+            1010
+          ],
+          "build_ns": 7370,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            25258989,
+            25156478,
+            27324270,
+            25089648,
+            25006017
+          ],
+          "release_ns": [
+            1631,
+            1730,
+            1640,
+            1800,
+            1510
+          ],
+          "build_ns": 14050,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            8202692,
+            8168951,
+            8118812,
+            8121161,
+            8139542
+          ],
+          "release_ns": [
+            620,
+            640,
+            580,
+            600,
+            590
+          ],
+          "build_ns": 9190,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            4701235,
+            4728324,
+            4666384,
+            4666663,
+            4877725
+          ],
+          "release_ns": [
+            590,
+            560,
+            550,
+            590,
+            1190
+          ],
+          "build_ns": 12100,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            27495230,
+            27861352,
+            32460326,
+            27466320,
+            27325409
+          ],
+          "release_ns": [
+            1231,
+            1070,
+            880,
+            1100,
+            750
+          ],
+          "build_ns": 13460,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "table",
+      "workers": 1,
+      "load_ns": 124252115,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            36910019,
+            37096799,
+            37485562,
+            39483701,
+            37630803
+          ],
+          "release_ns": [
+            2510,
+            2420,
+            2670,
+            2410,
+            1770
+          ],
+          "build_ns": 70131,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            27693482,
+            26821997,
+            26214244,
+            26345004,
+            26487506
+          ],
+          "release_ns": [
+            1650,
+            2730,
+            3910,
+            2510,
+            2670
+          ],
+          "build_ns": 225231,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            7903211,
+            7970311,
+            8047391,
+            8103551,
+            8157902
+          ],
+          "release_ns": [
+            1570,
+            1440,
+            1490,
+            1440,
+            1280
+          ],
+          "build_ns": 192371,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            22110243,
+            22076953,
+            22161263,
+            21956332,
+            21450060
+          ],
+          "release_ns": [
+            1450,
+            1730,
+            1170,
+            1210,
+            1250
+          ],
+          "build_ns": 152900,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            27463630,
+            26306905,
+            26758776,
+            27323889,
+            27940483
+          ],
+          "release_ns": [
+            1250,
+            1370,
+            1361,
+            1530,
+            1720
+          ],
+          "build_ns": 143561,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "table",
+      "workers": 1,
+      "load_ns": 81003374,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            41984984,
+            41264531,
+            41966844,
+            41964624,
+            40965900
+          ],
+          "release_ns": [
+            3360,
+            3040,
+            3280,
+            3300,
+            3550
+          ],
+          "build_ns": 9510,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            13996721,
+            14031882,
+            14078762,
+            14180852,
+            14575495
+          ],
+          "release_ns": [
+            2100,
+            2320,
+            2210,
+            3510,
+            2900
+          ],
+          "build_ns": 13261,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            4218981,
+            4209822,
+            4201521,
+            4175082,
+            4186371
+          ],
+          "release_ns": [
+            1350,
+            1480,
+            1400,
+            1450,
+            1710
+          ],
+          "build_ns": 9500,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            7514199,
+            7525028,
+            7555369,
+            7502498,
+            7499038
+          ],
+          "release_ns": [
+            1770,
+            1430,
+            1500,
+            1360,
+            1530
+          ],
+          "build_ns": 12190,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            10601274,
+            10728385,
+            10623724,
+            10649465,
+            10726304
+          ],
+          "release_ns": [
+            1550,
+            1660,
+            1450,
+            1630,
+            1890
+          ],
+          "build_ns": 12760,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 322306048,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 92576,
+        "ScratchRequests": 33040
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 280344602,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "build_ns": 27470,
+          "prepare_ns": 254361,
+          "times_ns": [
+            74645121,
+            71727037,
+            72923592,
+            72622551,
+            74948083
+          ],
+          "release_ns": [
+            170,
+            190,
+            170,
+            200,
+            180
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "build_ns": 9080,
+          "prepare_ns": 252292,
+          "times_ns": [
+            28796627,
+            28727987,
+            31332950,
+            28870338,
+            28879187
+          ],
+          "release_ns": [
+            150,
+            230,
+            160,
+            150,
+            150
+          ],
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 17080,
+          "prepare_ns": 266402,
+          "times_ns": [
+            5411148,
+            5269917,
+            5356717,
+            5374188,
+            5331997
+          ],
+          "release_ns": [
+            90,
+            90,
+            70,
+            100,
+            70
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "build_ns": 9920,
+          "prepare_ns": 264241,
+          "times_ns": [
+            21342669,
+            21289379,
+            21065137,
+            21319929,
+            21253659
+          ],
+          "release_ns": [
+            90,
+            120,
+            100,
+            90,
+            120
+          ],
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "build_ns": 14650,
+          "prepare_ns": 265321,
+          "times_ns": [
+            26431725,
+            26625406,
+            26457445,
+            26447935,
+            26452295
+          ],
+          "release_ns": [
+            90,
+            100,
+            110,
+            90,
+            80
+          ],
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "source": "table",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "table",
+      "workers": 4,
+      "load_ns": 274251511,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            24063903,
+            24274464,
+            23923163,
+            24518065,
+            23897212
+          ],
+          "release_ns": [
+            1370,
+            1110,
+            1250,
+            1270,
+            1140
+          ],
+          "build_ns": 8300,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            11858531,
+            11570149,
+            12160862,
+            11692220,
+            11460998
+          ],
+          "release_ns": [
+            1660,
+            1560,
+            1540,
+            1520,
+            1520
+          ],
+          "build_ns": 13210,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            4853355,
+            4810245,
+            4771644,
+            4801874,
+            4797005
+          ],
+          "release_ns": [
+            700,
+            660,
+            620,
+            660,
+            650
+          ],
+          "build_ns": 9890,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            2425543,
+            2637863,
+            2046640,
+            2183251,
+            2029381
+          ],
+          "release_ns": [
+            690,
+            620,
+            650,
+            630,
+            630
+          ],
+          "build_ns": 11990,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            12866186,
+            12435124,
+            12571144,
+            12523624,
+            12662555
+          ],
+          "release_ns": [
+            810,
+            900,
+            870,
+            940,
+            800
+          ],
+          "build_ns": 16150,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "table",
+      "workers": 4,
+      "load_ns": 68108468,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            31203309,
+            31145829,
+            30928388,
+            31365360,
+            31360531
+          ],
+          "release_ns": [
+            2850,
+            2590,
+            4520,
+            2840,
+            3180
+          ],
+          "build_ns": 70220,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            15882022,
+            15626720,
+            14006471,
+            15007797,
+            15695710
+          ],
+          "release_ns": [
+            1810,
+            2090,
+            2360,
+            2350,
+            1890
+          ],
+          "build_ns": 271111,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            3794519,
+            4332992,
+            4303022,
+            4249902,
+            4486253
+          ],
+          "release_ns": [
+            1280,
+            980,
+            1480,
+            1510,
+            1520
+          ],
+          "build_ns": 175340,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            11189557,
+            11701130,
+            12025152,
+            11553329,
+            11718220
+          ],
+          "release_ns": [
+            1780,
+            1440,
+            1620,
+            1510,
+            1710
+          ],
+          "build_ns": 158311,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            13879101,
+            12941926,
+            13590470,
+            14328893,
+            13616590
+          ],
+          "release_ns": [
+            1420,
+            1790,
+            1370,
+            1330,
+            1630
+          ],
+          "build_ns": 156521,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "table",
+      "workers": 4,
+      "load_ns": 54834560,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            48770819,
+            48859619,
+            49405512,
+            53589014,
+            48970280
+          ],
+          "release_ns": [
+            3551,
+            2890,
+            3310,
+            3160,
+            3140
+          ],
+          "build_ns": 9410,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            4959626,
+            5129496,
+            5086276,
+            5245067,
+            4897725
+          ],
+          "release_ns": [
+            3650,
+            3150,
+            2830,
+            2700,
+            3220
+          ],
+          "build_ns": 12371,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            1809959,
+            1649469,
+            1720329,
+            1797319,
+            1614438
+          ],
+          "release_ns": [
+            1810,
+            1650,
+            1520,
+            1410,
+            1500
+          ],
+          "build_ns": 10340,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            4541953,
+            4399553,
+            4397102,
+            4469993,
+            4627884
+          ],
+          "release_ns": [
+            1670,
+            1550,
+            1600,
+            1510,
+            1590
+          ],
+          "build_ns": 13020,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            6248132,
+            7871880,
+            8941716,
+            8193681,
+            7256117
+          ],
+          "release_ns": [
+            1820,
+            2310,
+            2490,
+            2210,
+            2111
+          ],
+          "build_ns": 13290,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 360349696,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 96124,
+        "ScratchRequests": 33264
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 279157035,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "build_ns": 34320,
+          "prepare_ns": 256312,
+          "times_ns": [
+            66356369,
+            69593095,
+            66925732,
+            71172013,
+            67305814
+          ],
+          "release_ns": [
+            210,
+            340,
+            160,
+            160,
+            120
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "build_ns": 7130,
+          "prepare_ns": 229361,
+          "times_ns": [
+            14890946,
+            15132477,
+            14970947,
+            14970306,
+            14996747
+          ],
+          "release_ns": [
+            160,
+            150,
+            140,
+            190,
+            210
+          ],
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 8760,
+          "prepare_ns": 279892,
+          "times_ns": [
+            2967595,
+            2951925,
+            2927305,
+            2971815,
+            3077806
+          ],
+          "release_ns": [
+            100,
+            100,
+            110,
+            90,
+            140
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "build_ns": 10050,
+          "prepare_ns": 280451,
+          "times_ns": [
+            11360798,
+            11313628,
+            11380408,
+            11786070,
+            12840266
+          ],
+          "release_ns": [
+            120,
+            120,
+            80,
+            110,
+            100
+          ],
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "build_ns": 10920,
+          "prepare_ns": 240481,
+          "times_ns": [
+            15116368,
+            14081172,
+            14134252,
+            14054221,
+            14075772
+          ],
+          "release_ns": [
+            110,
+            110,
+            110,
+            120,
+            100
+          ],
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "source": "table",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 8,
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "table",
+      "workers": 8,
+      "load_ns": 279785699,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            15809210,
+            16045832,
+            15650590,
+            15321709,
+            16376993
+          ],
+          "release_ns": [
+            1300,
+            1130,
+            1330,
+            1350,
+            1360
+          ],
+          "build_ns": 7470,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            8221902,
+            8108671,
+            7950581,
+            7750230,
+            8039051
+          ],
+          "release_ns": [
+            1980,
+            1990,
+            2080,
+            2120,
+            1730
+          ],
+          "build_ns": 13230,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            3575548,
+            3366607,
+            2704264,
+            2724454,
+            2898095
+          ],
+          "release_ns": [
+            750,
+            790,
+            780,
+            700,
+            680
+          ],
+          "build_ns": 9560,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            1665558,
+            1653238,
+            1579049,
+            1626728,
+            1602148
+          ],
+          "release_ns": [
+            830,
+            730,
+            770,
+            670,
+            690
+          ],
+          "build_ns": 13280,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            8995476,
+            8885985,
+            8984146,
+            8953896,
+            9375138
+          ],
+          "release_ns": [
+            930,
+            1200,
+            1030,
+            840,
+            920
+          ],
+          "build_ns": 16550,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "table",
+      "workers": 8,
+      "load_ns": 60855031,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            33008828,
+            31174919,
+            30972278,
+            31282919,
+            31508531
+          ],
+          "release_ns": [
+            2350,
+            2820,
+            3100,
+            2730,
+            2240
+          ],
+          "build_ns": 71680,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            17462369,
+            15258068,
+            14580194,
+            14465394,
+            14224633
+          ],
+          "release_ns": [
+            2420,
+            3000,
+            2720,
+            2440,
+            2170
+          ],
+          "build_ns": 299892,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            4095851,
+            5619638,
+            5591209,
+            4741994,
+            6128112
+          ],
+          "release_ns": [
+            1490,
+            1460,
+            2040,
+            1180,
+            1870
+          ],
+          "build_ns": 179031,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            11058736,
+            12148752,
+            11733260,
+            11984482,
+            11092616
+          ],
+          "release_ns": [
+            1460,
+            1720,
+            1560,
+            1740,
+            1420
+          ],
+          "build_ns": 188031,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            13623959,
+            14506204,
+            13622060,
+            14719885,
+            13481799
+          ],
+          "release_ns": [
+            1430,
+            1340,
+            1610,
+            1480,
+            1580
+          ],
+          "build_ns": 155401,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "table",
+      "workers": 8,
+      "load_ns": 53371263,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            47054000,
+            47670374,
+            47613193,
+            48311367,
+            49330312
+          ],
+          "release_ns": [
+            3680,
+            3630,
+            3510,
+            3350,
+            3800
+          ],
+          "build_ns": 8470,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            3409628,
+            3550678,
+            4069561,
+            4069920,
+            4350213
+          ],
+          "release_ns": [
+            3630,
+            3430,
+            3270,
+            3460,
+            3810
+          ],
+          "build_ns": 12500,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            1509467,
+            1542858,
+            1527778,
+            1626348,
+            1594329
+          ],
+          "release_ns": [
+            1610,
+            1620,
+            1660,
+            1740,
+            1670
+          ],
+          "build_ns": 10481,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            3394187,
+            3770440,
+            3713289,
+            3187696,
+            3147396
+          ],
+          "release_ns": [
+            2250,
+            2540,
+            2570,
+            1610,
+            1680
+          ],
+          "build_ns": 12660,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            5191346,
+            4084311,
+            4808485,
+            4136881,
+            3971280
+          ],
+          "release_ns": [
+            2030,
+            1980,
+            2360,
+            2250,
+            2300
+          ],
+          "build_ns": 13060,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "table",
+      "workers": 8,
+      "load_ns": 55056931,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            46383457,
+            44999420,
+            47519262,
+            45120101,
+            48497418
+          ],
+          "release_ns": [
+            3460,
+            2940,
+            3460,
+            3520,
+            3560
+          ],
+          "build_ns": 9891,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            4443473,
+            4654564,
+            4934555,
+            4718564,
+            3234156
+          ],
+          "release_ns": [
+            4440,
+            3320,
+            3540,
+            3580,
+            3040
+          ],
+          "build_ns": 13410,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            1635798,
+            1620979,
+            1560057,
+            1514928,
+            1615719
+          ],
+          "release_ns": [
+            1640,
+            1680,
+            1580,
+            1640,
+            1480
+          ],
+          "build_ns": 9400,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            3279107,
+            2922065,
+            3087046,
+            2826074,
+            2980025
+          ],
+          "release_ns": [
+            1870,
+            1870,
+            2090,
+            1850,
+            1650
+          ],
+          "build_ns": 13810,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            4219082,
+            3625839,
+            4706264,
+            3703038,
+            3770940
+          ],
+          "release_ns": [
+            2380,
+            2230,
+            2410,
+            2080,
+            2480
+          ],
+          "build_ns": 13370,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "table",
+      "workers": 8,
+      "load_ns": 60863941,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            36555356,
+            30996588,
+            31413840,
+            30920698,
+            31057789
+          ],
+          "release_ns": [
+            2730,
+            1710,
+            2760,
+            2280,
+            2730
+          ],
+          "build_ns": 68541,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            15018747,
+            16388213,
+            14258222,
+            14478354,
+            14266823
+          ],
+          "release_ns": [
+            2300,
+            2540,
+            2540,
+            2320,
+            2250
+          ],
+          "build_ns": 249702,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            6259392,
+            5927260,
+            4701584,
+            4014631,
+            6721994
+          ],
+          "release_ns": [
+            1750,
+            1180,
+            1740,
+            1410,
+            1840
+          ],
+          "build_ns": 156821,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            12583365,
+            11308537,
+            11991242,
+            13016626,
+            11294408
+          ],
+          "release_ns": [
+            3790,
+            1430,
+            1790,
+            2280,
+            1390
+          ],
+          "build_ns": 165601,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            13610419,
+            13765421,
+            15338048,
+            14117202,
+            13949071
+          ],
+          "release_ns": [
+            1460,
+            1390,
+            2100,
+            1680,
+            1330
+          ],
+          "build_ns": 149640,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "table",
+      "workers": 8,
+      "load_ns": 276341351,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            14471394,
+            14686915,
+            16469754,
+            15369819,
+            17726410
+          ],
+          "release_ns": [
+            1240,
+            1060,
+            1150,
+            1320,
+            1050
+          ],
+          "build_ns": 6120,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            6856955,
+            6855755,
+            6976675,
+            8291403,
+            7639969
+          ],
+          "release_ns": [
+            1550,
+            1880,
+            1660,
+            1550,
+            1540
+          ],
+          "build_ns": 13690,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            3608298,
+            3752680,
+            3112195,
+            3298917,
+            3964950
+          ],
+          "release_ns": [
+            830,
+            800,
+            760,
+            750,
+            630
+          ],
+          "build_ns": 10120,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            1780949,
+            2048310,
+            1809920,
+            1805409,
+            2130121
+          ],
+          "release_ns": [
+            600,
+            770,
+            540,
+            630,
+            650
+          ],
+          "build_ns": 11470,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            8120762,
+            8311542,
+            8265853,
+            8130791,
+            8220822
+          ],
+          "release_ns": [
+            830,
+            720,
+            1040,
+            750,
+            1000
+          ],
+          "build_ns": 16170,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 352288768,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 96118,
+        "ScratchRequests": 33264
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 277279536,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "build_ns": 15050,
+          "prepare_ns": 177681,
+          "times_ns": [
+            64928391,
+            66024977,
+            64834461,
+            65062202,
+            65308883
+          ],
+          "release_ns": [
+            150,
+            190,
+            160,
+            150,
+            150
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "build_ns": 7770,
+          "prepare_ns": 180371,
+          "times_ns": [
+            14990456,
+            15043257,
+            15128937,
+            14905746,
+            15046477
+          ],
+          "release_ns": [
+            150,
+            170,
+            140,
+            150,
+            200
+          ],
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 11910,
+          "prepare_ns": 278051,
+          "times_ns": [
+            3356547,
+            3132486,
+            2854474,
+            2971095,
+            2957066
+          ],
+          "release_ns": [
+            110,
+            120,
+            90,
+            100,
+            90
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "build_ns": 7110,
+          "prepare_ns": 255312,
+          "times_ns": [
+            11318558,
+            11217847,
+            11263598,
+            11327997,
+            11286538
+          ],
+          "release_ns": [
+            120,
+            90,
+            80,
+            120,
+            110
+          ],
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "build_ns": 10180,
+          "prepare_ns": 264902,
+          "times_ns": [
+            14143902,
+            15067427,
+            14006212,
+            13905671,
+            14035201
+          ],
+          "release_ns": [
+            120,
+            110,
+            120,
+            110,
+            110
+          ],
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "source": "table",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 8,
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "table",
+      "workers": 4,
+      "load_ns": 55715204,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            52925940,
+            51523153,
+            51446622,
+            49900915,
+            53204802
+          ],
+          "release_ns": [
+            3500,
+            3730,
+            3490,
+            3500,
+            3340
+          ],
+          "build_ns": 8530,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            5356797,
+            4908805,
+            4566174,
+            4813024,
+            4596994
+          ],
+          "release_ns": [
+            4740,
+            2550,
+            2990,
+            2830,
+            2880
+          ],
+          "build_ns": 12470,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            1694149,
+            1992460,
+            1957440,
+            1699299,
+            1703988
+          ],
+          "release_ns": [
+            1470,
+            1470,
+            1570,
+            1390,
+            2010
+          ],
+          "build_ns": 9340,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            5187807,
+            4955675,
+            5223247,
+            4718134,
+            4731254
+          ],
+          "release_ns": [
+            1910,
+            2770,
+            2340,
+            2240,
+            2690
+          ],
+          "build_ns": 13470,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            6680464,
+            6395333,
+            6684214,
+            7249087,
+            6056781
+          ],
+          "release_ns": [
+            2320,
+            2090,
+            2760,
+            1580,
+            2260
+          ],
+          "build_ns": 16670,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "table",
+      "workers": 4,
+      "load_ns": 67180283,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            30988478,
+            31453571,
+            31199659,
+            30805648,
+            31209879
+          ],
+          "release_ns": [
+            2510,
+            2590,
+            5900,
+            2430,
+            2620
+          ],
+          "build_ns": 68021,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            20355674,
+            14351724,
+            14914106,
+            18570525,
+            14849566
+          ],
+          "release_ns": [
+            2020,
+            1790,
+            2230,
+            2410,
+            1740
+          ],
+          "build_ns": 305091,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            4400072,
+            7747420,
+            5670419,
+            4168351,
+            4379132
+          ],
+          "release_ns": [
+            1800,
+            1530,
+            1630,
+            1540,
+            1690
+          ],
+          "build_ns": 179550,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            11323478,
+            11595219,
+            12159282,
+            11534029,
+            12762886
+          ],
+          "release_ns": [
+            2010,
+            1300,
+            1650,
+            1540,
+            1630
+          ],
+          "build_ns": 172431,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            14486274,
+            15950592,
+            14262543,
+            17865191,
+            16189773
+          ],
+          "release_ns": [
+            1310,
+            1430,
+            1260,
+            1250,
+            13870
+          ],
+          "build_ns": 140571,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "table",
+      "workers": 4,
+      "load_ns": 277505297,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            24464185,
+            23595551,
+            23874632,
+            24005362,
+            23828972
+          ],
+          "release_ns": [
+            1040,
+            1230,
+            1010,
+            1040,
+            990
+          ],
+          "build_ns": 7890,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            11756750,
+            11645849,
+            13059237,
+            11731120,
+            11459219
+          ],
+          "release_ns": [
+            1700,
+            2220,
+            1750,
+            1700,
+            1590
+          ],
+          "build_ns": 13250,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            4824745,
+            4810284,
+            4819455,
+            5223207,
+            4769054
+          ],
+          "release_ns": [
+            990,
+            760,
+            670,
+            710,
+            620
+          ],
+          "build_ns": 9630,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            2112460,
+            2119421,
+            2064021,
+            2028940,
+            2014070
+          ],
+          "release_ns": [
+            710,
+            760,
+            640,
+            660,
+            670
+          ],
+          "build_ns": 11940,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            12633465,
+            12740535,
+            12414393,
+            12635645,
+            13300227
+          ],
+          "release_ns": [
+            660,
+            880,
+            690,
+            1060,
+            890
+          ],
+          "build_ns": 12130,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 320929792,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 92576,
+        "ScratchRequests": 33040
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 277355936,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "build_ns": 14060,
+          "prepare_ns": 167251,
+          "times_ns": [
+            89828969,
+            74249039,
+            73601626,
+            72688611,
+            73749527
+          ],
+          "release_ns": [
+            180,
+            150,
+            190,
+            150,
+            170
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "build_ns": 10600,
+          "prepare_ns": 258132,
+          "times_ns": [
+            28932797,
+            29007799,
+            28893667,
+            28813897,
+            28984098
+          ],
+          "release_ns": [
+            170,
+            150,
+            160,
+            170,
+            170
+          ],
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 11010,
+          "prepare_ns": 293491,
+          "times_ns": [
+            5350348,
+            5488878,
+            5393487,
+            5307557,
+            5383668
+          ],
+          "release_ns": [
+            90,
+            100,
+            100,
+            110,
+            70
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "build_ns": 14451,
+          "prepare_ns": 242411,
+          "times_ns": [
+            21165608,
+            21273919,
+            21253218,
+            21172999,
+            21301368
+          ],
+          "release_ns": [
+            70,
+            100,
+            100,
+            110,
+            180
+          ],
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "build_ns": 11070,
+          "prepare_ns": 244621,
+          "times_ns": [
+            26661976,
+            26636306,
+            26472355,
+            26699837,
+            27397300
+          ],
+          "release_ns": [
+            110,
+            90,
+            110,
+            130,
+            100
+          ],
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "source": "table",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "table",
+      "workers": 1,
+      "load_ns": 81883838,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            42757739,
+            41965724,
+            42353417,
+            42275135,
+            41315421
+          ],
+          "release_ns": [
+            3680,
+            3140,
+            3610,
+            3481,
+            3140
+          ],
+          "build_ns": 8240,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            14097982,
+            14081402,
+            14336843,
+            14122402,
+            14188952
+          ],
+          "release_ns": [
+            2210,
+            2500,
+            2370,
+            2380,
+            2120
+          ],
+          "build_ns": 12530,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            4233251,
+            4226082,
+            4203492,
+            4202741,
+            4208232
+          ],
+          "release_ns": [
+            1440,
+            1530,
+            1380,
+            1300,
+            1330
+          ],
+          "build_ns": 9590,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            7583559,
+            7545938,
+            7561728,
+            7538429,
+            7505348
+          ],
+          "release_ns": [
+            1400,
+            1341,
+            1410,
+            1270,
+            1290
+          ],
+          "build_ns": 12420,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            10664374,
+            10659615,
+            10657644,
+            10682365,
+            10703795
+          ],
+          "release_ns": [
+            1700,
+            1500,
+            1530,
+            1590,
+            2010
+          ],
+          "build_ns": 12210,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "table",
+      "workers": 1,
+      "load_ns": 124811937,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            37341410,
+            37404061,
+            38155115,
+            37495502,
+            37776093
+          ],
+          "release_ns": [
+            1680,
+            1910,
+            1720,
+            2030,
+            1770
+          ],
+          "build_ns": 69201,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            25665531,
+            25805732,
+            25548451,
+            25751501,
+            25372080
+          ],
+          "release_ns": [
+            1810,
+            2860,
+            1560,
+            1960,
+            2320
+          ],
+          "build_ns": 231531,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            7426138,
+            7378317,
+            7548958,
+            7366508,
+            7648129
+          ],
+          "release_ns": [
+            1560,
+            1501,
+            1010,
+            1090,
+            1330
+          ],
+          "build_ns": 159711,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            20057912,
+            19988313,
+            19826041,
+            19702040,
+            19824272
+          ],
+          "release_ns": [
+            1060,
+            960,
+            1730,
+            1160,
+            1100
+          ],
+          "build_ns": 157211,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            28029973,
+            27008428,
+            26633276,
+            27009058,
+            27892252
+          ],
+          "release_ns": [
+            1470,
+            1800,
+            1270,
+            1570,
+            1410
+          ],
+          "build_ns": 146540,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "table",
+      "workers": 1,
+      "load_ns": 360661812,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "times_ns": [
+            56086277,
+            56148846,
+            56349288,
+            56713120,
+            52787220
+          ],
+          "release_ns": [
+            1520,
+            1110,
+            1080,
+            1200,
+            1000
+          ],
+          "build_ns": 8520,
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "times_ns": [
+            25521040,
+            25731682,
+            25719141,
+            25524151,
+            25755061
+          ],
+          "release_ns": [
+            1410,
+            2040,
+            1710,
+            1530,
+            1550
+          ],
+          "build_ns": 11731,
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "times_ns": [
+            8329842,
+            8461723,
+            8127362,
+            8168262,
+            8152651
+          ],
+          "release_ns": [
+            710,
+            670,
+            1970,
+            650,
+            690
+          ],
+          "build_ns": 9140,
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "times_ns": [
+            4783885,
+            4734134,
+            4772874,
+            4732155,
+            4688244
+          ],
+          "release_ns": [
+            730,
+            690,
+            700,
+            660,
+            690
+          ],
+          "build_ns": 12780,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "times_ns": [
+            27455820,
+            27428941,
+            27238699,
+            27362719,
+            34487187
+          ],
+          "release_ns": [
+            700,
+            690,
+            790,
+            660,
+            740
+          ],
+          "build_ns": 15330,
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 150077440,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 89792,
+        "ScratchRequests": 32872
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 278278672,
+      "queries": [
+        {
+          "name": "count_distinct",
+          "build_ns": 10940,
+          "prepare_ns": 110571,
+          "times_ns": [
+            105756790,
+            105438019,
+            104783085,
+            105092867,
+            103702929
+          ],
+          "release_ns": [
+            170,
+            190,
+            220,
+            450,
+            140
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "edf05aefb3565c6e0269c748ae03a489191956478b8eaf59eb761da2b649273e"
+          }
+        },
+        {
+          "name": "multi_group_report",
+          "build_ns": 8060,
+          "prepare_ns": 160471,
+          "times_ns": [
+            109835251,
+            112004382,
+            111500780,
+            112358204,
+            110916166
+          ],
+          "release_ns": [
+            260,
+            240,
+            210,
+            160,
+            180
+          ],
+          "signature": {
+            "rows": 27,
+            "sha256": "139f657434990552e22174c6075de0dd51d48d221b62ba07e184d08808b66323"
+          }
+        },
+        {
+          "name": "group_sum",
+          "build_ns": 11260,
+          "prepare_ns": 276041,
+          "times_ns": [
+            20350115,
+            20200493,
+            20136672,
+            20193034,
+            20084502
+          ],
+          "release_ns": [
+            60,
+            60,
+            110,
+            70,
+            70
+          ],
+          "signature": {
+            "rows": 9,
+            "sha256": "78d42883500ddbc3e69e4a019198633a7c2663297739b3b0d9b9c7ec603181d3"
+          }
+        },
+        {
+          "name": "join_int_report",
+          "build_ns": 7790,
+          "prepare_ns": 256311,
+          "times_ns": [
+            79821637,
+            80726123,
+            81043953,
+            80768693,
+            80229600
+          ],
+          "release_ns": [
+            170,
+            140,
+            120,
+            80,
+            120
+          ],
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        },
+        {
+          "name": "join_string_report",
+          "build_ns": 17080,
+          "prepare_ns": 248482,
+          "times_ns": [
+            101583459,
+            101329067,
+            101395438,
+            101260898,
+            101292617
+          ],
+          "release_ns": [
+            140,
+            170,
+            120,
+            160,
+            340
+          ],
+          "signature": {
+            "rows": 8,
+            "sha256": "1101070a65560482442d842ca7066f97416d085f9b8aa9caaba055d7f1fb4833"
+          }
+        }
+      ],
+      "source": "table",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "case": "balanced:1048576",
+      "round": 2
+    }
+  ],
+  "validation_errors": [],
+  "query_failures": []
+}

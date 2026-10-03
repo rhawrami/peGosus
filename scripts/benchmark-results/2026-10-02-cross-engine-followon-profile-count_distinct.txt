@@ -1,0 +1,39 @@
+File: peg-workloads
+Build ID: 535b740e8263fac7788017c4779358f14cc9ed50
+Type: cpu
+Time: 2026-10-02 23:53:57 CDT
+Duration: 6.78s, Total samples = 17.59s (259.53%)
+Showing nodes accounting for 16.24s, 92.33% of 17.59s total
+Dropped 78 nodes (cum <= 0.09s)
+Showing top 30 nodes out of 51
+      flat  flat%   sum%        cum   cum%
+     4.79s 27.23% 27.23%      5.40s 30.70%  github.com/rhawrami/peGosus/pkg/plan.(*keyIndex).lookupString
+     3.58s 20.35% 47.58%      3.86s 21.94%  github.com/rhawrami/peGosus/pkg/plan.(*keyIndex).lookup
+     0.97s  5.51% 53.10%      9.29s 52.81%  github.com/rhawrami/peGosus/pkg/plan.(*groupState).add
+     0.96s  5.46% 58.56%      2.96s 16.83%  github.com/rhawrami/peGosus/pkg/io/parquet.makeParquetSelectedStringVector
+     0.84s  4.78% 63.33%      1.29s  7.33%  github.com/rhawrami/peGosus/pkg/plan.(*keyIndex).put
+     0.60s  3.41% 66.74%      0.60s  3.41%  internal/runtime/maps.memHashAES
+     0.47s  2.67% 69.41%      0.47s  2.67%  runtime.memmove
+     0.34s  1.93% 71.35%      0.58s  3.30%  github.com/rhawrami/peGosus/pkg/store.(*BitMap).IsSet (inline)
+     0.31s  1.76% 73.11%      0.31s  1.76%  github.com/golang/snappy.decode
+     0.31s  1.76% 74.87%      0.40s  2.27%  github.com/rhawrami/peGosus/pkg/io/parquet.decodeParquetRuns
+     0.26s  1.48% 76.35%      0.66s  3.75%  github.com/rhawrami/peGosus/pkg/plan.(*keyArena).append
+     0.25s  1.42% 77.77%      5.17s 29.39%  github.com/rhawrami/peGosus/pkg/plan.(*groupState).mergeDistinctSet
+     0.25s  1.42% 79.19%      0.41s  2.33%  github.com/rhawrami/peGosus/pkg/plan.scalarAt
+     0.24s  1.36% 80.56%      0.24s  1.36%  github.com/rhawrami/peGosus/pkg/mem.asBT (inline)
+     0.22s  1.25% 81.81%      1.57s  8.93%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).next
+     0.19s  1.08% 82.89%      0.60s  3.41%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).startPage
+     0.18s  1.02% 83.91%      0.18s  1.02%  runtime.memclrNoHeapPointers
+     0.16s  0.91% 84.82%      0.16s  0.91%  github.com/rhawrami/peGosus/pkg/mem.asU64T (inline)
+     0.16s  0.91% 85.73%      0.16s  0.91%  unicode/utf8.Valid
+     0.14s   0.8% 86.53%      7.36s 41.84%  github.com/rhawrami/peGosus/pkg/plan.(*distinctState).addString
+     0.13s  0.74% 87.27%      0.13s  0.74%  github.com/rhawrami/peGosus/pkg/plan.(*aggregateValue).add
+     0.13s  0.74% 88.00%      1.46s  8.30%  github.com/rhawrami/peGosus/pkg/plan.(*distinctState).appendRow
+     0.13s  0.74% 88.74%      0.23s  1.31%  github.com/rhawrami/peGosus/pkg/plan.(*keyArena).key (inline)
+     0.11s  0.63% 89.37%      0.16s  0.91%  github.com/rhawrami/peGosus/pkg/dtype.MakeString (inline)
+     0.10s  0.57% 89.94%      4.76s 27.06%  github.com/rhawrami/peGosus/pkg/plan.(*distinctState).addEncoded
+     0.09s  0.51% 90.45%      1.06s  6.03%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).advancePage
+     0.09s  0.51% 90.96%      0.12s  0.68%  github.com/rhawrami/peGosus/pkg/plan.(*PhysicalPlan).batchReservation
+     0.09s  0.51% 91.47%      0.26s  1.48%  github.com/rhawrami/peGosus/pkg/store.(*Vector).StringAt
+     0.08s  0.45% 91.93%      0.48s  2.73%  github.com/rhawrami/peGosus/pkg/plan.(*keyIndex).hash (inline)
+     0.07s   0.4% 92.33%      0.28s  1.59%  github.com/rhawrami/peGosus/pkg/store.(*BitMap).bytes (inline)

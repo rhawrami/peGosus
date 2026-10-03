@@ -1,0 +1,47 @@
+Fixture balanced:1048576: 21.52 MiB; source=table
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 1 workers, DataFusion
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 1, 4 workers, DataFusion
+  round 1, 8 workers, peGosus
+  round 1, 8 workers, DuckDB
+  round 1, 8 workers, Polars
+  round 1, 8 workers, DataFusion
+  round 2, 8 workers, DataFusion
+  round 2, 8 workers, Polars
+  round 2, 8 workers, DuckDB
+  round 2, 8 workers, peGosus
+  round 2, 4 workers, DataFusion
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  round 2, 1 workers, DataFusion
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+
+balanced:1048576, 1 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            104.931 / 56.077 / 37.491 / 41.966
+  multi_group_report        111.872 / 25.523 / 26.010 / 14.110
+  group_sum                 20.140 / 8.160 / 7.776 / 4.206
+  join_int_report           80.523 / 4.730 / 20.754 / 7.532
+  join_string_report        101.362 / 27.461 / 27.166 / 10.662
+
+balanced:1048576, 4 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            73.676 / 23.964 / 31.201 / 50.674
+  multi_group_report        28.886 / 11.712 / 15.317 / 4.934
+  group_sum                 5.365 / 4.810 / 4.356 / 1.712
+  join_int_report           21.264 / 2.088 / 11.648 / 4.673
+  join_string_report        26.549 / 12.635 / 14.296 / 6.967
+
+balanced:1048576, 8 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            66.191 / 15.730 / 31.229 / 47.566
+  multi_group_report        14.994 / 7.850 / 14.529 / 4.210
+  group_sum                 2.969 / 3.333 / 5.605 / 1.577
+  join_int_report           11.323 / 1.723 / 11.859 / 3.168
+  join_string_report        14.078 / 8.599 / 13.857 / 4.111
+Validation: 0 mismatches; 0 query failures; 24 worker records

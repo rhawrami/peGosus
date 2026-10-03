@@ -6,5 +6,6 @@ func allocOperatorSegment(a *mem.Allocator, scope *mem.AllocationScope, length i
 	if scope != nil {
 		return scope.AllocSeg(length)
 	}
-	return a.AllocSeg(length), true
+	segment := a.AllocSeg(length)
+	return segment, segment != nil
 }

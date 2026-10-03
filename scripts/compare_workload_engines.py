@@ -5,7 +5,8 @@ Examples:
   python scripts/compare_workload_engines.py --cases balanced:65536 --source table
   python scripts/compare_workload_engines.py --cases balanced:65536 --memory --only wide_materialize,join_string_report
 
-Requires Go, DuckDB, Polars; physical-footprint measurements require macOS.
+Requires Go, DuckDB, Polars; optional DataFusion uses requirements-datafusion.txt.
+Process memory uses macOS physical footprint or Linux sampled RSS.
 No network or fixture downloads are needed. Fixtures persist in --scratch.
 """
 import argparse
@@ -27,8 +28,8 @@ ENGINES = ("peGosus", "DuckDB", "Polars")
 LIMITATIONS = [
     "Synthetic workloads informed by the Tableau Public study, not a replay or a representative production query distribution.",
     "Warm filesystem cache; compilation, source loading and peGosus Prepare excluded. DuckDB Python execute includes per-execution SQL planning; Polars collect includes optimization.",
-    "Native materialization: peGosus owned Result, Polars DataFrame, DuckDB Python fetchall rows. DuckDB Python conversion is included in execution and footprint; fingerprints are outside timing windows.",
-    "Output release measured separately; process startup and retained-table input loading excluded from timing and included in footprint baseline.",
+    "Native materialization: peGosus owned Result, Polars DataFrame, DuckDB Python fetchall rows. DuckDB Python conversion is included in execution and process memory; fingerprints are outside timing windows.",
+    "Output release measured separately; process startup and retained-table input loading excluded from timing and included in process-memory baseline.",
     "No collation, dirty string-to-number/date casts, window functions, percentile, spilling, many-to-many join stress, or cancellation timing; no official TPC/ClickBench score.",
     "Dyadic numeric values permit exact fingerprints but exclude floating-point reduction rounding stress, NaN and infinity performance.",
     "Go and DuckDB query memory budget 1 GiB; Polars has no equivalent configured hard budget. Thread counts cap runtimes but not every operator parallelizes.",
@@ -58,6 +59,10 @@ def native_setup(args, fixture):
             sql = sql_query(name, fixture["rows"])
             return lambda: connection.execute(sql).fetchall()
         return make_operation, lambda result: iter(result), duckdb.__version__, time.perf_counter_ns()-started
+    if args.worker_engine == "DataFusion":
+        from workload_datafusion import datafusion_setup
+        make_operation, convert, version = datafusion_setup(args, fixture)
+        return make_operation, convert, version, time.perf_counter_ns()-started
     import polars as pl
     if pl.thread_pool_size() != args.worker_threads:
         raise RuntimeError("Polars thread pool mismatch")
@@ -198,14 +203,22 @@ def measure_memory(args, binary, manifest, engine, workers, name):
         ready = read_event(child, "ready")
         record = {"engine": engine, "workers": workers, "query": name, "version": ready["version"],
                   "snapshots": {"ready": {"process": counter.snapshot(child.pid), "event": ready}}}
+        record["memory_method"] = counter.description
         for stage in (*STAGES, "validate"):
-            counter.reset(child.pid)
-            before = counter.snapshot(child.pid)
-            child.stdin.write(stage + "\n")
-            child.stdin.flush()
-            event = read_event(child, stage)
-            after = counter.snapshot(child.pid)
-            record["snapshots"][stage] = {"before": before, "process": after, "event": event}
+            with counter.interval(child.pid) as sampled:
+                before = counter.snapshot(child.pid)
+                start = time.monotonic_ns()
+                child.stdin.write(stage + "\n")
+                child.stdin.flush()
+                event = read_event(child, stage)
+                after = counter.snapshot(child.pid)
+            interval_metrics = sampled.metrics() if sampled is not None else {}
+            peak = max(interval_metrics.get(counter.peak_key, after.get(counter.peak_key, 0)),
+                       before[counter.current_key], after[counter.current_key])
+            record["snapshots"][stage] = {"before": before, "process": after, "event": event,
+                                          "memory_metric": counter.metric, "peak_memory_bytes": peak,
+                                          "peak_growth_bytes": peak-before[counter.current_key],
+                                          "elapsed_ns": time.monotonic_ns()-start, **interval_metrics}
             if stage == "validate":
                 record["queries"] = [{"name": name, "signature": event["signature"]}]
         child.stdin.write("quit\n")
@@ -234,26 +247,35 @@ def main():
     parser.add_argument("--binary", type=pathlib.Path, default=pathlib.Path("/tmp/peg-expanded-bench"))
     parser.add_argument("--skip-build", action="store_true")
     parser.add_argument("--peg-timeout", type=float, default=10.0)
+    parser.add_argument("--engines", default=",".join(ENGINES), help="comma-separated engines; DataFusion is optional")
     parser.add_argument("--memory", action="store_true")
     parser.add_argument("--retain", type=int, default=2)
     parser.add_argument("--manifest", type=pathlib.Path)
-    parser.add_argument("--worker-engine", choices=("DuckDB", "Polars"))
+    parser.add_argument("--worker-engine", choices=("DuckDB", "Polars", "DataFusion"))
     parser.add_argument("--worker-threads", type=int, default=1)
     args = parser.parse_args()
     if args.worker_engine:
         native_worker(args)
         return
     names = args.only.split(",")
+    selected_engines = tuple(args.engines.split(","))
+    if args.source == "csv" and "DataFusion" in selected_engines:
+        parser.error("DataFusion 54.0.0 CSV null marker handling is unsupported; use parquet/table or omit DataFusion")
+    if len(set(selected_engines)) != len(selected_engines) or not selected_engines or set(selected_engines)-set((*ENGINES, "DataFusion")):
+        parser.error("invalid engine selection")
     workers = [int(item) for item in args.threads.split(",")]
     if set(names) - set(QUERIES) or min(workers) < 1 or args.rounds < 1 or args.runs < 1 or args.warmup < 0 or args.retain < 1 or args.peg_timeout < 0:
         parser.error("invalid query or measurement options")
     if not args.skip_build:
         subprocess.run(["go", "build", "-o", str(args.binary), "./scripts/workload_peg"], cwd=ROOT, check=True)
-    report = {"paper": PAPER, "limitations": LIMITATIONS, "source": args.source,
+    limitations = list(LIMITATIONS)
+    if "DataFusion" in selected_engines:
+        limitations.append("DataFusion Python collects native Arrow record batches; row conversion is excluded from timing and included only in validation. Each execution includes SQL planning and collect. Target partitions cap query partitioning, not every runtime thread; its fair spill pool is 1 GiB and disk spilling is enabled.")
+    report = {"paper": PAPER, "limitations": limitations, "source": args.source, "engines": selected_engines,
               "platform": platform.platform(), "processor": platform.machine(),
               "warmup": args.warmup, "runs": args.runs, "rounds": args.rounds,
               "peg_timeout_seconds": args.peg_timeout,
-              "source_hashes": {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in (pathlib.Path(__file__).resolve(), ROOT/'scripts/workload_suite.py', ROOT/'scripts/workload_peg/main.go')},
+              "source_hashes": {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in (pathlib.Path(__file__).resolve(), ROOT/'scripts/workload_suite.py', ROOT/'scripts/workload_peg/main.go', ROOT/'scripts/workload_datafusion.py', ROOT/'scripts/compare_parquet_memory.py', ROOT/'scripts/process_memory_linux.py')},
               "fixtures": [], "records": [], "validation_errors": [], "query_failures": []}
     def save():
         if args.json:
@@ -265,7 +287,7 @@ def main():
         report["fixtures"].append(fixture)
         print(f"Fixture {case}: {fixture['files']['parquet']['bytes']/(1<<20):.2f} MiB; source={args.source}", flush=True)
         for round_index in range(args.rounds):
-            engines = ENGINES if round_index % 2 == 0 else tuple(reversed(ENGINES))
+            engines = selected_engines if round_index % 2 == 0 else tuple(reversed(selected_engines))
             order = workers if round_index % 2 == 0 else list(reversed(workers))
             for count in order:
                 records = []
@@ -302,10 +324,10 @@ def main():
     if not args.memory:
         for case in args.cases.split(","):
             for count in workers:
-                print(f"\n{case}, {count} workers: milliseconds peGosus / DuckDB / Polars", flush=True)
+                print(f"\n{case}, {count} workers: milliseconds {' / '.join(selected_engines)}", flush=True)
                 for name in names:
                     medians = []
-                    for engine in ENGINES:
+                    for engine in selected_engines:
                         samples = [sample for record in report["records"] if record['case'] == case and record['workers'] == count and record['engine'] == engine for query in record['queries'] if query['name'] == name and not query.get('error') for sample in query['times_ns']]
                         medians.append(f"{statistics.median(samples)/1e6:.3f}" if samples else "ERROR")
                     print(f"  {name:25s} {' / '.join(medians)}", flush=True)

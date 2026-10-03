@@ -11,6 +11,7 @@ func makeGroupState(step physicalStep, scope *mem.AllocationScope) *groupState {
 	if g.compact == nil && len(step.groupKeys) == 1 && step.schema.FieldAt(0).Type().ID() == dtype.STRT {
 		g.keys.index.stringKeys = true
 	}
+	g.configureDistinct(step)
 	g.keys.setScope(scope)
 	if g.compact != nil {
 		g.compact.scope = scope
@@ -21,12 +22,15 @@ func makeGroupState(step physicalStep, scope *mem.AllocationScope) *groupState {
 }
 
 type groupState struct {
-	keys       distinctState
-	values     [][]aggregateValue
-	uniques    [][]*distinctState
-	stateBytes int64
-	compact    *compactGroupState
-	scope      *mem.AllocationScope
+	keys          distinctState
+	values        [][]aggregateValue
+	uniques       [][]*distinctState
+	stateBytes    int64
+	compact       *compactGroupState
+	scope         *mem.AllocationScope
+	uniqueSources []int
+	uniqueKeyOnly []bool
+	constantKeys  bool
 }
 
 func (g *groupState) release() {
@@ -57,6 +61,9 @@ func (g *groupState) charged(_ int) int64 {
 }
 
 func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep, budget int64) bool {
+	if len(g.uniqueSources) != len(step.aggregates) {
+		g.configureDistinct(step)
+	}
 	if g.compact != nil {
 		return g.compact.add(a, batch, step, budget)
 	}
@@ -99,7 +106,7 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 	}
 	uniqueBatches := make([]*store.Batch, len(step.aggregates))
 	for i, aggregate := range step.aggregates {
-		if aggregate.distinct {
+		if aggregate.distinct && g.uniqueSources[i] == i {
 			uniqueBatches[i] = store.MakeBatchRetained([]store.Vector{aggValues[i].vectors[aggregate.program.roots[0]]})
 		}
 	}
@@ -117,6 +124,7 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 	if selection != nil {
 		defer selection.Release()
 	}
+	inserted := make([]bool, len(step.aggregates))
 	for row := range batch.Len() {
 		if selection != nil && !selection.IsSet(row) {
 			continue
@@ -124,7 +132,9 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 		var index int
 		var ok bool
 		remaining := budget - g.charged(len(step.aggregates)) + g.keys.charged
-		if g.keys.index.stringKeys {
+		if g.constantKeys && g.groupCount() != 0 {
+			index, ok = 0, true
+		} else if g.keys.index.stringKeys {
 			index, ok = g.keys.addString(a, keyBatch, row, remaining)
 		} else {
 			index, ok = g.keys.add(a, keyBatch, row, remaining)
@@ -140,30 +150,41 @@ func (g *groupState) add(a *mem.Allocator, batch *store.Batch, step physicalStep
 			g.stateBytes = saturatingAdd(g.stateBytes, int64(len(step.aggregates))*64)
 			uniques := make([]*distinctState, len(step.aggregates))
 			for i, aggregate := range step.aggregates {
-				if aggregate.distinct {
-					uniques[i] = &distinctState{}
+				if aggregate.distinct && g.uniqueSources[i] == i {
+					uniques[i] = &distinctState{keyOnly: g.uniqueKeyOnly[i]}
 					uniques[i].setScope(g.scope)
+					uniques[i].index.stringKeys = aggregate.program.nodes[aggregate.program.roots[0]].dType.ID() == dtype.STRT
 				}
 			}
 			g.uniques = append(g.uniques, uniques)
 		}
 		states := g.values[index]
+		clear(inserted)
 		for i, aggregate := range step.aggregates {
-			if aggregate.distinct {
-				v := uniqueBatches[i].VectorAt(0)
-				if v.Validity() != nil && !v.Validity().IsSet(row) {
-					continue
-				}
-				before := g.uniques[index][i].rows.length
-				priorCharge := g.uniques[index][i].charged
-				_, ok := g.uniques[index][i].add(a, uniqueBatches[i], row, budget-g.charged(len(step.aggregates))+g.uniques[index][i].charged)
-				if !ok {
-					return false
-				}
-				g.stateBytes = saturatingAdd(g.stateBytes, g.uniques[index][i].charged-priorCharge)
-				if g.uniques[index][i].rows.length == before {
-					continue
-				}
+			if !aggregate.distinct || g.uniqueSources[i] != i {
+				continue
+			}
+			v := uniqueBatches[i].VectorAt(0)
+			if v.Validity() != nil && !v.Validity().IsSet(row) {
+				continue
+			}
+			state := g.uniques[index][i]
+			before, priorCharge := state.length(), state.charged
+			var ok bool
+			if state.index.stringKeys {
+				_, ok = state.addString(a, uniqueBatches[i], row, budget-g.charged(len(step.aggregates))+state.charged)
+			} else {
+				_, ok = state.add(a, uniqueBatches[i], row, budget-g.charged(len(step.aggregates))+state.charged)
+			}
+			if !ok {
+				return false
+			}
+			g.stateBytes = saturatingAdd(g.stateBytes, state.charged-priorCharge)
+			inserted[i] = state.length() != before
+		}
+		for i, aggregate := range step.aggregates {
+			if aggregate.distinct && aggregate.kind != AggregateMin && aggregate.kind != AggregateMax && !inserted[g.uniqueSources[i]] {
+				continue
 			}
 			before := 0
 			if states[i].text != nil {
@@ -205,6 +226,9 @@ func (g *groupState) merge(a *mem.Allocator, src *groupState, step physicalStep,
 }
 
 func (g *groupState) mergeRow(a *mem.Allocator, src *groupState, step physicalStep, budget int64, row int, keyValues []Scalar) bool {
+	if len(g.uniqueSources) != len(step.aggregates) {
+		g.configureDistinct(step)
+	}
 	if g.compact != nil || src.compact != nil {
 		return g.compact != nil && src.compact != nil && g.compact.mergeRow(a, src.compact, budget, row, keyValues)
 	}
@@ -218,10 +242,28 @@ func (g *groupState) mergeRow(a *mem.Allocator, src *groupState, step physicalSt
 	}
 	for len(g.values) <= index {
 		g.values = append(g.values, make([]aggregateValue, len(step.aggregates)))
-		g.uniques = append(g.uniques, make([]*distinctState, len(step.aggregates)))
+		uniques := make([]*distinctState, len(step.aggregates))
+		for i, aggregate := range step.aggregates {
+			if aggregate.distinct && g.uniqueSources[i] == i {
+				uniques[i] = &distinctState{keyOnly: g.uniqueKeyOnly[i]}
+				uniques[i].setScope(g.scope)
+				uniques[i].index.stringKeys = aggregate.program.nodes[aggregate.program.roots[0]].dType.ID() == dtype.STRT
+			}
+		}
+		g.uniques = append(g.uniques, uniques)
 		g.stateBytes = saturatingAdd(g.stateBytes, int64(len(step.aggregates))*64)
 	}
 	for i, aggregate := range step.aggregates {
+		if aggregate.distinct && g.uniqueSources[i] == i {
+			if !g.mergeUnique(a, src, step, budget, index, row, i, nil) {
+				return false
+			}
+		}
+	}
+	for i, aggregate := range step.aggregates {
+		if aggregate.distinct && aggregate.kind != AggregateMin && aggregate.kind != AggregateMax {
+			continue
+		}
 		before := 0
 		if text := g.values[index][i].text; text != nil {
 			before = text.Len()

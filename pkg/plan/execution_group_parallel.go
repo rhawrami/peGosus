@@ -113,7 +113,7 @@ func (p *PhysicalPlan) executeGroupedShards(ctx context.Context, a *mem.Allocato
 					return
 				}
 				source := sources[int(item>>32)]
-				if !target.mergeRow(a, source, step, perShard, int(uint32(item)), keyValues) {
+				if !target.mergeOwnedRow(a, source, step, perShard, int(uint32(item)), keyValues) {
 					resultMu.Lock()
 					if result.code == ExecutionCompleted {
 						result = ExecutionResult{code: ExecutionResourceExhausted}

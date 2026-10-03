@@ -1,0 +1,127 @@
+Selective Parquet
+goos: linux
+goarch: amd64
+pkg: github.com/rhawrami/peGosus/pkg/io/parquet
+cpu: AMD Ryzen 7 7700X 8-Core Processor
+BenchmarkParquetSelectedMaterialization/dense-8         	     100	    242933 ns/op	     62664 copied-string-bytes/op	        38.00 selected-rows/op	   84441 B/op	     428 allocs/op
+BenchmarkParquetSelectedMaterialization/dense-8         	     100	    249400 ns/op	     62664 copied-string-bytes/op	        38.00 selected-rows/op	   84441 B/op	     428 allocs/op
+BenchmarkParquetSelectedMaterialization/selected-8      	     100	    206924 ns/op	       560.0 copied-string-bytes/op	        38.00 selected-rows/op	   84113 B/op	     423 allocs/op
+BenchmarkParquetSelectedMaterialization/selected-8      	     100	    209989 ns/op	       560.0 copied-string-bytes/op	        38.00 selected-rows/op	   84112 B/op	     423 allocs/op
+PASS
+ok  	github.com/rhawrami/peGosus/pkg/io/parquet	0.097s
+
+Experimental scalar controls
+goos: linux
+goarch: amd64
+pkg: github.com/rhawrami/peGosus/pkg/plan
+cpu: AMD Ryzen 7 7700X 8-Core Processor
+BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=false-8         	 7899182	        14.37 ns/op	     16384 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=false-8         	 8272273	        14.28 ns/op	     16384 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=false-8         	 7986537	        14.34 ns/op	     16384 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=true-8          	 5357649	        21.36 ns/op	     17424 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=true-8          	 5673548	        20.90 ns/op	     17424 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=true-8          	 5528826	        21.01 ns/op	     17424 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=false-8          	 9539373	        12.44 ns/op	     16384 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=false-8          	 9900867	        12.22 ns/op	     16384 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=false-8          	 9548512	        12.23 ns/op	     16384 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=true-8           	 8041632	        16.03 ns/op	     17424 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=true-8           	 7521210	        15.73 ns/op	     17424 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=true-8           	 7497418	        15.77 ns/op	     17424 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=false-8        	 5029201	        24.14 ns/op	   1048576 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=false-8        	 4607269	        24.42 ns/op	   1048576 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=false-8        	 5013519	        24.29 ns/op	   1048576 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=true-8         	 3175494	        38.04 ns/op	   1114128 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=true-8         	 3225349	        38.85 ns/op	   1114128 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=true-8         	 3102877	        38.75 ns/op	   1114128 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=false-8         	 7840854	        15.20 ns/op	   1048576 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=false-8         	 6928251	        15.01 ns/op	   1048576 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=false-8         	 7562726	        15.81 ns/op	   1048576 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=true-8          	 6968558	        16.98 ns/op	   1114128 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=true-8          	 6555463	        17.18 ns/op	   1114128 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=true-8          	 6797026	        16.94 ns/op	   1114128 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=false-8      	 4145688	        27.65 ns/op	  16777216 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=false-8      	 4197834	        27.57 ns/op	  16777216 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=false-8      	 4084237	        28.49 ns/op	  16777216 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=true-8       	 2514660	        48.22 ns/op	  17825808 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=true-8       	 2417808	        49.87 ns/op	  17825808 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=true-8       	 2471268	        49.02 ns/op	  17825808 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=false-8       	 5683399	        18.20 ns/op	  16777216 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=false-8       	 6177594	        17.96 ns/op	  16777216 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=false-8       	 6164547	        17.71 ns/op	  16777216 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=true-8        	 5779806	        21.46 ns/op	  17825808 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=true-8        	 5764098	        20.64 ns/op	  17825808 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=true-8        	 5076932	        21.68 ns/op	  17825808 index-bytes	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/rhawrami/peGosus/pkg/plan	5.412s
+
+Experimental SIMD controls
+goos: linux
+goarch: amd64
+pkg: github.com/rhawrami/peGosus/pkg/plan
+cpu: AMD Ryzen 7 7700X 8-Core Processor
+BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=false-8         	 7787319	        14.44 ns/op	     16384 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=false-8         	 7669262	        14.71 ns/op	     16384 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=false-8         	 8341743	        14.54 ns/op	     16384 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=true-8          	 7061143	        17.46 ns/op	     17424 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=true-8          	 6626260	        17.54 ns/op	     17424 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=true-8          	 6778401	        17.51 ns/op	     17424 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=false-8          	 8399860	        14.13 ns/op	     16384 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=false-8          	 8391889	        14.13 ns/op	     16384 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=false-8          	 8561308	        13.95 ns/op	     16384 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=true-8           	10067680	        11.31 ns/op	     17424 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=true-8           	11194038	        11.46 ns/op	     17424 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=true-8           	10168046	        11.30 ns/op	     17424 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=false-8        	 4983600	        24.04 ns/op	   1048576 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=false-8        	 4772743	        24.13 ns/op	   1048576 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=false-8        	 4716100	        23.85 ns/op	   1048576 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=true-8         	 3811550	        29.32 ns/op	   1114128 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=true-8         	 4037151	        28.97 ns/op	   1114128 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=true-8         	 4058004	        29.30 ns/op	   1114128 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=false-8         	 7388452	        15.54 ns/op	   1048576 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=false-8         	 7848187	        15.33 ns/op	   1048576 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=false-8         	 7964332	        15.71 ns/op	   1048576 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=true-8          	10952818	        11.84 ns/op	   1114128 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=true-8          	10135384	        11.53 ns/op	   1114128 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=true-8          	 9163435	        11.50 ns/op	   1114128 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=false-8      	 4108524	        28.83 ns/op	  16777216 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=false-8      	 4132382	        29.23 ns/op	  16777216 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=false-8      	 4209817	        29.18 ns/op	  16777216 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=true-8       	 3031700	        39.24 ns/op	  17825808 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=true-8       	 2909920	        39.12 ns/op	  17825808 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=true-8       	 3080580	        39.51 ns/op	  17825808 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=false-8       	 6153121	        17.70 ns/op	  16777216 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=false-8       	 6059293	        17.86 ns/op	  16777216 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=false-8       	 6447802	        17.83 ns/op	  16777216 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=true-8        	 8475157	        14.13 ns/op	  17825808 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=true-8        	 8189290	        13.94 ns/op	  17825808 index-bytes	       0 B/op	       0 allocs/op
+BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=true-8        	 8410593	        14.18 ns/op	  17825808 index-bytes	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/rhawrami/peGosus/pkg/plan	5.199s
+
+Execution and spilling
+goos: linux
+goarch: amd64
+pkg: github.com/rhawrami/peGosus/pkg/plan
+cpu: AMD Ryzen 7 7700X 8-Core Processor
+BenchmarkParallelChainedJoinTopN/workers=1-8         	       3	  56679227 ns/op	 134217728 budget-bytes	    131072 input-rows	    524288 joined-rows	   1166224 peak-query-bytes	 1016978 B/op	   14956 allocs/op
+BenchmarkParallelChainedJoinTopN/workers=1-8         	       3	  57188116 ns/op	 134217728 budget-bytes	    131072 input-rows	    524288 joined-rows	   1166224 peak-query-bytes	 1015341 B/op	   14936 allocs/op
+BenchmarkParallelChainedJoinTopN/workers=4-8         	       3	  18260962 ns/op	 134217728 budget-bytes	    131072 input-rows	    524288 joined-rows	   1673920 peak-query-bytes	 1064509 B/op	   15643 allocs/op
+BenchmarkParallelChainedJoinTopN/workers=4-8         	       3	  17127690 ns/op	 134217728 budget-bytes	    131072 input-rows	    524288 joined-rows	   1673920 peak-query-bytes	 1129389 B/op	   15589 allocs/op
+BenchmarkSpilledGroup/global=false-8                 	       3	 584791546 ns/op	   0.73 MB/s	    196608 budget_B	      2048 output_rows/op	     34046 scope_peak_B	396642632 B/op	 4116729 allocs/op
+BenchmarkSpilledGroup/global=false-8                 	       3	 587683707 ns/op	   0.72 MB/s	    196608 budget_B	      2048 output_rows/op	     34046 scope_peak_B	396644736 B/op	 4116732 allocs/op
+BenchmarkSpilledGroup/global=true-8                  	       3	 369759477 ns/op	   1.15 MB/s	    196608 budget_B	         1.000 output_rows/op	     31688 scope_peak_B	246052685 B/op	 2601569 allocs/op
+BenchmarkSpilledGroup/global=true-8                  	       3	 369885275 ns/op	   1.15 MB/s	    196608 budget_B	         1.000 output_rows/op	     31688 scope_peak_B	246052605 B/op	 2601568 allocs/op
+BenchmarkSpillJoinHotKey/kind=1-8                    	       3	  22944885 ns/op	11398768 B/op	  176486 allocs/op
+BenchmarkSpillJoinHotKey/kind=1-8                    	       3	  22573370 ns/op	11398784 B/op	  176486 allocs/op
+BenchmarkSpillJoinHotKey/kind=3-8                    	       3	  22317189 ns/op	11490901 B/op	  177916 allocs/op
+BenchmarkSpillJoinHotKey/kind=3-8                    	       3	  22907802 ns/op	11490890 B/op	  177916 allocs/op
+BenchmarkSpillJoinHotKey/kind=4-8                    	       3	   6360141 ns/op	 2700045 B/op	   40142 allocs/op
+BenchmarkSpillJoinHotKey/kind=4-8                    	       3	   6409748 ns/op	 2700061 B/op	   40142 allocs/op
+BenchmarkSpillJoinHotKey/kind=5-8                    	       3	   6823340 ns/op	 2693530 B/op	   39982 allocs/op
+BenchmarkSpillJoinHotKey/kind=5-8                    	       3	   6108393 ns/op	 2693536 B/op	   39982 allocs/op
+BenchmarkSpilledSort/budget=131072-8                 	       3	  70944546 ns/op	     15396 peak-live-bytes	     16384 rows/op
+BenchmarkSpilledSort/budget=131072-8                 	       3	  72593834 ns/op	     15396 peak-live-bytes	     16384 rows/op
+BenchmarkSpilledSort/budget=1048576-8                	       3	  19903807 ns/op	    288032 peak-live-bytes	     16384 rows/op
+BenchmarkSpilledSort/budget=1048576-8                	       3	  20335226 ns/op	    288032 peak-live-bytes	     16384 rows/op
+PASS
+ok  	github.com/rhawrami/peGosus/pkg/plan	9.556s

@@ -81,7 +81,7 @@ func TestParquetScanFilterProjectRetain(t *testing.T) {
 	if err := os.Remove(path); err != nil {
 		t.Fatal(err)
 	}
-	if batches[0].VectorAt(0).Strings()[0].View() != "aaaaaaaaaaaaaaa" {
+	if batches[0].VectorAt(0).Strings()[0].Len() != 0 || batches[1].VectorAt(0).Strings()[0].View() != "ccccccccccccccc" {
 		t.Fatal("retained backing lost")
 	}
 }

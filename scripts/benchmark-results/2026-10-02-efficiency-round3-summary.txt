@@ -1,0 +1,27 @@
+peGosus DISTINCT/spill memory follow-on (local Oct 2, 2026)
+Checkpoint 48c9640; new changes uncommitted.
+
+COUNT DISTINCT parquet workers=1: 182.916 -> 162.600 ms (1.12x)
+COUNT DISTINCT parquet workers=4: 176.304 -> 87.191 ms (2.02x)
+COUNT DISTINCT table workers=1: 128.550 -> 105.217 ms (1.22x)
+COUNT DISTINCT table workers=4: 122.515 -> 73.416 ms (1.67x)
+
+BenchmarkSpilledGroup/global=false-8: 556.977 -> 263.420 ms (2.11x), Go B/op 396643045 -> 30223880 (92.4% less)
+BenchmarkSpilledGroup/global=true-8: 350.418 -> 171.382 ms (2.04x), Go B/op 246052466 -> 19529050 (92.1% less)
+BenchmarkSpillJoinHotKey/kind=1-8: 21.593 -> 19.930 ms (1.08x), Go B/op 11398877 -> 9128896 (19.9% less)
+BenchmarkSpillJoinHotKey/kind=3-8: 21.347 -> 20.083 ms (1.06x), Go B/op 11490874 -> 9160610 (20.3% less)
+BenchmarkSpillJoinHotKey/kind=4-8: 6.208 -> 6.136 ms (1.01x), Go B/op 2702794 -> 2716974 (-0.5% less)
+BenchmarkSpillJoinHotKey/kind=5-8: 6.108 -> 5.993 ms (1.02x), Go B/op 2693530 -> 2713429 (-0.7% less)
+BenchmarkSpilledSort/budget=131072-8: 68.092 -> 35.025 ms (1.94x), Go B/op 39152053 -> 1430916 (96.3% less)
+BenchmarkSpilledSort/budget=1048576-8: 19.588 -> 13.346 ms (1.47x), Go B/op 9651098 -> 210594 (97.8% less)
+
+count_distinct workers=1 cold sampled RSS growth: 147.4 -> 103.9 MiB (29.5% lower)
+count_distinct workers=4 cold sampled RSS growth: 321.8 -> 197.6 MiB (38.6% lower)
+full_sort_string workers=1 cold sampled RSS growth: 121.4 -> 121.4 MiB (0.0% lower)
+full_sort_string workers=4 cold sampled RSS growth: 129.7 -> 129.8 MiB (-0.0% lower)
+
+Paired: 336 observations, 1680 samples; 1 median regressions >10%.
+Four-engine correctness: 888 observations; memory before/after: 16; zero failures/mismatches.
+Normal/SIMD full suites, race/checkptr, final affected follow-ups, ARM64 compile and AVX2-off checks passed. Python: 15 tests passed with 2 macOS skips.
+Tiny wide-output control recheck: 0.133 -> 0.136 ms, 120 samples; original matrix regression retained.
+Spill live peaks rise slightly with reusable buffers; RSS is sampled, not the query budget. Native ARM performance remains unverified.

@@ -31,6 +31,8 @@ func MakeParquetScan(path string, schema Schema, options parquet.ParquetOptions)
 }
 
 type scanSource struct {
+	spillPaths           []string
+	spillBudget          int64
 	table                *store.Table
 	csvPath              string
 	csvOptions           csv.CSVOptions
@@ -48,7 +50,7 @@ type scanSource struct {
 var errScanFilter = errors.New("scan predicate evaluation failed")
 
 func (s *scanSource) Valid() bool {
-	return s != nil && (s.table.Valid() || (s.csvPath != "" || s.parquetPath != "") && s.schema.Valid())
+	return s != nil && (s.table.Valid() || (s.csvPath != "" || s.parquetPath != "" || len(s.spillPaths) != 0) && s.schema.Valid())
 }
 
 func (s *scanSource) Retain() *scanSource {
@@ -82,6 +84,7 @@ func (s *scanSource) NBatches() int {
 func (s *scanSource) BatchAt(i int) *store.Batch { return s.table.BatchAt(i) }
 
 type scanCursor struct {
+	spill   *spillStream
 	source  *scanSource
 	file    *os.File
 	csv     *csv.CSVReader
@@ -91,6 +94,10 @@ type scanCursor struct {
 }
 
 func (c *scanCursor) close() {
+	if c.spill != nil {
+		c.spill.release()
+		c.spill = nil
+	}
 	if c.parquet != nil {
 		c.parquet.Close()
 		c.parquet = nil
@@ -102,6 +109,9 @@ func (c *scanCursor) close() {
 }
 
 func (c *scanCursor) next(ctx context.Context, a *mem.Allocator) (*store.Batch, bool, error) {
+	if len(c.source.spillPaths) != 0 {
+		return c.nextSpill(ctx, a)
+	}
 	if c.source.table != nil {
 		if c.index == c.source.table.NBatches() {
 			return nil, true, nil
@@ -197,6 +207,7 @@ func (c *scanCursor) openParquet(a *mem.Allocator) error {
 			return parquet.MakeParquetError(parquet.ParquetInvalid, errors.New("Parquet schema differs from bound scan schema"))
 		}
 	}
+	reader.SetSelectedMaterialization(true)
 	reader.SetPruningPredicates(makeParquetPruningPredicates(c.source))
 	if !reader.SetRuntimePruningFilter(c.runtime) {
 		reader.Close()

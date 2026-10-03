@@ -1,0 +1,6589 @@
+{
+  "paper": "https://www.cs.cit.tum.de/fileadmin/w00cfj/dis/papers/getreal.pdf",
+  "limitations": [
+    "Synthetic workloads informed by the Tableau Public study, not a replay or a representative production query distribution.",
+    "Warm filesystem cache; compilation, source loading and peGosus Prepare excluded. DuckDB Python execute includes per-execution SQL planning; Polars collect includes optimization.",
+    "Native materialization: peGosus owned Result, Polars DataFrame, DuckDB Python fetchall rows. DuckDB Python conversion is included in execution and process memory; fingerprints are outside timing windows.",
+    "Output release measured separately; process startup and retained-table input loading excluded from timing and included in process-memory baseline.",
+    "No collation, dirty string-to-number/date casts, window functions, percentile, spilling, many-to-many join stress, or cancellation timing; no official TPC/ClickBench score.",
+    "Dyadic numeric values permit exact fingerprints but exclude floating-point reduction rounding stress, NaN and infinity performance.",
+    "Go and DuckDB query memory budget 1 GiB; Polars has no equivalent configured hard budget. Thread counts cap runtimes but not every operator parallelizes.",
+    "Unordered wide output uses a multiset fingerprint; unordered LIMIT validates row membership and uniqueness rather than equal subsets.",
+    "peGosus has a configurable per-execution guard deadline (default 10s). Native whole-worker watchdog is 1800s. Failures and cancellations have no comparison timing; completed partial samples are not ranked.",
+    "DataFusion Python collects native Arrow record batches; row conversion is excluded from timing and included only in validation. Each execution includes SQL planning and collect. Target partitions cap query partitioning, not every runtime thread; its fair spill pool is 1 GiB and disk spilling is enabled."
+  ],
+  "source": "parquet",
+  "engines": [
+    "peGosus",
+    "DuckDB",
+    "Polars",
+    "DataFusion"
+  ],
+  "platform": "Linux-7.2.8-200.fc44.x86_64-x86_64-with-glibc2.43",
+  "processor": "x86_64",
+  "warmup": 2,
+  "runs": 5,
+  "rounds": 2,
+  "peg_timeout_seconds": 120.0,
+  "source_hashes": {
+    "scripts/compare_workload_engines.py": "104235e8317f9bb6f26a7e70f67c6203624ee24e660e99a9621a4e3faa6cc36d",
+    "scripts/workload_suite.py": "b04dd971479929f283a60b5a2f9aa092401885944996ec263486b0a4b26387e3",
+    "scripts/workload_peg/main.go": "2bc298be382de168af8b251eeac3d307f6d6fdaee2691ae8058fc494652e18a2",
+    "scripts/workload_datafusion.py": "7340991fd7736b1b0eb7ce2240f1e08c50f30de611d68cf4a9ca648fbe18ba2e",
+    "scripts/compare_parquet_memory.py": "b5d258d7c4b56966a6edbda1b323b50ac0e04b51caa9cd7a3a7d8acd26043390",
+    "scripts/process_memory_linux.py": "54c8fb70a26c91bf68baff0b4a5c206d0dee7e401730c633cdd4be579d08cd30"
+  },
+  "fixtures": [
+    {
+      "case": "balanced:1048576",
+      "rows": 1048576,
+      "profile": "balanced",
+      "null_percentage": 5,
+      "customer_domain": 786433,
+      "generator_sql": "SELECT i::INTEGER AS id, CASE WHEN (i*17+3)%100 < 5 THEN NULL ELSE ((i*104729)%65536-32768)::DOUBLE/128 END AS score, CASE WHEN (i*17+7)%100 < 5 THEN NULL ELSE i%3=0 END AS active, DATE '1970-01-01' + (19000+(i*13)%365)::INTEGER AS day, CASE WHEN (i*17+11)%100 < 5 THEN NULL ELSE (['north','south','east','west','central','island','Caf\u00e9','\u6771\u4eac'])[(i%8)+1] END AS category, CASE WHEN (i*17+19)%100 < 5 THEN NULL ELSE 'Event-' || printf('%04d', i%128) || ' Caf\u00e9 \u6771\u4eac' END AS message, CASE WHEN (i*17+23)%100 < 5 THEN NULL ELSE ((i*48271)%786433)::INTEGER END AS customer_key, CASE WHEN (i*17+23)%100 < 5 THEN NULL ELSE 'cust-' || printf('%08d', (i*48271)%786433) END AS customer_code, CASE WHEN (i*17+31)%100 < 5 THEN NULL ELSE ((i*17)%536)::INTEGER END AS segment_key, CASE WHEN (i*17+31)%100 < 5 THEN NULL ELSE 'seg-' || printf('%04d', (i*17)%536) END AS segment_code, CASE WHEN (i*17+37)%100 < 5 THEN NULL ELSE CASE WHEN i%29=0 THEN '?' WHEN i%2=0 THEN 'Y' ELSE 'N' END END AS flag_text, printf('%d/%02d', 2017+i%6, (18+i%6)) AS fiscal_year, CASE WHEN (i*17+41)%100 < 5 THEN NULL ELSE (i%1024+1)::DOUBLE/8 END AS price, CASE WHEN (i*17+43)%100 < 5 THEN NULL ELSE (CASE WHEN i%127=0 THEN 0 ELSE (1 << (i%4)) END)::INTEGER END AS quantity, CASE WHEN (i*17+47)%100 < 5 THEN NULL ELSE (i%4)::DOUBLE/8 END AS discount, ((i*37)%100)::INTEGER AS selectivity FROM range(1048576) AS t(i)",
+      "dimension_sql": "SELECT i::INTEGER AS segment_key, 'seg-' || printf('%04d', i) AS segment_code, 'region-' || (i%8)::VARCHAR AS region, i%5!=0 AS enabled FROM range(512) AS t(i)",
+      "fields": [
+        {
+          "name": "id",
+          "kind": "int32",
+          "nullable": false
+        },
+        {
+          "name": "score",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "active",
+          "kind": "bool",
+          "nullable": true
+        },
+        {
+          "name": "day",
+          "kind": "date",
+          "nullable": false
+        },
+        {
+          "name": "category",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "message",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "customer_key",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "customer_code",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "segment_key",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "segment_code",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "flag_text",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "fiscal_year",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "price",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "quantity",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "discount",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "selectivity",
+          "kind": "int32",
+          "nullable": false
+        }
+      ],
+      "dimension_fields": [
+        {
+          "name": "segment_key",
+          "kind": "int32",
+          "nullable": false
+        },
+        {
+          "name": "segment_code",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "region",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "enabled",
+          "kind": "bool",
+          "nullable": false
+        }
+      ],
+      "encodings": [
+        [
+          "active",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "category",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "customer_code",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "customer_key",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "day",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "discount",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "fiscal_year",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "flag_text",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "id",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "message",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "price",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "quantity",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "score",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "segment_code",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "segment_key",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "selectivity",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ]
+      ],
+      "files": {
+        "parquet": {
+          "bytes": 22562604,
+          "sha256": "5a98814d4c6917fbf6eec00751682d0538d398c04997f4c7d31fa7a113fce3c7"
+        },
+        "dimension": {
+          "bytes": 4846,
+          "sha256": "6282e2909ae8c3147c9906fed3398ffa620f9aafe41bcd0855e1927dc071ea61"
+        },
+        "csv": {
+          "bytes": 128048903,
+          "sha256": "06dd69aaa5a96c906e0fe2065e9f97adbb849b61543767bf07c3aa0af55f193b"
+        },
+        "dimension_csv": {
+          "bytes": 13857,
+          "sha256": "6701cac4eb6d7e5e63f3a6ace6bee2fb137d0d2ead885c29cf3972f4564f0e64"
+        }
+      },
+      "parquet": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/balanced-1048576/facts.parquet",
+      "dimension": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/balanced-1048576/dimension.parquet",
+      "csv": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/balanced-1048576/facts.csv",
+      "dimension_csv": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/balanced-1048576/dimension.csv"
+    },
+    {
+      "case": "skewed_nulls:1048576",
+      "rows": 1048576,
+      "profile": "skewed_nulls",
+      "null_percentage": 40,
+      "customer_domain": 786433,
+      "generator_sql": "SELECT i::INTEGER AS id, CASE WHEN (i*17+3)%100 < 40 THEN NULL ELSE ((i*104729)%65536-32768)::DOUBLE/128 END AS score, CASE WHEN (i*17+7)%100 < 40 THEN NULL ELSE i%3=0 END AS active, DATE '1970-01-01' + (19000+(i*13)%365)::INTEGER AS day, CASE WHEN (i*17+11)%100 < 40 THEN NULL ELSE CASE WHEN i%100 < 85 THEN 'north' ELSE (['north','south','east','west','central','island','Caf\u00e9','\u6771\u4eac'])[(i%8)+1] END END AS category, CASE WHEN (i*17+19)%100 < 40 THEN NULL ELSE 'Event-' || printf('%04d', i%128) || ' Caf\u00e9 \u6771\u4eac' END AS message, CASE WHEN (i*17+23)%100 < 40 THEN NULL ELSE ((i*48271)%786433)::INTEGER END AS customer_key, CASE WHEN (i*17+23)%100 < 40 THEN NULL ELSE 'cust-' || printf('%08d', (i*48271)%786433) END AS customer_code, CASE WHEN (i*17+31)%100 < 40 THEN NULL ELSE ((i*17)%536)::INTEGER END AS segment_key, CASE WHEN (i*17+31)%100 < 40 THEN NULL ELSE 'seg-' || printf('%04d', (i*17)%536) END AS segment_code, CASE WHEN (i*17+37)%100 < 40 THEN NULL ELSE CASE WHEN i%29=0 THEN '?' WHEN i%2=0 THEN 'Y' ELSE 'N' END END AS flag_text, printf('%d/%02d', 2017+i%6, (18+i%6)) AS fiscal_year, CASE WHEN (i*17+41)%100 < 40 THEN NULL ELSE (i%1024+1)::DOUBLE/8 END AS price, CASE WHEN (i*17+43)%100 < 40 THEN NULL ELSE (CASE WHEN i%127=0 THEN 0 ELSE (1 << (i%4)) END)::INTEGER END AS quantity, CASE WHEN (i*17+47)%100 < 40 THEN NULL ELSE (i%4)::DOUBLE/8 END AS discount, ((i*37)%100)::INTEGER AS selectivity FROM range(1048576) AS t(i)",
+      "dimension_sql": "SELECT i::INTEGER AS segment_key, 'seg-' || printf('%04d', i) AS segment_code, 'region-' || (i%8)::VARCHAR AS region, i%5!=0 AS enabled FROM range(512) AS t(i)",
+      "fields": [
+        {
+          "name": "id",
+          "kind": "int32",
+          "nullable": false
+        },
+        {
+          "name": "score",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "active",
+          "kind": "bool",
+          "nullable": true
+        },
+        {
+          "name": "day",
+          "kind": "date",
+          "nullable": false
+        },
+        {
+          "name": "category",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "message",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "customer_key",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "customer_code",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "segment_key",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "segment_code",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "flag_text",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "fiscal_year",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "price",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "quantity",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "discount",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "selectivity",
+          "kind": "int32",
+          "nullable": false
+        }
+      ],
+      "dimension_fields": [
+        {
+          "name": "segment_key",
+          "kind": "int32",
+          "nullable": false
+        },
+        {
+          "name": "segment_code",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "region",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "enabled",
+          "kind": "bool",
+          "nullable": false
+        }
+      ],
+      "encodings": [
+        [
+          "active",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "category",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "customer_code",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "customer_key",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "day",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "discount",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "fiscal_year",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "flag_text",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "id",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "message",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "price",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "quantity",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "score",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "segment_code",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "segment_key",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "selectivity",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ]
+      ],
+      "files": {
+        "parquet": {
+          "bytes": 15785231,
+          "sha256": "007e1b9aafb2c1322b524dd99cdabf5fef2ac51242091d151de4a0ca1b3c494a"
+        },
+        "dimension": {
+          "bytes": 4846,
+          "sha256": "6282e2909ae8c3147c9906fed3398ffa620f9aafe41bcd0855e1927dc071ea61"
+        },
+        "csv": {
+          "bytes": 105790608,
+          "sha256": "87f2ba78413c0a81c69521b90e1051cb9a78a09eb1610dcb14704f8bbe05fe2d"
+        },
+        "dimension_csv": {
+          "bytes": 13857,
+          "sha256": "6701cac4eb6d7e5e63f3a6ace6bee2fb137d0d2ead885c29cf3972f4564f0e64"
+        }
+      },
+      "parquet": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/skewed_nulls-1048576/facts.parquet",
+      "dimension": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/skewed_nulls-1048576/dimension.parquet",
+      "csv": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/skewed_nulls-1048576/facts.csv",
+      "dimension_csv": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/skewed_nulls-1048576/dimension.csv"
+    },
+    {
+      "case": "plain_strings:1048576",
+      "rows": 1048576,
+      "profile": "plain_strings",
+      "null_percentage": 5,
+      "customer_domain": 786433,
+      "generator_sql": "SELECT i::INTEGER AS id, CASE WHEN (i*17+3)%100 < 5 THEN NULL ELSE ((i*104729)%65536-32768)::DOUBLE/128 END AS score, CASE WHEN (i*17+7)%100 < 5 THEN NULL ELSE i%3=0 END AS active, DATE '1970-01-01' + (19000+(i*13)%365)::INTEGER AS day, CASE WHEN (i*17+11)%100 < 5 THEN NULL ELSE (['north','south','east','west','central','island','Caf\u00e9','\u6771\u4eac'])[(i%8)+1] END AS category, CASE WHEN (i*17+19)%100 < 5 THEN NULL ELSE 'Event-' || printf('%04d', i%128) || ' Caf\u00e9 \u6771\u4eac' || ',quoted \"text\"' || chr(10) || repeat('Long UTF8 payload na\u00efve \u6771\u4eac ', 4) END AS message, CASE WHEN (i*17+23)%100 < 5 THEN NULL ELSE ((i*48271)%786433)::INTEGER END AS customer_key, CASE WHEN (i*17+23)%100 < 5 THEN NULL ELSE 'Customer Caf\u00e9 \u6771\u4eac identifier-' || printf('%08d', (i*48271)%786433) END AS customer_code, CASE WHEN (i*17+31)%100 < 5 THEN NULL ELSE ((i*17)%536)::INTEGER END AS segment_key, CASE WHEN (i*17+31)%100 < 5 THEN NULL ELSE 'seg-' || printf('%04d', (i*17)%536) END AS segment_code, CASE WHEN (i*17+37)%100 < 5 THEN NULL ELSE CASE WHEN i%29=0 THEN '?' WHEN i%2=0 THEN 'Y' ELSE 'N' END END AS flag_text, printf('%d/%02d', 2017+i%6, (18+i%6)) AS fiscal_year, CASE WHEN (i*17+41)%100 < 5 THEN NULL ELSE (i%1024+1)::DOUBLE/8 END AS price, CASE WHEN (i*17+43)%100 < 5 THEN NULL ELSE (CASE WHEN i%127=0 THEN 0 ELSE (1 << (i%4)) END)::INTEGER END AS quantity, CASE WHEN (i*17+47)%100 < 5 THEN NULL ELSE (i%4)::DOUBLE/8 END AS discount, ((i*37)%100)::INTEGER AS selectivity FROM range(1048576) AS t(i)",
+      "dimension_sql": "SELECT i::INTEGER AS segment_key, 'seg-' || printf('%04d', i) AS segment_code, 'region-' || (i%8)::VARCHAR AS region, i%5!=0 AS enabled FROM range(512) AS t(i)",
+      "fields": [
+        {
+          "name": "id",
+          "kind": "int32",
+          "nullable": false
+        },
+        {
+          "name": "score",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "active",
+          "kind": "bool",
+          "nullable": true
+        },
+        {
+          "name": "day",
+          "kind": "date",
+          "nullable": false
+        },
+        {
+          "name": "category",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "message",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "customer_key",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "customer_code",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "segment_key",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "segment_code",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "flag_text",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "fiscal_year",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "price",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "quantity",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "discount",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "selectivity",
+          "kind": "int32",
+          "nullable": false
+        }
+      ],
+      "dimension_fields": [
+        {
+          "name": "segment_key",
+          "kind": "int32",
+          "nullable": false
+        },
+        {
+          "name": "segment_code",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "region",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "enabled",
+          "kind": "bool",
+          "nullable": false
+        }
+      ],
+      "encodings": [
+        [
+          "active",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "category",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "customer_code",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "customer_key",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "day",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "discount",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "fiscal_year",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "flag_text",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "id",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "message",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "price",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "quantity",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "score",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "segment_code",
+          [
+            "PLAIN"
+          ],
+          1048576
+        ],
+        [
+          "segment_key",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ],
+        [
+          "selectivity",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          1048576
+        ]
+      ],
+      "files": {
+        "parquet": {
+          "bytes": 34693595,
+          "sha256": "7b76cf2e2dceceb40b8ef30250c760c7677baca26cf4ebeb6dad353b6138ff13"
+        },
+        "dimension": {
+          "bytes": 5033,
+          "sha256": "4efae07740e3270d3e6d3df77c2858ba36a1302639dc9693340114cb04b93dd5"
+        },
+        "csv": {
+          "bytes": 302374831,
+          "sha256": "04bc2bf5a747653c6ba1ef186c1dafb1fcf510b64a5175656c72ea8767e1d88e"
+        },
+        "dimension_csv": {
+          "bytes": 13857,
+          "sha256": "6701cac4eb6d7e5e63f3a6ace6bee2fb137d0d2ead885c29cf3972f4564f0e64"
+        }
+      },
+      "parquet": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/plain_strings-1048576/facts.parquet",
+      "dimension": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/plain_strings-1048576/dimension.parquet",
+      "csv": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/plain_strings-1048576/facts.csv",
+      "dimension_csv": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/plain_strings-1048576/dimension.csv"
+    },
+    {
+      "case": "balanced:10000000",
+      "rows": 10000000,
+      "profile": "balanced",
+      "null_percentage": 5,
+      "customer_domain": 7500001,
+      "generator_sql": "SELECT i::INTEGER AS id, CASE WHEN (i*17+3)%100 < 5 THEN NULL ELSE ((i*104729)%65536-32768)::DOUBLE/128 END AS score, CASE WHEN (i*17+7)%100 < 5 THEN NULL ELSE i%3=0 END AS active, DATE '1970-01-01' + (19000+(i*13)%365)::INTEGER AS day, CASE WHEN (i*17+11)%100 < 5 THEN NULL ELSE (['north','south','east','west','central','island','Caf\u00e9','\u6771\u4eac'])[(i%8)+1] END AS category, CASE WHEN (i*17+19)%100 < 5 THEN NULL ELSE 'Event-' || printf('%04d', i%128) || ' Caf\u00e9 \u6771\u4eac' END AS message, CASE WHEN (i*17+23)%100 < 5 THEN NULL ELSE ((i*48271)%7500001)::INTEGER END AS customer_key, CASE WHEN (i*17+23)%100 < 5 THEN NULL ELSE 'cust-' || printf('%08d', (i*48271)%7500001) END AS customer_code, CASE WHEN (i*17+31)%100 < 5 THEN NULL ELSE ((i*17)%536)::INTEGER END AS segment_key, CASE WHEN (i*17+31)%100 < 5 THEN NULL ELSE 'seg-' || printf('%04d', (i*17)%536) END AS segment_code, CASE WHEN (i*17+37)%100 < 5 THEN NULL ELSE CASE WHEN i%29=0 THEN '?' WHEN i%2=0 THEN 'Y' ELSE 'N' END END AS flag_text, printf('%d/%02d', 2017+i%6, (18+i%6)) AS fiscal_year, CASE WHEN (i*17+41)%100 < 5 THEN NULL ELSE (i%1024+1)::DOUBLE/8 END AS price, CASE WHEN (i*17+43)%100 < 5 THEN NULL ELSE (CASE WHEN i%127=0 THEN 0 ELSE (1 << (i%4)) END)::INTEGER END AS quantity, CASE WHEN (i*17+47)%100 < 5 THEN NULL ELSE (i%4)::DOUBLE/8 END AS discount, ((i*37)%100)::INTEGER AS selectivity FROM range(10000000) AS t(i)",
+      "dimension_sql": "SELECT i::INTEGER AS segment_key, 'seg-' || printf('%04d', i) AS segment_code, 'region-' || (i%8)::VARCHAR AS region, i%5!=0 AS enabled FROM range(512) AS t(i)",
+      "fields": [
+        {
+          "name": "id",
+          "kind": "int32",
+          "nullable": false
+        },
+        {
+          "name": "score",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "active",
+          "kind": "bool",
+          "nullable": true
+        },
+        {
+          "name": "day",
+          "kind": "date",
+          "nullable": false
+        },
+        {
+          "name": "category",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "message",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "customer_key",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "customer_code",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "segment_key",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "segment_code",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "flag_text",
+          "kind": "string",
+          "nullable": true
+        },
+        {
+          "name": "fiscal_year",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "price",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "quantity",
+          "kind": "int32",
+          "nullable": true
+        },
+        {
+          "name": "discount",
+          "kind": "float64",
+          "nullable": true
+        },
+        {
+          "name": "selectivity",
+          "kind": "int32",
+          "nullable": false
+        }
+      ],
+      "dimension_fields": [
+        {
+          "name": "segment_key",
+          "kind": "int32",
+          "nullable": false
+        },
+        {
+          "name": "segment_code",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "region",
+          "kind": "string",
+          "nullable": false
+        },
+        {
+          "name": "enabled",
+          "kind": "bool",
+          "nullable": false
+        }
+      ],
+      "encodings": [
+        [
+          "active",
+          [
+            "PLAIN"
+          ],
+          10000000
+        ],
+        [
+          "category",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          10000000
+        ],
+        [
+          "customer_code",
+          [
+            "PLAIN"
+          ],
+          10000000
+        ],
+        [
+          "customer_key",
+          [
+            "PLAIN"
+          ],
+          10000000
+        ],
+        [
+          "day",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          10000000
+        ],
+        [
+          "discount",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          10000000
+        ],
+        [
+          "fiscal_year",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          10000000
+        ],
+        [
+          "flag_text",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          10000000
+        ],
+        [
+          "id",
+          [
+            "PLAIN"
+          ],
+          10000000
+        ],
+        [
+          "message",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          10000000
+        ],
+        [
+          "price",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          10000000
+        ],
+        [
+          "quantity",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          10000000
+        ],
+        [
+          "score",
+          [
+            "PLAIN"
+          ],
+          10000000
+        ],
+        [
+          "segment_code",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          10000000
+        ],
+        [
+          "segment_key",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          10000000
+        ],
+        [
+          "selectivity",
+          [
+            "PLAIN_DICTIONARY"
+          ],
+          10000000
+        ]
+      ],
+      "files": {
+        "parquet": {
+          "bytes": 222621666,
+          "sha256": "6c8534683244562dd8cba9c5b91c9f1f2fc255a73843755578f3489c8fa8284e"
+        },
+        "dimension": {
+          "bytes": 4846,
+          "sha256": "6282e2909ae8c3147c9906fed3398ffa620f9aafe41bcd0855e1927dc071ea61"
+        },
+        "csv": {
+          "bytes": 1240087677,
+          "sha256": "71cddeb52c531e880681ea27e295b9b6712600e9ea345bffb4bb866139e42283"
+        },
+        "dimension_csv": {
+          "bytes": 13857,
+          "sha256": "6701cac4eb6d7e5e63f3a6ace6bee2fb137d0d2ead885c29cf3972f4564f0e64"
+        }
+      },
+      "parquet": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/balanced-10000000/facts.parquet",
+      "dimension": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/balanced-10000000/dimension.parquet",
+      "csv": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/balanced-10000000/facts.csv",
+      "dimension_csv": "/home/rhawrami/Documents/cases/peGosus/testdata/cross-engine-followon/fixtures/balanced-10000000/dimension.csv"
+    }
+  ],
+  "records": [
+    {
+      "allocator": {
+        "GeneralCapacity": 205324288,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24344,
+        "ScratchRequests": 13338
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 900705,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 29920,
+          "prepare_ns": 14390,
+          "times_ns": [
+            69151833,
+            69018142,
+            68344109,
+            68118568,
+            65092813
+          ],
+          "release_ns": [
+            460,
+            240,
+            250,
+            130,
+            230
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 26041,
+          "prepare_ns": 8980,
+          "times_ns": [
+            157365734,
+            166413289,
+            152001087,
+            156441319,
+            151771045
+          ],
+          "release_ns": [
+            190,
+            200,
+            210,
+            210,
+            130
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 32528966,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            47204041,
+            43929615,
+            43790173,
+            45746264,
+            47429852
+          ],
+          "release_ns": [
+            1090,
+            1210,
+            1070,
+            1310,
+            1010
+          ],
+          "build_ns": 6000,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            77490756,
+            69295994,
+            69060863,
+            76472940,
+            68213979
+          ],
+          "release_ns": [
+            1060,
+            1010,
+            960,
+            1230,
+            1010
+          ],
+          "build_ns": 14640,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 41954825,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            54209167,
+            65846386,
+            55713234,
+            56915741,
+            56551129
+          ],
+          "release_ns": [
+            1570,
+            1110,
+            1240,
+            1150,
+            1210
+          ],
+          "build_ns": 477783,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            100121601,
+            102232932,
+            100084432,
+            100903685,
+            100060541
+          ],
+          "release_ns": [
+            1510,
+            1020,
+            1240,
+            1790,
+            1950
+          ],
+          "build_ns": 113280,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 31768102,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            23058518,
+            22640595,
+            22937848,
+            22673645,
+            21813812
+          ],
+          "release_ns": [
+            3340,
+            3780,
+            3660,
+            3520,
+            4040
+          ],
+          "build_ns": 6210,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            56273208,
+            55272832,
+            56566789,
+            55563284,
+            56127756
+          ],
+          "release_ns": [
+            3430,
+            3170,
+            3670,
+            6620,
+            3380
+          ],
+          "build_ns": 19290,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 205324288,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24344,
+        "ScratchRequests": 13338
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 880304,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 23010,
+          "prepare_ns": 10560,
+          "times_ns": [
+            61026092,
+            61099302,
+            59926906,
+            60049767,
+            60221867
+          ],
+          "release_ns": [
+            190,
+            440,
+            180,
+            160,
+            150
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 6100,
+          "prepare_ns": 9020,
+          "times_ns": [
+            159308053,
+            155498894,
+            156185197,
+            155640085,
+            160667871
+          ],
+          "release_ns": [
+            190,
+            210,
+            150,
+            190,
+            250
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 32692357,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            17386619,
+            17353469,
+            17621450,
+            17419609,
+            17337399
+          ],
+          "release_ns": [
+            1360,
+            1420,
+            1370,
+            1060,
+            1460
+          ],
+          "build_ns": 5940,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            26873027,
+            26505776,
+            26230344,
+            26233624,
+            25986073
+          ],
+          "release_ns": [
+            1380,
+            980,
+            1660,
+            1390,
+            1040
+          ],
+          "build_ns": 14700,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 41510652,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            22250864,
+            22590915,
+            24659946,
+            23233149,
+            22323414
+          ],
+          "release_ns": [
+            1320,
+            1530,
+            1640,
+            1710,
+            1500
+          ],
+          "build_ns": 477282,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            57748055,
+            59184163,
+            58422178,
+            57828095,
+            58399309
+          ],
+          "release_ns": [
+            1410,
+            1440,
+            1810,
+            3410,
+            1350
+          ],
+          "build_ns": 129771,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 32485406,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            11595579,
+            10643404,
+            10130272,
+            10619584,
+            10922705
+          ],
+          "release_ns": [
+            3450,
+            3300,
+            3510,
+            4251,
+            3610
+          ],
+          "build_ns": 6250,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            25276659,
+            25079138,
+            25312969,
+            25120908,
+            27009138
+          ],
+          "release_ns": [
+            3640,
+            3350,
+            3640,
+            3860,
+            3940
+          ],
+          "build_ns": 15830,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 205324288,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24344,
+        "ScratchRequests": 13338
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 1040616,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 27270,
+          "prepare_ns": 21040,
+          "times_ns": [
+            61896816,
+            61968237,
+            61403723,
+            61332013,
+            60943182
+          ],
+          "release_ns": [
+            200,
+            210,
+            220,
+            210,
+            200
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 6361,
+          "prepare_ns": 8480,
+          "times_ns": [
+            157070902,
+            156225528,
+            155820416,
+            156475079,
+            162199908
+          ],
+          "release_ns": [
+            210,
+            200,
+            230,
+            220,
+            180
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 8,
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 35357510,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            10645235,
+            11318488,
+            10849755,
+            10600664,
+            10629234
+          ],
+          "release_ns": [
+            1720,
+            1250,
+            1010,
+            1420,
+            1000
+          ],
+          "build_ns": 6500,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            15881232,
+            16183262,
+            15068197,
+            14985177,
+            15027606
+          ],
+          "release_ns": [
+            1040,
+            990,
+            1430,
+            1180,
+            1150
+          ],
+          "build_ns": 13540,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 42023275,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            20451815,
+            18907706,
+            18967427,
+            19118298,
+            20347824
+          ],
+          "release_ns": [
+            1570,
+            1480,
+            1170,
+            1620,
+            1370
+          ],
+          "build_ns": 487212,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            55858245,
+            54593559,
+            53680964,
+            79649817,
+            51837274
+          ],
+          "release_ns": [
+            1520,
+            2390,
+            2020,
+            1860,
+            1660
+          ],
+          "build_ns": 126561,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 32051943,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            9367938,
+            9026706,
+            8916495,
+            9667430,
+            9190907
+          ],
+          "release_ns": [
+            3480,
+            3580,
+            3630,
+            3520,
+            3380
+          ],
+          "build_ns": 6600,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            24741446,
+            23619081,
+            24537135,
+            24053103,
+            24158703
+          ],
+          "release_ns": [
+            3660,
+            3760,
+            3830,
+            3920,
+            3330
+          ],
+          "build_ns": 14430,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 32644066,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            9142057,
+            9492478,
+            9070437,
+            9315627,
+            9304538
+          ],
+          "release_ns": [
+            3820,
+            3340,
+            3400,
+            3060,
+            3340
+          ],
+          "build_ns": 6890,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            23971893,
+            24570685,
+            24374625,
+            24570835,
+            23914662
+          ],
+          "release_ns": [
+            3630,
+            3030,
+            3780,
+            3860,
+            3741
+          ],
+          "build_ns": 14150,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 40960289,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            20800536,
+            19957382,
+            19505290,
+            20082462,
+            19791031
+          ],
+          "release_ns": [
+            1450,
+            1670,
+            1270,
+            1550,
+            1570
+          ],
+          "build_ns": 484373,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            52663799,
+            53902286,
+            53558123,
+            53837314,
+            53259642
+          ],
+          "release_ns": [
+            1480,
+            1210,
+            1550,
+            2020,
+            1420
+          ],
+          "build_ns": 135011,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 32738108,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            10526664,
+            10943736,
+            10895446,
+            11539749,
+            10931316
+          ],
+          "release_ns": [
+            1130,
+            1220,
+            1000,
+            1410,
+            1170
+          ],
+          "build_ns": 6230,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            15761651,
+            16084552,
+            15174618,
+            15280068,
+            15157327
+          ],
+          "release_ns": [
+            1280,
+            1340,
+            1030,
+            1380,
+            1360
+          ],
+          "build_ns": 15370,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 205324288,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24344,
+        "ScratchRequests": 13338
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 877465,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 16370,
+          "prepare_ns": 9910,
+          "times_ns": [
+            60899611,
+            63938717,
+            60075437,
+            60307698,
+            60805160
+          ],
+          "release_ns": [
+            140,
+            410,
+            140,
+            150,
+            200
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 6420,
+          "prepare_ns": 8930,
+          "times_ns": [
+            155760686,
+            157060772,
+            161720466,
+            156464399,
+            158392179
+          ],
+          "release_ns": [
+            140,
+            190,
+            140,
+            180,
+            190
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 8,
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 31469131,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            11568489,
+            11040656,
+            11198717,
+            10702245,
+            10867146
+          ],
+          "release_ns": [
+            3770,
+            3810,
+            4420,
+            3220,
+            3370
+          ],
+          "build_ns": 7920,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            26204054,
+            29402700,
+            25918043,
+            25077938,
+            24581265
+          ],
+          "release_ns": [
+            3890,
+            3520,
+            3650,
+            3860,
+            3720
+          ],
+          "build_ns": 14700,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 42804339,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            24478835,
+            22849967,
+            24188943,
+            22777397,
+            23017127
+          ],
+          "release_ns": [
+            1210,
+            1510,
+            1240,
+            1250,
+            1310
+          ],
+          "build_ns": 489322,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            58198717,
+            61674435,
+            57983296,
+            58429139,
+            58276148
+          ],
+          "release_ns": [
+            2790,
+            1550,
+            1470,
+            2090,
+            1650
+          ],
+          "build_ns": 114970,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 33655741,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            17905681,
+            17785670,
+            18165383,
+            17748501,
+            17710990
+          ],
+          "release_ns": [
+            1261,
+            1230,
+            1320,
+            1130,
+            1350
+          ],
+          "build_ns": 6010,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            26182264,
+            26019222,
+            26765576,
+            26456965,
+            25912013
+          ],
+          "release_ns": [
+            1160,
+            2531,
+            1310,
+            1650,
+            1050
+          ],
+          "build_ns": 14500,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 205324288,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24344,
+        "ScratchRequests": 13338
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 913565,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 23730,
+          "prepare_ns": 11010,
+          "times_ns": [
+            60588729,
+            60619580,
+            60919321,
+            60169807,
+            60126607
+          ],
+          "release_ns": [
+            210,
+            130,
+            210,
+            180,
+            140
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 6060,
+          "prepare_ns": 8190,
+          "times_ns": [
+            156509409,
+            155257113,
+            155093202,
+            154869841,
+            156908212
+          ],
+          "release_ns": [
+            400,
+            190,
+            390,
+            220,
+            220
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 32699868,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            23124158,
+            23239119,
+            22624626,
+            23514320,
+            22081393
+          ],
+          "release_ns": [
+            3260,
+            3080,
+            2960,
+            3460,
+            3610
+          ],
+          "build_ns": 6790,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            56635560,
+            56230627,
+            57567534,
+            56952921,
+            57152392
+          ],
+          "release_ns": [
+            3360,
+            3110,
+            3670,
+            3290,
+            3580
+          ],
+          "build_ns": 15090,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 42073065,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            55326243,
+            67567885,
+            56296157,
+            55946796,
+            58277498
+          ],
+          "release_ns": [
+            1640,
+            1600,
+            1460,
+            1280,
+            1380
+          ],
+          "build_ns": 692023,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            112188573,
+            100683465,
+            100997215,
+            99875931,
+            101766649
+          ],
+          "release_ns": [
+            1360,
+            1440,
+            1420,
+            1340,
+            1310
+          ],
+          "build_ns": 149590,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 32670147,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            45668573,
+            44485248,
+            45952744,
+            43996435,
+            43989535
+          ],
+          "release_ns": [
+            1440,
+            1280,
+            1120,
+            1110,
+            1310
+          ],
+          "build_ns": 6240,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            74809382,
+            78381811,
+            75149484,
+            72755461,
+            74997823
+          ],
+          "release_ns": [
+            960,
+            1240,
+            1480,
+            1300,
+            770
+          ],
+          "build_ns": 14270,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 205324288,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24344,
+        "ScratchRequests": 13338
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 961475,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 25500,
+          "prepare_ns": 13930,
+          "times_ns": [
+            60510439,
+            60609910,
+            60023077,
+            60845790,
+            60554850
+          ],
+          "release_ns": [
+            140,
+            190,
+            170,
+            180,
+            120
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 11800,
+          "prepare_ns": 9190,
+          "times_ns": [
+            157011062,
+            165476795,
+            150371258,
+            150788090,
+            152369188
+          ],
+          "release_ns": [
+            120,
+            400,
+            230,
+            180,
+            180
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "case": "balanced:1048576",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 236781568,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24336,
+        "ScratchRequests": 11290
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 952095,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 20950,
+          "prepare_ns": 12010,
+          "times_ns": [
+            52666139,
+            52481068,
+            52489748,
+            52655709,
+            52834470
+          ],
+          "release_ns": [
+            200,
+            240,
+            270,
+            190,
+            180
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 29370,
+          "prepare_ns": 7850,
+          "times_ns": [
+            130414926,
+            124662716,
+            124902028,
+            124780468,
+            133431451
+          ],
+          "release_ns": [
+            190,
+            180,
+            210,
+            270,
+            390
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "case": "skewed_nulls:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 33589461,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            28827197,
+            28639586,
+            31662392,
+            31022848,
+            31259440
+          ],
+          "release_ns": [
+            1470,
+            1260,
+            1070,
+            1030,
+            1170
+          ],
+          "build_ns": 6150,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            50216176,
+            46471318,
+            46080895,
+            47959455,
+            48548288
+          ],
+          "release_ns": [
+            920,
+            1580,
+            960,
+            1050,
+            1460
+          ],
+          "build_ns": 14780,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 41771184,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            37377650,
+            41447071,
+            40745348,
+            39081590,
+            38476436
+          ],
+          "release_ns": [
+            1341,
+            1140,
+            1140,
+            1370,
+            1120
+          ],
+          "build_ns": 500042,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            85814149,
+            78950833,
+            78933873,
+            77108814,
+            77621137
+          ],
+          "release_ns": [
+            1420,
+            1230,
+            1190,
+            1230,
+            1090
+          ],
+          "build_ns": 116060,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 35149140,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            18070823,
+            18996357,
+            18124792,
+            17700471,
+            18126802
+          ],
+          "release_ns": [
+            3730,
+            3420,
+            3230,
+            3130,
+            3280
+          ],
+          "build_ns": 6680,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            41238180,
+            38888519,
+            40396006,
+            40223806,
+            38354596
+          ],
+          "release_ns": [
+            3960,
+            3130,
+            3730,
+            3320,
+            3480
+          ],
+          "build_ns": 16290,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 236781568,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24336,
+        "ScratchRequests": 11290
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 893315,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 16310,
+          "prepare_ns": 10320,
+          "times_ns": [
+            54929380,
+            54601269,
+            54807920,
+            53701254,
+            53234552
+          ],
+          "release_ns": [
+            510,
+            470,
+            200,
+            220,
+            200
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 6310,
+          "prepare_ns": 8770,
+          "times_ns": [
+            128306855,
+            123792443,
+            124195064,
+            122471545,
+            123507751
+          ],
+          "release_ns": [
+            150,
+            170,
+            160,
+            120,
+            130
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "case": "skewed_nulls:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 33145140,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            14612844,
+            14573605,
+            14586564,
+            14740065,
+            15136028
+          ],
+          "release_ns": [
+            1270,
+            1120,
+            6160,
+            1080,
+            1210
+          ],
+          "build_ns": 6350,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            20580195,
+            21270718,
+            20481965,
+            20870567,
+            20438404
+          ],
+          "release_ns": [
+            1540,
+            1220,
+            1210,
+            1160,
+            1330
+          ],
+          "build_ns": 13160,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 42931559,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            15971022,
+            16176922,
+            20812256,
+            17356199,
+            18656645
+          ],
+          "release_ns": [
+            1110,
+            1150,
+            1470,
+            1720,
+            1160
+          ],
+          "build_ns": 505932,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            50052866,
+            51105761,
+            52867730,
+            51428653,
+            50571528
+          ],
+          "release_ns": [
+            3340,
+            1910,
+            1400,
+            1960,
+            1370
+          ],
+          "build_ns": 133770,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 32122264,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            11628889,
+            11147257,
+            11403338,
+            11361838,
+            12097382
+          ],
+          "release_ns": [
+            3850,
+            4300,
+            3810,
+            2910,
+            4120
+          ],
+          "build_ns": 7170,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            26027523,
+            25666581,
+            26148273,
+            28606136,
+            26376435
+          ],
+          "release_ns": [
+            3560,
+            3340,
+            3910,
+            3970,
+            3540
+          ],
+          "build_ns": 16140,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 236781568,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24336,
+        "ScratchRequests": 11290
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 1172386,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 14740,
+          "prepare_ns": 14140,
+          "times_ns": [
+            55818375,
+            53448463,
+            54040636,
+            54434118,
+            56560189
+          ],
+          "release_ns": [
+            230,
+            320,
+            180,
+            270,
+            140
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 5750,
+          "prepare_ns": 14460,
+          "times_ns": [
+            131941114,
+            124080954,
+            124189214,
+            123936683,
+            124112174
+          ],
+          "release_ns": [
+            140,
+            440,
+            280,
+            130,
+            150
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 8,
+      "case": "skewed_nulls:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 35058599,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            11138227,
+            10861176,
+            11042796,
+            9987081,
+            10750365
+          ],
+          "release_ns": [
+            1230,
+            1180,
+            1020,
+            1050,
+            940
+          ],
+          "build_ns": 9710,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            11458828,
+            12224863,
+            11446689,
+            12015761,
+            11356278
+          ],
+          "release_ns": [
+            1150,
+            1380,
+            1080,
+            1090,
+            1420
+          ],
+          "build_ns": 14431,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 41723143,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            15177387,
+            15139597,
+            16188672,
+            16816386,
+            13996682
+          ],
+          "release_ns": [
+            1290,
+            1000,
+            1220,
+            1210,
+            1260
+          ],
+          "build_ns": 482963,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            45636673,
+            45202601,
+            45342762,
+            49164271,
+            49157231
+          ],
+          "release_ns": [
+            1380,
+            1550,
+            1460,
+            1250,
+            1560
+          ],
+          "build_ns": 127901,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 32513406,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            8878216,
+            9131936,
+            9279038,
+            9065476,
+            8368823
+          ],
+          "release_ns": [
+            4510,
+            4340,
+            3880,
+            3410,
+            3620
+          ],
+          "build_ns": 8090,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            20902567,
+            22451965,
+            22013042,
+            20541325,
+            20385204
+          ],
+          "release_ns": [
+            3850,
+            4010,
+            4960,
+            3670,
+            3870
+          ],
+          "build_ns": 16221,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 32194805,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            8824166,
+            8701654,
+            9135957,
+            8890085,
+            9450008
+          ],
+          "release_ns": [
+            3410,
+            3700,
+            3550,
+            4190,
+            3480
+          ],
+          "build_ns": 7180,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            19395049,
+            22097453,
+            19326369,
+            21956122,
+            19537830
+          ],
+          "release_ns": [
+            3570,
+            3280,
+            3680,
+            3840,
+            3600
+          ],
+          "build_ns": 14930,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 43667303,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            15409419,
+            13871871,
+            21550800,
+            21096968,
+            20436154
+          ],
+          "release_ns": [
+            1550,
+            1230,
+            1320,
+            1640,
+            1290
+          ],
+          "build_ns": 508392,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            53728835,
+            54749859,
+            50244597,
+            49481373,
+            56921791
+          ],
+          "release_ns": [
+            1030,
+            1300,
+            1200,
+            1400,
+            1480
+          ],
+          "build_ns": 118770,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 34939768,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            11666569,
+            11164577,
+            11212578,
+            10319242,
+            10585764
+          ],
+          "release_ns": [
+            1350,
+            1250,
+            1050,
+            1110,
+            1790
+          ],
+          "build_ns": 7260,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            13516268,
+            13271638,
+            12952946,
+            13360499,
+            14642335
+          ],
+          "release_ns": [
+            1910,
+            1540,
+            1390,
+            1170,
+            1270
+          ],
+          "build_ns": 15250,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 236781568,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24336,
+        "ScratchRequests": 11290
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 1350077,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 17420,
+          "prepare_ns": 13490,
+          "times_ns": [
+            56450589,
+            53593083,
+            54947471,
+            55818975,
+            54963571
+          ],
+          "release_ns": [
+            130,
+            150,
+            180,
+            130,
+            130
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 15291,
+          "prepare_ns": 9040,
+          "times_ns": [
+            129737883,
+            124842177,
+            123901493,
+            125603101,
+            121741392
+          ],
+          "release_ns": [
+            200,
+            130,
+            320,
+            230,
+            250
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 8,
+      "case": "skewed_nulls:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 33322310,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            10088252,
+            9697359,
+            10434803,
+            10413673,
+            10125421
+          ],
+          "release_ns": [
+            5140,
+            3890,
+            3880,
+            3740,
+            3720
+          ],
+          "build_ns": 6380,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            26530895,
+            27710872,
+            27984843,
+            27471650,
+            26854838
+          ],
+          "release_ns": [
+            3640,
+            3730,
+            3980,
+            4500,
+            3930
+          ],
+          "build_ns": 16110,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 45612723,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            16675975,
+            18263463,
+            20593275,
+            18831446,
+            16567465
+          ],
+          "release_ns": [
+            1650,
+            1610,
+            1650,
+            1480,
+            1500
+          ],
+          "build_ns": 700143,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            54249257,
+            51428253,
+            53781455,
+            53047031,
+            53204501
+          ],
+          "release_ns": [
+            1500,
+            1230,
+            1590,
+            1870,
+            1410
+          ],
+          "build_ns": 141520,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 34679517,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            15444919,
+            15062317,
+            14509404,
+            14826036,
+            15035826
+          ],
+          "release_ns": [
+            1250,
+            1350,
+            1400,
+            970,
+            1020
+          ],
+          "build_ns": 7660,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            21130168,
+            20706615,
+            20890287,
+            20870717,
+            21708811
+          ],
+          "release_ns": [
+            1190,
+            1200,
+            1260,
+            1050,
+            1390
+          ],
+          "build_ns": 14630,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 236781568,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24336,
+        "ScratchRequests": 11290
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 1020665,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 27660,
+          "prepare_ns": 11900,
+          "times_ns": [
+            62791631,
+            61020371,
+            65490615,
+            71525755,
+            61524224
+          ],
+          "release_ns": [
+            200,
+            180,
+            250,
+            150,
+            130
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 6370,
+          "prepare_ns": 17120,
+          "times_ns": [
+            128846668,
+            129374631,
+            127131659,
+            123941972,
+            124510906
+          ],
+          "release_ns": [
+            180,
+            370,
+            240,
+            130,
+            130
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "case": "skewed_nulls:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 32883198,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            21191019,
+            21310178,
+            20981588,
+            19209668,
+            19030887
+          ],
+          "release_ns": [
+            3120,
+            3440,
+            3550,
+            3420,
+            3200
+          ],
+          "build_ns": 9820,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            43293321,
+            59556904,
+            51365123,
+            42938879,
+            41168290
+          ],
+          "release_ns": [
+            3930,
+            3190,
+            3520,
+            9160,
+            3350
+          ],
+          "build_ns": 15060,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 44951390,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            42934200,
+            38570697,
+            39004849,
+            40652438,
+            39749883
+          ],
+          "release_ns": [
+            1620,
+            1450,
+            1810,
+            1400,
+            1550
+          ],
+          "build_ns": 490322,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            91370397,
+            80937743,
+            92260831,
+            81435666,
+            86198141
+          ],
+          "release_ns": [
+            1670,
+            1160,
+            1020,
+            1400,
+            1250
+          ],
+          "build_ns": 128161,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 33981194,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            31708041,
+            32560437,
+            32362085,
+            29164659,
+            29252360
+          ],
+          "release_ns": [
+            1110,
+            1170,
+            960,
+            1030,
+            1250
+          ],
+          "build_ns": 7980,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            47395572,
+            46262316,
+            45577903,
+            46855080,
+            45422392
+          ],
+          "release_ns": [
+            1020,
+            1410,
+            1300,
+            1060,
+            1160
+          ],
+          "build_ns": 13730,
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "case": "skewed_nulls:1048576",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 236781568,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24336,
+        "ScratchRequests": 11290
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 791584,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 20140,
+          "prepare_ns": 11950,
+          "times_ns": [
+            54623169,
+            53276612,
+            55578684,
+            60015796,
+            55075921
+          ],
+          "release_ns": [
+            240,
+            190,
+            200,
+            210,
+            190
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 21780,
+          "prepare_ns": 8340,
+          "times_ns": [
+            128904528,
+            125127389,
+            125533871,
+            125558232,
+            126610756
+          ],
+          "release_ns": [
+            190,
+            360,
+            370,
+            230,
+            120
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "2e375ec111123bd186096034d55347ec243b2bbffb93b0377cc4b777e1abe0f4"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "case": "skewed_nulls:1048576",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 450691072,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24368,
+        "ScratchRequests": 17434
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 954695,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 20061,
+          "prepare_ns": 12020,
+          "times_ns": [
+            63898996,
+            63014652,
+            63407934,
+            64049247,
+            63735075
+          ],
+          "release_ns": [
+            160,
+            180,
+            200,
+            180,
+            200
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 32350,
+          "prepare_ns": 8880,
+          "times_ns": [
+            200020061,
+            185321707,
+            190520343,
+            186348412,
+            184364331
+          ],
+          "release_ns": [
+            480,
+            180,
+            380,
+            180,
+            130
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "case": "plain_strings:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 33209799,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            45040250,
+            43650803,
+            46718238,
+            49065391,
+            48799759
+          ],
+          "release_ns": [
+            1040,
+            1330,
+            1130,
+            1060,
+            950
+          ],
+          "build_ns": 6460,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            84433902,
+            87437886,
+            82997414,
+            83942639,
+            83931738
+          ],
+          "release_ns": [
+            1030,
+            1320,
+            990,
+            1190,
+            1310
+          ],
+          "build_ns": 13790,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 43034430,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            60219458,
+            58224127,
+            66195638,
+            66544320,
+            58214097
+          ],
+          "release_ns": [
+            960,
+            1460,
+            1400,
+            1370,
+            1160
+          ],
+          "build_ns": 480902,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            141010450,
+            132085965,
+            135430121,
+            129217160,
+            129901854
+          ],
+          "release_ns": [
+            1370,
+            1630,
+            1230,
+            1440,
+            1710
+          ],
+          "build_ns": 112151,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 32935618,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            24325494,
+            23583361,
+            24985317,
+            26856688,
+            23566180
+          ],
+          "release_ns": [
+            3400,
+            3390,
+            3370,
+            3700,
+            3130
+          ],
+          "build_ns": 6900,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            74537401,
+            74101398,
+            72876592,
+            70912432,
+            71588526
+          ],
+          "release_ns": [
+            3360,
+            3100,
+            3830,
+            3150,
+            3710
+          ],
+          "build_ns": 14430,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 450691072,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24368,
+        "ScratchRequests": 17434
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 858454,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 17710,
+          "prepare_ns": 10780,
+          "times_ns": [
+            63143552,
+            64997652,
+            63137443,
+            63768985,
+            63077092
+          ],
+          "release_ns": [
+            230,
+            510,
+            200,
+            230,
+            180
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 6920,
+          "prepare_ns": 9340,
+          "times_ns": [
+            228960479,
+            207126358,
+            201643080,
+            202236423,
+            204329083
+          ],
+          "release_ns": [
+            180,
+            190,
+            360,
+            190,
+            220
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "case": "plain_strings:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 35593212,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            18266364,
+            18084802,
+            18639586,
+            17689220,
+            17684990
+          ],
+          "release_ns": [
+            1430,
+            1200,
+            1330,
+            1000,
+            1360
+          ],
+          "build_ns": 7270,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            31916733,
+            31292420,
+            32764167,
+            33004049,
+            32956778
+          ],
+          "release_ns": [
+            1800,
+            1540,
+            1270,
+            1180,
+            980
+          ],
+          "build_ns": 14930,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 44581708,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            24149283,
+            26481455,
+            24533516,
+            27642681,
+            30637966
+          ],
+          "release_ns": [
+            1500,
+            1510,
+            1710,
+            1570,
+            1620
+          ],
+          "build_ns": 509272,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            86465932,
+            93671888,
+            85879549,
+            84169470,
+            90606212
+          ],
+          "release_ns": [
+            1670,
+            1310,
+            2150,
+            1520,
+            2020
+          ],
+          "build_ns": 111851,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 34934618,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            12632585,
+            12465063,
+            12076452,
+            11696520,
+            11627889
+          ],
+          "release_ns": [
+            3870,
+            3020,
+            3640,
+            5940,
+            3431
+          ],
+          "build_ns": 11110,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            30300765,
+            30937548,
+            33500551,
+            39047139,
+            36165825
+          ],
+          "release_ns": [
+            3470,
+            3950,
+            3330,
+            4040,
+            4270
+          ],
+          "build_ns": 21510,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 450691072,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24368,
+        "ScratchRequests": 17434
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 1208576,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 23840,
+          "prepare_ns": 15611,
+          "times_ns": [
+            69006823,
+            70718341,
+            67915717,
+            67029622,
+            66187638
+          ],
+          "release_ns": [
+            330,
+            150,
+            210,
+            140,
+            190
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 6500,
+          "prepare_ns": 13980,
+          "times_ns": [
+            205231308,
+            190351432,
+            187648248,
+            185884230,
+            192194081
+          ],
+          "release_ns": [
+            190,
+            180,
+            190,
+            170,
+            170
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 8,
+      "case": "plain_strings:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 33354860,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            10955086,
+            10832955,
+            13680570,
+            14127382,
+            14177572
+          ],
+          "release_ns": [
+            1690,
+            1330,
+            1220,
+            1160,
+            1380
+          ],
+          "build_ns": 6450,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            25232139,
+            24259234,
+            23534430,
+            24757917,
+            23427930
+          ],
+          "release_ns": [
+            1610,
+            1290,
+            1540,
+            1690,
+            2040
+          ],
+          "build_ns": 15400,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 43637503,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            23090688,
+            21020267,
+            22934087,
+            23000188,
+            22393554
+          ],
+          "release_ns": [
+            1860,
+            1710,
+            2020,
+            1340,
+            1780
+          ],
+          "build_ns": 514163,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            85147765,
+            82943004,
+            84489131,
+            83543877,
+            82007619
+          ],
+          "release_ns": [
+            1580,
+            1430,
+            1320,
+            1420,
+            1710
+          ],
+          "build_ns": 126230,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 33765782,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            10195962,
+            10128342,
+            10140582,
+            10074642,
+            10388023
+          ],
+          "release_ns": [
+            4930,
+            3980,
+            4250,
+            3530,
+            3110
+          ],
+          "build_ns": 8990,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            33810702,
+            34069904,
+            31822132,
+            32302735,
+            31964793
+          ],
+          "release_ns": [
+            4400,
+            3990,
+            3630,
+            2960,
+            3650
+          ],
+          "build_ns": 21670,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 33153440,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            9637429,
+            10181633,
+            10120351,
+            9890291,
+            9400668
+          ],
+          "release_ns": [
+            3850,
+            5280,
+            3480,
+            3570,
+            3580
+          ],
+          "build_ns": 8820,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            32733627,
+            32275985,
+            31567842,
+            32009733,
+            31341900
+          ],
+          "release_ns": [
+            3850,
+            3520,
+            3870,
+            3560,
+            3700
+          ],
+          "build_ns": 15060,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 43776584,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            21208898,
+            22132973,
+            21733550,
+            22377245,
+            20370234
+          ],
+          "release_ns": [
+            1310,
+            1610,
+            1740,
+            1230,
+            1530
+          ],
+          "build_ns": 538753,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            72799971,
+            76140579,
+            72489881,
+            74501230,
+            75993398
+          ],
+          "release_ns": [
+            1660,
+            1700,
+            1890,
+            1650,
+            1210
+          ],
+          "build_ns": 125111,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 35365521,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            11923211,
+            10678025,
+            11258387,
+            12066562,
+            14098412
+          ],
+          "release_ns": [
+            1520,
+            1020,
+            1590,
+            1200,
+            1320
+          ],
+          "build_ns": 6230,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            23575881,
+            20136543,
+            21534910,
+            19683800,
+            20291844
+          ],
+          "release_ns": [
+            1170,
+            1460,
+            1570,
+            1380,
+            1180
+          ],
+          "build_ns": 14890,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 450691072,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24368,
+        "ScratchRequests": 17434
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 1089186,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 25550,
+          "prepare_ns": 22020,
+          "times_ns": [
+            64132308,
+            62500479,
+            61530045,
+            62574099,
+            63163443
+          ],
+          "release_ns": [
+            410,
+            160,
+            120,
+            150,
+            390
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 27090,
+          "prepare_ns": 8890,
+          "times_ns": [
+            209577331,
+            197882760,
+            196646495,
+            190239281,
+            184728144
+          ],
+          "release_ns": [
+            190,
+            220,
+            190,
+            190,
+            180
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 8,
+      "case": "plain_strings:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 33300610,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            9944120,
+            10779405,
+            9533109,
+            13033127,
+            10517383
+          ],
+          "release_ns": [
+            3600,
+            3600,
+            3500,
+            3790,
+            3600
+          ],
+          "build_ns": 7270,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            34212815,
+            37228790,
+            31612802,
+            34068024,
+            33118989
+          ],
+          "release_ns": [
+            3950,
+            3420,
+            3740,
+            4420,
+            3900
+          ],
+          "build_ns": 16290,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 42520477,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            23211819,
+            24993287,
+            25189059,
+            26096183,
+            27730652
+          ],
+          "release_ns": [
+            1540,
+            1310,
+            1510,
+            1790,
+            1520
+          ],
+          "build_ns": 492072,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            80625692,
+            78101049,
+            80222940,
+            78153289,
+            83953299
+          ],
+          "release_ns": [
+            1350,
+            1190,
+            1340,
+            1320,
+            1390
+          ],
+          "build_ns": 128191,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 33780853,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            17715370,
+            17589370,
+            17689751,
+            17748300,
+            17691491
+          ],
+          "release_ns": [
+            1780,
+            1540,
+            1250,
+            1230,
+            1060
+          ],
+          "build_ns": 6310,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            31058178,
+            30438675,
+            31392380,
+            30567547,
+            31635591
+          ],
+          "release_ns": [
+            1021,
+            1370,
+            1150,
+            1070,
+            1220
+          ],
+          "build_ns": 21780,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 450691072,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24368,
+        "ScratchRequests": 17434
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 970465,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 24220,
+          "prepare_ns": 10660,
+          "times_ns": [
+            63252263,
+            61820096,
+            63907957,
+            65168712,
+            63441815
+          ],
+          "release_ns": [
+            170,
+            380,
+            130,
+            190,
+            250
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 6010,
+          "prepare_ns": 10330,
+          "times_ns": [
+            204560965,
+            190663024,
+            196055421,
+            191559448,
+            189849610
+          ],
+          "release_ns": [
+            180,
+            190,
+            180,
+            180,
+            190
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "case": "plain_strings:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 33557821,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            24470005,
+            25690391,
+            25255059,
+            24862647,
+            24768177
+          ],
+          "release_ns": [
+            3240,
+            3440,
+            3520,
+            3520,
+            3350
+          ],
+          "build_ns": 6830,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            71251744,
+            71548716,
+            70466630,
+            71756736,
+            75684367
+          ],
+          "release_ns": [
+            3440,
+            3430,
+            3280,
+            3470,
+            3500
+          ],
+          "build_ns": 14400,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 41796193,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            68676610,
+            61292183,
+            61124222,
+            61943126,
+            66649020
+          ],
+          "release_ns": [
+            1910,
+            1650,
+            1420,
+            1350,
+            1480
+          ],
+          "build_ns": 480223,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            136571197,
+            132627708,
+            130340866,
+            129501401,
+            134173565
+          ],
+          "release_ns": [
+            1400,
+            1400,
+            1200,
+            1080,
+            1120
+          ],
+          "build_ns": 113991,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 33374351,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            53395733,
+            49383222,
+            48419318,
+            48980810,
+            46214046
+          ],
+          "release_ns": [
+            1150,
+            1390,
+            1410,
+            1690,
+            1660
+          ],
+          "build_ns": 6830,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            94546753,
+            89707218,
+            105914521,
+            97995860,
+            88217691
+          ],
+          "release_ns": [
+            1000,
+            1050,
+            1550,
+            1060,
+            1250
+          ],
+          "build_ns": 14620,
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "case": "plain_strings:1048576",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 450691072,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 24368,
+        "ScratchRequests": 17434
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 951904,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 20130,
+          "prepare_ns": 12390,
+          "times_ns": [
+            62068687,
+            62898111,
+            75153424,
+            83358306,
+            94502902
+          ],
+          "release_ns": [
+            140,
+            130,
+            190,
+            400,
+            200
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 15040,
+          "prepare_ns": 8770,
+          "times_ns": [
+            203599330,
+            201436449,
+            193260137,
+            189911400,
+            189089565
+          ],
+          "release_ns": [
+            130,
+            470,
+            200,
+            120,
+            200
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "1eb7f79217caf5336b8e6e4f6bf3c9e5ff528b78aba969d7b4674d9e9337c607"
+          }
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "case": "plain_strings:1048576",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 1608318976,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 107960,
+        "ScratchRequests": 23716
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 10299822,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 23180,
+          "prepare_ns": 15370,
+          "times_ns": [
+            1123782480,
+            1121106106,
+            1115361086,
+            1103052944,
+            1105490766
+          ],
+          "release_ns": [
+            200,
+            210,
+            240,
+            230,
+            200
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 24800,
+          "prepare_ns": 9090,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "query execution failed",
+          "error_code": 9
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "case": "balanced:10000000",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 36289326,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            900226217,
+            744049440,
+            684608747,
+            737510157,
+            694087408
+          ],
+          "release_ns": [
+            1250,
+            1380,
+            1330,
+            1020,
+            1080
+          ],
+          "build_ns": 6750,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            1287640912,
+            1263114696,
+            1293095970,
+            1230593140,
+            1274438534
+          ],
+          "release_ns": [
+            1360,
+            1360,
+            1240,
+            1430,
+            1770
+          ],
+          "build_ns": 14690,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 45126781,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            1039917082,
+            970806197,
+            1004025668,
+            988314707,
+            985095681
+          ],
+          "release_ns": [
+            1280,
+            1330,
+            1420,
+            1200,
+            1440
+          ],
+          "build_ns": 498462,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            1780416008,
+            1824698285,
+            1805616128,
+            1743507659,
+            1684666878
+          ],
+          "release_ns": [
+            1440,
+            1930,
+            1400,
+            1750,
+            1440
+          ],
+          "build_ns": 112441,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 35434941,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            332242164,
+            365603174,
+            336721617,
+            369648715,
+            348598297
+          ],
+          "release_ns": [
+            3450,
+            3620,
+            3510,
+            3610,
+            3520
+          ],
+          "build_ns": 7710,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            747230931,
+            751103331,
+            751426313,
+            742893659,
+            750667179
+          ],
+          "release_ns": [
+            3340,
+            3250,
+            3440,
+            3490,
+            3690
+          ],
+          "build_ns": 12770,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 1608318976,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 107960,
+        "ScratchRequests": 23716
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 8460984,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 24340,
+          "prepare_ns": 20330,
+          "times_ns": [
+            1147625043,
+            1125875343,
+            1128900488,
+            1135306671,
+            1136992109
+          ],
+          "release_ns": [
+            130,
+            140,
+            190,
+            370,
+            190
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 9010,
+          "prepare_ns": 18620,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "query execution failed",
+          "error_code": 9
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "case": "balanced:10000000",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 36149125,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            159126306,
+            160496843,
+            159530078,
+            164285492,
+            163198657
+          ],
+          "release_ns": [
+            1660,
+            1140,
+            1120,
+            1490,
+            1630
+          ],
+          "build_ns": 8450,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            282816670,
+            279806345,
+            285585384,
+            283741395,
+            281250152
+          ],
+          "release_ns": [
+            1240,
+            1100,
+            1300,
+            1820,
+            1320
+          ],
+          "build_ns": 13470,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 42247907,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            461272125,
+            465832638,
+            466224751,
+            469654218,
+            462153279
+          ],
+          "release_ns": [
+            1670,
+            1310,
+            1720,
+            1380,
+            1300
+          ],
+          "build_ns": 499822,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            842198068,
+            849826588,
+            895885143,
+            846569040,
+            861962220
+          ],
+          "release_ns": [
+            1280,
+            1620,
+            1560,
+            1360,
+            1360
+          ],
+          "build_ns": 131801,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 35883194,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            207077271,
+            230040060,
+            202462388,
+            238593043,
+            203139192
+          ],
+          "release_ns": [
+            3410,
+            3170,
+            3250,
+            3580,
+            4420
+          ],
+          "build_ns": 11310,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            712594294,
+            793245627,
+            740305286,
+            682606719,
+            787181475
+          ],
+          "release_ns": [
+            3940,
+            3200,
+            3700,
+            3410,
+            3500
+          ],
+          "build_ns": 14421,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 1
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 1608318976,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 107960,
+        "ScratchRequests": 23716
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 8856195,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 16680,
+          "prepare_ns": 15550,
+          "times_ns": [
+            1144880010,
+            1127813523,
+            1118991297,
+            1134349666,
+            1146633798
+          ],
+          "release_ns": [
+            200,
+            160,
+            200,
+            190,
+            240
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 6360,
+          "prepare_ns": 9550,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "query execution failed",
+          "error_code": 9
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 8,
+      "case": "balanced:10000000",
+      "round": 1
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 36913789,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            111771333,
+            110861429,
+            111338761,
+            111533932,
+            111726633
+          ],
+          "release_ns": [
+            1260,
+            1140,
+            1290,
+            1460,
+            1400
+          ],
+          "build_ns": 8930,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            174933147,
+            178559236,
+            177562940,
+            178982818,
+            177156618
+          ],
+          "release_ns": [
+            1130,
+            1770,
+            1900,
+            1000,
+            1400
+          ],
+          "build_ns": 13500,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 1
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 45209012,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            405952651,
+            405168918,
+            404717025,
+            403708890,
+            413097618
+          ],
+          "release_ns": [
+            1150,
+            1310,
+            1920,
+            1460,
+            1750
+          ],
+          "build_ns": 504182,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            847685996,
+            922546810,
+            776890853,
+            913969426,
+            789454098
+          ],
+          "release_ns": [
+            1160,
+            1450,
+            1250,
+            1870,
+            1120
+          ],
+          "build_ns": 130430,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 35108360,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            145109014,
+            175712301,
+            174457524,
+            146667992,
+            141878028
+          ],
+          "release_ns": [
+            3610,
+            3210,
+            3650,
+            3390,
+            3530
+          ],
+          "build_ns": 7391,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            578309165,
+            569224578,
+            587965475,
+            531657916,
+            518786610
+          ],
+          "release_ns": [
+            3260,
+            3510,
+            5420,
+            3230,
+            3860
+          ],
+          "build_ns": 14570,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 1
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 35961644,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            157021915,
+            177563021,
+            179622031,
+            161539258,
+            180882907
+          ],
+          "release_ns": [
+            3400,
+            3430,
+            3810,
+            3670,
+            3960
+          ],
+          "build_ns": 8430,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            564298343,
+            540284020,
+            576395435,
+            562723416,
+            526436199
+          ],
+          "release_ns": [
+            3450,
+            4160,
+            3340,
+            3840,
+            3120
+          ],
+          "build_ns": 15080,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 47797886,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            409961442,
+            412440225,
+            408871496,
+            407389739,
+            403797470
+          ],
+          "release_ns": [
+            3090,
+            1580,
+            1650,
+            1380,
+            1490
+          ],
+          "build_ns": 497973,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            842915292,
+            875114757,
+            872739175,
+            859688607,
+            892915708
+          ],
+          "release_ns": [
+            1240,
+            1710,
+            1470,
+            1400,
+            1350
+          ],
+          "build_ns": 116220,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 8,
+      "load_ns": 39338852,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            109734653,
+            110725148,
+            112277525,
+            111878074,
+            110542797
+          ],
+          "release_ns": [
+            1140,
+            1670,
+            1440,
+            1020,
+            1400
+          ],
+          "build_ns": 9020,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            179759101,
+            175125947,
+            179519740,
+            179757932,
+            175399979
+          ],
+          "release_ns": [
+            1560,
+            1280,
+            1100,
+            1310,
+            1160
+          ],
+          "build_ns": 14741,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 1608318976,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 107960,
+        "ScratchRequests": 23716
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 8782895,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 16970,
+          "prepare_ns": 11740,
+          "times_ns": [
+            1159781736,
+            1160324669,
+            1142734699,
+            1141735454,
+            1136914379
+          ],
+          "release_ns": [
+            200,
+            220,
+            180,
+            210,
+            170
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 6170,
+          "prepare_ns": 10420,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "query execution failed",
+          "error_code": 9
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 8,
+      "case": "balanced:10000000",
+      "round": 2
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 36999560,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            210536090,
+            201772734,
+            201622854,
+            204428318,
+            206011786
+          ],
+          "release_ns": [
+            3190,
+            3550,
+            3370,
+            3490,
+            3540
+          ],
+          "build_ns": 8350,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            839419614,
+            717511079,
+            776445331,
+            740513847,
+            732884417
+          ],
+          "release_ns": [
+            3550,
+            3200,
+            3520,
+            3440,
+            3660
+          ],
+          "build_ns": 15690,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 43192262,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            458828543,
+            471881879,
+            461103474,
+            460534971,
+            460789563
+          ],
+          "release_ns": [
+            1370,
+            1040,
+            1880,
+            1320,
+            1660
+          ],
+          "build_ns": 487392,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            903650723,
+            906442658,
+            985360812,
+            949984021,
+            845482754
+          ],
+          "release_ns": [
+            1980,
+            1190,
+            1360,
+            1750,
+            1080
+          ],
+          "build_ns": 114811,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 4,
+      "load_ns": 39003350,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            162645474,
+            163243317,
+            165517379,
+            163416028,
+            165697009
+          ],
+          "release_ns": [
+            1170,
+            1440,
+            1120,
+            1360,
+            1510
+          ],
+          "build_ns": 12200,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            286001146,
+            288650070,
+            283730635,
+            277823344,
+            283955566
+          ],
+          "release_ns": [
+            1180,
+            1140,
+            1390,
+            1040,
+            1340
+          ],
+          "build_ns": 14690,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 1608318976,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 107960,
+        "ScratchRequests": 23716
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 8350472,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 28031,
+          "prepare_ns": 18270,
+          "times_ns": [
+            1152888630,
+            1142076386,
+            1148405548,
+            1144661189,
+            1131464811
+          ],
+          "release_ns": [
+            180,
+            340,
+            200,
+            200,
+            170
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 6080,
+          "prepare_ns": 14520,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "query execution failed",
+          "error_code": 9
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 4,
+      "case": "balanced:10000000",
+      "round": 2
+    },
+    {
+      "engine": "DataFusion",
+      "version": "54.0.0 (pyarrow 25.0.1)",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 35086990,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            328820386,
+            326669865,
+            332027022,
+            331345069,
+            341989854
+          ],
+          "release_ns": [
+            3140,
+            3340,
+            3420,
+            3370,
+            3180
+          ],
+          "build_ns": 8410,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            754548458,
+            750994481,
+            746195176,
+            748283976,
+            754235667
+          ],
+          "release_ns": [
+            3390,
+            3570,
+            3590,
+            2970,
+            3180
+          ],
+          "build_ns": 13820,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 2
+    },
+    {
+      "engine": "Polars",
+      "version": "1.34.0",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 46639369,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            1034195303,
+            970151094,
+            994556719,
+            996242508,
+            993141362
+          ],
+          "release_ns": [
+            1240,
+            1780,
+            1330,
+            1430,
+            1160
+          ],
+          "build_ns": 493662,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            1603591952,
+            1721361595,
+            1631525865,
+            1686190176,
+            1634715331
+          ],
+          "release_ns": [
+            1360,
+            1530,
+            1530,
+            1910,
+            1230
+          ],
+          "build_ns": 111701,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 2
+    },
+    {
+      "engine": "DuckDB",
+      "version": "1.5.6",
+      "source": "parquet",
+      "workers": 1,
+      "load_ns": 35936474,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "times_ns": [
+            694674062,
+            704602532,
+            686562651,
+            719979801,
+            756202097
+          ],
+          "release_ns": [
+            1110,
+            1300,
+            1600,
+            1040,
+            1200
+          ],
+          "build_ns": 8050,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "times_ns": [
+            1258241541,
+            1332168700,
+            1304402088,
+            1262237222,
+            1242535360
+          ],
+          "release_ns": [
+            1590,
+            1460,
+            1400,
+            1430,
+            1180
+          ],
+          "build_ns": 13190,
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        }
+      ],
+      "case": "balanced:10000000",
+      "round": 2
+    },
+    {
+      "allocator": {
+        "GeneralCapacity": 1608318976,
+        "ScratchCapacity": 1048576,
+        "GeneralUsed": 0,
+        "ScratchUsed": 0,
+        "GeneralRequests": 107960,
+        "ScratchRequests": 23716
+      },
+      "budget": 1073741824,
+      "engine": "peGosus",
+      "load_ns": 10761765,
+      "queries": [
+        {
+          "name": "high_card_int_group",
+          "build_ns": 20400,
+          "prepare_ns": 15420,
+          "times_ns": [
+            1141200201,
+            1120353885,
+            1129184989,
+            1134194435,
+            1123040488
+          ],
+          "release_ns": [
+            120,
+            150,
+            210,
+            150,
+            190
+          ],
+          "signature": {
+            "rows": 1,
+            "sha256": "9c7baab9e228e91d8cce6d6499f05a770df900c42cb559f30a91aa4f610106ff"
+          }
+        },
+        {
+          "name": "high_card_string_group",
+          "build_ns": 7790,
+          "prepare_ns": 10360,
+          "signature": {
+            "rows": 0,
+            "sha256": ""
+          },
+          "error": "query execution failed",
+          "error_code": 9
+        }
+      ],
+      "source": "parquet",
+      "timeout_ns": 120000000000,
+      "version": "go1.27.1",
+      "workers": 1,
+      "case": "balanced:10000000",
+      "round": 2
+    }
+  ],
+  "validation_errors": [],
+  "query_failures": [
+    {
+      "case": "balanced:10000000",
+      "workers": 1,
+      "round": 1,
+      "engine": "peGosus",
+      "query": "high_card_string_group",
+      "error": "query execution failed",
+      "code": 9
+    },
+    {
+      "case": "balanced:10000000",
+      "workers": 4,
+      "round": 1,
+      "engine": "peGosus",
+      "query": "high_card_string_group",
+      "error": "query execution failed",
+      "code": 9
+    },
+    {
+      "case": "balanced:10000000",
+      "workers": 8,
+      "round": 1,
+      "engine": "peGosus",
+      "query": "high_card_string_group",
+      "error": "query execution failed",
+      "code": 9
+    },
+    {
+      "case": "balanced:10000000",
+      "workers": 8,
+      "round": 2,
+      "engine": "peGosus",
+      "query": "high_card_string_group",
+      "error": "query execution failed",
+      "code": 9
+    },
+    {
+      "case": "balanced:10000000",
+      "workers": 4,
+      "round": 2,
+      "engine": "peGosus",
+      "query": "high_card_string_group",
+      "error": "query execution failed",
+      "code": 9
+    },
+    {
+      "case": "balanced:10000000",
+      "workers": 1,
+      "round": 2,
+      "engine": "peGosus",
+      "query": "high_card_string_group",
+      "error": "query execution failed",
+      "code": 9
+    }
+  ]
+}

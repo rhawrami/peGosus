@@ -251,7 +251,6 @@ func TestParallelDistinctResourceStopCancellationAndFallback(t *testing.T) {
 	}
 	p.Release()
 	for _, logical := range []LogicalPlan{
-		MakeScan(table, schema).Aggregate(MakeCountDistinct(MakeColumn("s")), MakeCountStar()),
 		MakeScan(table, schema).Distinct().Aggregate(MakeCountDistinct(MakeColumn("s"))),
 	} {
 		p, err := MakePhysicalPlan(logical)

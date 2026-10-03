@@ -1,0 +1,155 @@
+Fixture balanced:1048576: 21.52 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 1 workers, DataFusion
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 1, 4 workers, DataFusion
+  round 1, 8 workers, peGosus
+  round 1, 8 workers, DuckDB
+  round 1, 8 workers, Polars
+  round 1, 8 workers, DataFusion
+  round 2, 8 workers, DataFusion
+  round 2, 8 workers, Polars
+  round 2, 8 workers, DuckDB
+  round 2, 8 workers, peGosus
+  round 2, 4 workers, DataFusion
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  round 2, 1 workers, DataFusion
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+Fixture skewed_nulls:1048576: 15.05 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 1 workers, DataFusion
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 1, 4 workers, DataFusion
+  round 1, 8 workers, peGosus
+  round 1, 8 workers, DuckDB
+  round 1, 8 workers, Polars
+  round 1, 8 workers, DataFusion
+  round 2, 8 workers, DataFusion
+  round 2, 8 workers, Polars
+  round 2, 8 workers, DuckDB
+  round 2, 8 workers, peGosus
+  round 2, 4 workers, DataFusion
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  round 2, 1 workers, DataFusion
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+Fixture plain_strings:1048576: 33.09 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 1 workers, DataFusion
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 1, 4 workers, DataFusion
+  round 1, 8 workers, peGosus
+  round 1, 8 workers, DuckDB
+  round 1, 8 workers, Polars
+  round 1, 8 workers, DataFusion
+  round 2, 8 workers, DataFusion
+  round 2, 8 workers, Polars
+  round 2, 8 workers, DuckDB
+  round 2, 8 workers, peGosus
+  round 2, 4 workers, DataFusion
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  round 2, 1 workers, DataFusion
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+Fixture balanced:10000000: 212.31 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 1 workers, DataFusion
+  QUERY FAILURE: high_card_string_group/peGosus: query execution failed (code 9)
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 1, 4 workers, DataFusion
+  QUERY FAILURE: high_card_string_group/peGosus: query execution failed (code 9)
+  round 1, 8 workers, peGosus
+  round 1, 8 workers, DuckDB
+  round 1, 8 workers, Polars
+  round 1, 8 workers, DataFusion
+  QUERY FAILURE: high_card_string_group/peGosus: query execution failed (code 9)
+  round 2, 8 workers, DataFusion
+  round 2, 8 workers, Polars
+  round 2, 8 workers, DuckDB
+  round 2, 8 workers, peGosus
+  QUERY FAILURE: high_card_string_group/peGosus: query execution failed (code 9)
+  round 2, 4 workers, DataFusion
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  QUERY FAILURE: high_card_string_group/peGosus: query execution failed (code 9)
+  round 2, 1 workers, DataFusion
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+  QUERY FAILURE: high_card_string_group/peGosus: query execution failed (code 9)
+
+balanced:1048576, 1 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  high_card_int_group       62.969 / 45.077 / 56.424 / 22.806
+  high_card_string_group    154.405 / 74.904 / 100.794 / 56.420
+
+balanced:1048576, 4 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  high_card_int_group       60.405 / 17.666 / 22.934 / 10.895
+  high_card_string_group    155.913 / 26.232 / 58.338 / 25.295
+
+balanced:1048576, 8 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  high_card_int_group       61.138 / 10.873 / 19.874 / 9.248
+  high_card_string_group    156.768 / 15.227 / 53.759 / 24.267
+
+skewed_nulls:1048576, 1 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  high_card_int_group       53.056 / 31.141 / 39.416 / 19.014
+  high_card_string_group    125.546 / 46.663 / 81.187 / 41.203
+
+skewed_nulls:1048576, 4 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  high_card_int_group       57.975 / 14.783 / 17.810 / 10.791
+  high_card_string_group    124.353 / 20.871 / 52.148 / 26.693
+
+skewed_nulls:1048576, 8 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  high_card_int_group       54.956 / 10.952 / 15.799 / 8.978
+  high_card_string_group    124.151 / 12.589 / 49.323 / 20.722
+
+plain_strings:1048576, 1 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  high_card_int_group       63.817 / 48.610 / 61.618 / 24.815
+  high_card_string_group    190.216 / 87.828 / 132.357 / 71.673
+
+plain_strings:1048576, 4 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  high_card_int_group       63.347 / 17.703 / 25.643 / 11.662
+  high_card_string_group    201.940 / 31.514 / 84.061 / 33.784
+
+plain_strings:1048576, 8 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  high_card_int_group       65.160 / 11.995 / 22.255 / 10.124
+  high_card_string_group    191.273 / 23.481 / 79.074 / 32.143
+
+balanced:10000000, 1 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  high_card_int_group       1122.073 / 712.291 / 993.849 / 334.482
+  high_card_string_group    ERROR / 1268.777 / 1703.776 / 750.831
+
+balanced:10000000, 4 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  high_card_int_group       1139.534 / 163.221 / 461.713 / 205.220
+  high_card_string_group    ERROR / 283.736 / 878.924 / 740.410
+
+balanced:10000000, 8 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  high_card_int_group       1142.235 / 111.436 / 406.671 / 167.998
+  high_card_string_group    ERROR / 178.061 / 866.214 / 563.511
+Validation: 0 mismatches; 6 query failures; 96 worker records

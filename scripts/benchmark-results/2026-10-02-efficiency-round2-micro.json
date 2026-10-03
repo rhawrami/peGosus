@@ -1,0 +1,1084 @@
+{
+  "GOMAXPROCS": 8,
+  "CGO_ENABLED": 0,
+  "records": [
+    {
+      "build": "normal",
+      "name": "BenchmarkParquetSelectedMaterialization/dense-8",
+      "iterations": 100,
+      "ns_per_op": 242933.0,
+      "metrics": {
+        "copied-string-bytes/op": 62664.0,
+        "selected-rows/op": 38.0,
+        "B/op": 84441.0,
+        "allocs/op": 428.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkParquetSelectedMaterialization/dense-8",
+      "iterations": 100,
+      "ns_per_op": 249400.0,
+      "metrics": {
+        "copied-string-bytes/op": 62664.0,
+        "selected-rows/op": 38.0,
+        "B/op": 84441.0,
+        "allocs/op": 428.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkParquetSelectedMaterialization/selected-8",
+      "iterations": 100,
+      "ns_per_op": 206924.0,
+      "metrics": {
+        "copied-string-bytes/op": 560.0,
+        "selected-rows/op": 38.0,
+        "B/op": 84113.0,
+        "allocs/op": 423.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkParquetSelectedMaterialization/selected-8",
+      "iterations": 100,
+      "ns_per_op": 209989.0,
+      "metrics": {
+        "copied-string-bytes/op": 560.0,
+        "selected-rows/op": 38.0,
+        "B/op": 84112.0,
+        "allocs/op": 423.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=false-8",
+      "iterations": 7899182,
+      "ns_per_op": 14.37,
+      "metrics": {
+        "index-bytes": 16384.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=false-8",
+      "iterations": 8272273,
+      "ns_per_op": 14.28,
+      "metrics": {
+        "index-bytes": 16384.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=false-8",
+      "iterations": 7986537,
+      "ns_per_op": 14.34,
+      "metrics": {
+        "index-bytes": 16384.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=true-8",
+      "iterations": 5357649,
+      "ns_per_op": 21.36,
+      "metrics": {
+        "index-bytes": 17424.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=true-8",
+      "iterations": 5673548,
+      "ns_per_op": 20.9,
+      "metrics": {
+        "index-bytes": 17424.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=true-8",
+      "iterations": 5528826,
+      "ns_per_op": 21.01,
+      "metrics": {
+        "index-bytes": 17424.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=false-8",
+      "iterations": 9539373,
+      "ns_per_op": 12.44,
+      "metrics": {
+        "index-bytes": 16384.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=false-8",
+      "iterations": 9900867,
+      "ns_per_op": 12.22,
+      "metrics": {
+        "index-bytes": 16384.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=false-8",
+      "iterations": 9548512,
+      "ns_per_op": 12.23,
+      "metrics": {
+        "index-bytes": 16384.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=true-8",
+      "iterations": 8041632,
+      "ns_per_op": 16.03,
+      "metrics": {
+        "index-bytes": 17424.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=true-8",
+      "iterations": 7521210,
+      "ns_per_op": 15.73,
+      "metrics": {
+        "index-bytes": 17424.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=true-8",
+      "iterations": 7497418,
+      "ns_per_op": 15.77,
+      "metrics": {
+        "index-bytes": 17424.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=false-8",
+      "iterations": 5029201,
+      "ns_per_op": 24.14,
+      "metrics": {
+        "index-bytes": 1048576.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=false-8",
+      "iterations": 4607269,
+      "ns_per_op": 24.42,
+      "metrics": {
+        "index-bytes": 1048576.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=false-8",
+      "iterations": 5013519,
+      "ns_per_op": 24.29,
+      "metrics": {
+        "index-bytes": 1048576.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=true-8",
+      "iterations": 3175494,
+      "ns_per_op": 38.04,
+      "metrics": {
+        "index-bytes": 1114128.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=true-8",
+      "iterations": 3225349,
+      "ns_per_op": 38.85,
+      "metrics": {
+        "index-bytes": 1114128.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=true-8",
+      "iterations": 3102877,
+      "ns_per_op": 38.75,
+      "metrics": {
+        "index-bytes": 1114128.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=false-8",
+      "iterations": 7840854,
+      "ns_per_op": 15.2,
+      "metrics": {
+        "index-bytes": 1048576.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=false-8",
+      "iterations": 6928251,
+      "ns_per_op": 15.01,
+      "metrics": {
+        "index-bytes": 1048576.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=false-8",
+      "iterations": 7562726,
+      "ns_per_op": 15.81,
+      "metrics": {
+        "index-bytes": 1048576.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=true-8",
+      "iterations": 6968558,
+      "ns_per_op": 16.98,
+      "metrics": {
+        "index-bytes": 1114128.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=true-8",
+      "iterations": 6555463,
+      "ns_per_op": 17.18,
+      "metrics": {
+        "index-bytes": 1114128.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=true-8",
+      "iterations": 6797026,
+      "ns_per_op": 16.94,
+      "metrics": {
+        "index-bytes": 1114128.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=false-8",
+      "iterations": 4145688,
+      "ns_per_op": 27.65,
+      "metrics": {
+        "index-bytes": 16777216.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=false-8",
+      "iterations": 4197834,
+      "ns_per_op": 27.57,
+      "metrics": {
+        "index-bytes": 16777216.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=false-8",
+      "iterations": 4084237,
+      "ns_per_op": 28.49,
+      "metrics": {
+        "index-bytes": 16777216.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=true-8",
+      "iterations": 2514660,
+      "ns_per_op": 48.22,
+      "metrics": {
+        "index-bytes": 17825808.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=true-8",
+      "iterations": 2417808,
+      "ns_per_op": 49.87,
+      "metrics": {
+        "index-bytes": 17825808.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=true-8",
+      "iterations": 2471268,
+      "ns_per_op": 49.02,
+      "metrics": {
+        "index-bytes": 17825808.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=false-8",
+      "iterations": 5683399,
+      "ns_per_op": 18.2,
+      "metrics": {
+        "index-bytes": 16777216.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=false-8",
+      "iterations": 6177594,
+      "ns_per_op": 17.96,
+      "metrics": {
+        "index-bytes": 16777216.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=false-8",
+      "iterations": 6164547,
+      "ns_per_op": 17.71,
+      "metrics": {
+        "index-bytes": 16777216.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=true-8",
+      "iterations": 5779806,
+      "ns_per_op": 21.46,
+      "metrics": {
+        "index-bytes": 17825808.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=true-8",
+      "iterations": 5764098,
+      "ns_per_op": 20.64,
+      "metrics": {
+        "index-bytes": 17825808.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=true-8",
+      "iterations": 5076932,
+      "ns_per_op": 21.68,
+      "metrics": {
+        "index-bytes": 17825808.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=false-8",
+      "iterations": 7787319,
+      "ns_per_op": 14.44,
+      "metrics": {
+        "index-bytes": 16384.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=false-8",
+      "iterations": 7669262,
+      "ns_per_op": 14.71,
+      "metrics": {
+        "index-bytes": 16384.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=false-8",
+      "iterations": 8341743,
+      "ns_per_op": 14.54,
+      "metrics": {
+        "index-bytes": 16384.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=true-8",
+      "iterations": 7061143,
+      "ns_per_op": 17.46,
+      "metrics": {
+        "index-bytes": 17424.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=true-8",
+      "iterations": 6626260,
+      "ns_per_op": 17.54,
+      "metrics": {
+        "index-bytes": 17424.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=false/controls=true-8",
+      "iterations": 6778401,
+      "ns_per_op": 17.51,
+      "metrics": {
+        "index-bytes": 17424.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=false-8",
+      "iterations": 8399860,
+      "ns_per_op": 14.13,
+      "metrics": {
+        "index-bytes": 16384.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=false-8",
+      "iterations": 8391889,
+      "ns_per_op": 14.13,
+      "metrics": {
+        "index-bytes": 16384.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=false-8",
+      "iterations": 8561308,
+      "ns_per_op": 13.95,
+      "metrics": {
+        "index-bytes": 16384.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=true-8",
+      "iterations": 10067680,
+      "ns_per_op": 11.31,
+      "metrics": {
+        "index-bytes": 17424.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=true-8",
+      "iterations": 11194038,
+      "ns_per_op": 11.46,
+      "metrics": {
+        "index-bytes": 17424.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1024/missing=true/controls=true-8",
+      "iterations": 10168046,
+      "ns_per_op": 11.3,
+      "metrics": {
+        "index-bytes": 17424.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=false-8",
+      "iterations": 4983600,
+      "ns_per_op": 24.04,
+      "metrics": {
+        "index-bytes": 1048576.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=false-8",
+      "iterations": 4772743,
+      "ns_per_op": 24.13,
+      "metrics": {
+        "index-bytes": 1048576.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=false-8",
+      "iterations": 4716100,
+      "ns_per_op": 23.85,
+      "metrics": {
+        "index-bytes": 1048576.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=true-8",
+      "iterations": 3811550,
+      "ns_per_op": 29.32,
+      "metrics": {
+        "index-bytes": 1114128.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=true-8",
+      "iterations": 4037151,
+      "ns_per_op": 28.97,
+      "metrics": {
+        "index-bytes": 1114128.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=false/controls=true-8",
+      "iterations": 4058004,
+      "ns_per_op": 29.3,
+      "metrics": {
+        "index-bytes": 1114128.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=false-8",
+      "iterations": 7388452,
+      "ns_per_op": 15.54,
+      "metrics": {
+        "index-bytes": 1048576.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=false-8",
+      "iterations": 7848187,
+      "ns_per_op": 15.33,
+      "metrics": {
+        "index-bytes": 1048576.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=false-8",
+      "iterations": 7964332,
+      "ns_per_op": 15.71,
+      "metrics": {
+        "index-bytes": 1048576.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=true-8",
+      "iterations": 10952818,
+      "ns_per_op": 11.84,
+      "metrics": {
+        "index-bytes": 1114128.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=true-8",
+      "iterations": 10135384,
+      "ns_per_op": 11.53,
+      "metrics": {
+        "index-bytes": 1114128.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=65536/missing=true/controls=true-8",
+      "iterations": 9163435,
+      "ns_per_op": 11.5,
+      "metrics": {
+        "index-bytes": 1114128.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=false-8",
+      "iterations": 4108524,
+      "ns_per_op": 28.83,
+      "metrics": {
+        "index-bytes": 16777216.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=false-8",
+      "iterations": 4132382,
+      "ns_per_op": 29.23,
+      "metrics": {
+        "index-bytes": 16777216.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=false-8",
+      "iterations": 4209817,
+      "ns_per_op": 29.18,
+      "metrics": {
+        "index-bytes": 16777216.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=true-8",
+      "iterations": 3031700,
+      "ns_per_op": 39.24,
+      "metrics": {
+        "index-bytes": 17825808.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=true-8",
+      "iterations": 2909920,
+      "ns_per_op": 39.12,
+      "metrics": {
+        "index-bytes": 17825808.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=false/controls=true-8",
+      "iterations": 3080580,
+      "ns_per_op": 39.51,
+      "metrics": {
+        "index-bytes": 17825808.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=false-8",
+      "iterations": 6153121,
+      "ns_per_op": 17.7,
+      "metrics": {
+        "index-bytes": 16777216.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=false-8",
+      "iterations": 6059293,
+      "ns_per_op": 17.86,
+      "metrics": {
+        "index-bytes": 16777216.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=false-8",
+      "iterations": 6447802,
+      "ns_per_op": 17.83,
+      "metrics": {
+        "index-bytes": 16777216.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=true-8",
+      "iterations": 8475157,
+      "ns_per_op": 14.13,
+      "metrics": {
+        "index-bytes": 17825808.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=true-8",
+      "iterations": 8189290,
+      "ns_per_op": 13.94,
+      "metrics": {
+        "index-bytes": 17825808.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "simd",
+      "name": "BenchmarkKeyIndexControls/capacity=1048576/missing=true/controls=true-8",
+      "iterations": 8410593,
+      "ns_per_op": 14.18,
+      "metrics": {
+        "index-bytes": 17825808.0,
+        "B/op": 0.0,
+        "allocs/op": 0.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkParallelChainedJoinTopN/workers=1-8",
+      "iterations": 3,
+      "ns_per_op": 56679227.0,
+      "metrics": {
+        "budget-bytes": 134217728.0,
+        "input-rows": 131072.0,
+        "joined-rows": 524288.0,
+        "peak-query-bytes": 1166224.0,
+        "B/op": 1016978.0,
+        "allocs/op": 14956.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkParallelChainedJoinTopN/workers=1-8",
+      "iterations": 3,
+      "ns_per_op": 57188116.0,
+      "metrics": {
+        "budget-bytes": 134217728.0,
+        "input-rows": 131072.0,
+        "joined-rows": 524288.0,
+        "peak-query-bytes": 1166224.0,
+        "B/op": 1015341.0,
+        "allocs/op": 14936.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkParallelChainedJoinTopN/workers=4-8",
+      "iterations": 3,
+      "ns_per_op": 18260962.0,
+      "metrics": {
+        "budget-bytes": 134217728.0,
+        "input-rows": 131072.0,
+        "joined-rows": 524288.0,
+        "peak-query-bytes": 1673920.0,
+        "B/op": 1064509.0,
+        "allocs/op": 15643.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkParallelChainedJoinTopN/workers=4-8",
+      "iterations": 3,
+      "ns_per_op": 17127690.0,
+      "metrics": {
+        "budget-bytes": 134217728.0,
+        "input-rows": 131072.0,
+        "joined-rows": 524288.0,
+        "peak-query-bytes": 1673920.0,
+        "B/op": 1129389.0,
+        "allocs/op": 15589.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpilledGroup/global=false-8",
+      "iterations": 3,
+      "ns_per_op": 584791546.0,
+      "metrics": {
+        "MB/s": 0.73,
+        "budget_B": 196608.0,
+        "output_rows/op": 2048.0,
+        "scope_peak_B": 34046.0,
+        "B/op": 396642632.0,
+        "allocs/op": 4116729.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpilledGroup/global=false-8",
+      "iterations": 3,
+      "ns_per_op": 587683707.0,
+      "metrics": {
+        "MB/s": 0.72,
+        "budget_B": 196608.0,
+        "output_rows/op": 2048.0,
+        "scope_peak_B": 34046.0,
+        "B/op": 396644736.0,
+        "allocs/op": 4116732.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpilledGroup/global=true-8",
+      "iterations": 3,
+      "ns_per_op": 369759477.0,
+      "metrics": {
+        "MB/s": 1.15,
+        "budget_B": 196608.0,
+        "output_rows/op": 1.0,
+        "scope_peak_B": 31688.0,
+        "B/op": 246052685.0,
+        "allocs/op": 2601569.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpilledGroup/global=true-8",
+      "iterations": 3,
+      "ns_per_op": 369885275.0,
+      "metrics": {
+        "MB/s": 1.15,
+        "budget_B": 196608.0,
+        "output_rows/op": 1.0,
+        "scope_peak_B": 31688.0,
+        "B/op": 246052605.0,
+        "allocs/op": 2601568.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpillJoinHotKey/kind=1-8",
+      "iterations": 3,
+      "ns_per_op": 22944885.0,
+      "metrics": {
+        "B/op": 11398768.0,
+        "allocs/op": 176486.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpillJoinHotKey/kind=1-8",
+      "iterations": 3,
+      "ns_per_op": 22573370.0,
+      "metrics": {
+        "B/op": 11398784.0,
+        "allocs/op": 176486.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpillJoinHotKey/kind=3-8",
+      "iterations": 3,
+      "ns_per_op": 22317189.0,
+      "metrics": {
+        "B/op": 11490901.0,
+        "allocs/op": 177916.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpillJoinHotKey/kind=3-8",
+      "iterations": 3,
+      "ns_per_op": 22907802.0,
+      "metrics": {
+        "B/op": 11490890.0,
+        "allocs/op": 177916.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpillJoinHotKey/kind=4-8",
+      "iterations": 3,
+      "ns_per_op": 6360141.0,
+      "metrics": {
+        "B/op": 2700045.0,
+        "allocs/op": 40142.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpillJoinHotKey/kind=4-8",
+      "iterations": 3,
+      "ns_per_op": 6409748.0,
+      "metrics": {
+        "B/op": 2700061.0,
+        "allocs/op": 40142.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpillJoinHotKey/kind=5-8",
+      "iterations": 3,
+      "ns_per_op": 6823340.0,
+      "metrics": {
+        "B/op": 2693530.0,
+        "allocs/op": 39982.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpillJoinHotKey/kind=5-8",
+      "iterations": 3,
+      "ns_per_op": 6108393.0,
+      "metrics": {
+        "B/op": 2693536.0,
+        "allocs/op": 39982.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpilledSort/budget=131072-8",
+      "iterations": 3,
+      "ns_per_op": 70944546.0,
+      "metrics": {
+        "peak-live-bytes": 15396.0,
+        "rows/op": 16384.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpilledSort/budget=131072-8",
+      "iterations": 3,
+      "ns_per_op": 72593834.0,
+      "metrics": {
+        "peak-live-bytes": 15396.0,
+        "rows/op": 16384.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpilledSort/budget=1048576-8",
+      "iterations": 3,
+      "ns_per_op": 19903807.0,
+      "metrics": {
+        "peak-live-bytes": 288032.0,
+        "rows/op": 16384.0
+      }
+    },
+    {
+      "build": "normal",
+      "name": "BenchmarkSpilledSort/budget=1048576-8",
+      "iterations": 3,
+      "ns_per_op": 20335226.0,
+      "metrics": {
+        "peak-live-bytes": 288032.0,
+        "rows/op": 16384.0
+      }
+    }
+  ],
+  "limits": [
+    "Per-operation cumulative Go allocations are not query-scope live-byte peaks.",
+    "Lookup tables are experimental controls explicitly enabled; production activation remains disabled.",
+    "Six executions per execution shape, two batches of100 complete selected scans, three100ms lookup samples.",
+    "Temporary-file throughput depends on this machine and filesystem; no native ARM measurements."
+  ]
+}

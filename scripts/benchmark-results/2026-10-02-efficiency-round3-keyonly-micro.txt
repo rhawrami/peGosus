@@ -1,0 +1,92 @@
+Round=1 variant=before
+goos: linux
+goarch: amd64
+pkg: github.com/rhawrami/peGosus/pkg/plan
+cpu: AMD Ryzen 7 7700X 8-Core Processor             
+BenchmarkSpilledGroup/global=false-8         	       3	 559240791 ns/op	   0.76 MB/s	    196608 budget_B	      2048 output_rows/op	     34046 scope_peak_B	396642408 B/op	 4116726 allocs/op
+BenchmarkSpilledGroup/global=false-8         	       3	 561703937 ns/op	   0.76 MB/s	    196608 budget_B	      2048 output_rows/op	     34046 scope_peak_B	396644410 B/op	 4116729 allocs/op
+BenchmarkSpilledGroup/global=true-8          	       3	 351795975 ns/op	   1.21 MB/s	    196608 budget_B	         1.000 output_rows/op	     31688 scope_peak_B	246052653 B/op	 2601569 allocs/op
+BenchmarkSpilledGroup/global=true-8          	       3	 353105568 ns/op	   1.21 MB/s	    196608 budget_B	         1.000 output_rows/op	     31688 scope_peak_B	246052173 B/op	 2601564 allocs/op
+BenchmarkSpillJoinHotKey/kind=1-8            	       3	  21448489 ns/op	11398869 B/op	  176486 allocs/op
+BenchmarkSpillJoinHotKey/kind=1-8            	       3	  22350587 ns/op	11398768 B/op	  176486 allocs/op
+BenchmarkSpillJoinHotKey/kind=3-8            	       3	  22142556 ns/op	11490810 B/op	  177915 allocs/op
+BenchmarkSpillJoinHotKey/kind=3-8            	       3	  21931445 ns/op	11490832 B/op	  177915 allocs/op
+BenchmarkSpillJoinHotKey/kind=4-8            	       3	   6251510 ns/op	 2702826 B/op	   40143 allocs/op
+BenchmarkSpillJoinHotKey/kind=4-8            	       3	   6208079 ns/op	 2702832 B/op	   40143 allocs/op
+BenchmarkSpillJoinHotKey/kind=5-8            	       3	   6020652 ns/op	 2690877 B/op	   39982 allocs/op
+BenchmarkSpillJoinHotKey/kind=5-8            	       3	   6516678 ns/op	 2693520 B/op	   39981 allocs/op
+BenchmarkSpilledSort/budget=131072-8         	       3	  67857175 ns/op	     15396 peak-live-bytes	     16384 rows/op	39152109 B/op	  680725 allocs/op
+BenchmarkSpilledSort/budget=131072-8         	       3	  67688671 ns/op	     15396 peak-live-bytes	     16384 rows/op	39152050 B/op	  680724 allocs/op
+BenchmarkSpilledSort/budget=1048576-8        	       3	  19475985 ns/op	    288032 peak-live-bytes	     16384 rows/op	 9651122 B/op	  168046 allocs/op
+BenchmarkSpilledSort/budget=1048576-8        	       3	  18908476 ns/op	    288032 peak-live-bytes	     16384 rows/op	 9651000 B/op	  168045 allocs/op
+PASS
+
+Round=1 variant=after
+goos: linux
+goarch: amd64
+pkg: github.com/rhawrami/peGosus/pkg/plan
+cpu: AMD Ryzen 7 7700X 8-Core Processor             
+BenchmarkSpilledGroup/global=false-8         	       3	 267148198 ns/op	   1.59 MB/s	    196608 budget_B	      2048 output_rows/op	     36032 scope_peak_B	30224018 B/op	  260696 allocs/op
+BenchmarkSpilledGroup/global=false-8         	       3	 263363872 ns/op	   1.62 MB/s	    196608 budget_B	      2048 output_rows/op	     36032 scope_peak_B	30223885 B/op	  260695 allocs/op
+BenchmarkSpilledGroup/global=true-8          	       3	 173135740 ns/op	   2.46 MB/s	    196608 budget_B	         1.000 output_rows/op	     32192 scope_peak_B	19532224 B/op	  145386 allocs/op
+BenchmarkSpilledGroup/global=true-8          	       3	 173222043 ns/op	   2.46 MB/s	    196608 budget_B	         1.000 output_rows/op	     32192 scope_peak_B	19529034 B/op	  145384 allocs/op
+BenchmarkSpillJoinHotKey/kind=1-8            	       3	  20254926 ns/op	 9128856 B/op	  146101 allocs/op
+BenchmarkSpillJoinHotKey/kind=1-8            	       3	  20929933 ns/op	 9128898 B/op	  146102 allocs/op
+BenchmarkSpillJoinHotKey/kind=3-8            	       3	  20322436 ns/op	 9160666 B/op	  146586 allocs/op
+BenchmarkSpillJoinHotKey/kind=3-8            	       3	  21222131 ns/op	 9160618 B/op	  146586 allocs/op
+BenchmarkSpillJoinHotKey/kind=4-8            	       3	   6415034 ns/op	 2718325 B/op	   40055 allocs/op
+BenchmarkSpillJoinHotKey/kind=4-8            	       3	   6197623 ns/op	 2715656 B/op	   40055 allocs/op
+BenchmarkSpillJoinHotKey/kind=5-8            	       3	   6335983 ns/op	 2714605 B/op	   39982 allocs/op
+BenchmarkSpillJoinHotKey/kind=5-8            	       3	   6148486 ns/op	 2714605 B/op	   39982 allocs/op
+BenchmarkSpilledSort/budget=131072-8         	       3	  34903153 ns/op	     15616 peak-live-bytes	     16384 rows/op	 1432394 B/op	   25107 allocs/op
+BenchmarkSpilledSort/budget=131072-8         	       3	  34429464 ns/op	     15616 peak-live-bytes	     16384 rows/op	 1432202 B/op	   25105 allocs/op
+BenchmarkSpilledSort/budget=1048576-8        	       3	  13072425 ns/op	    289792 peak-live-bytes	     16384 rows/op	  210613 B/op	    4201 allocs/op
+BenchmarkSpilledSort/budget=1048576-8        	       3	  12840534 ns/op	    289792 peak-live-bytes	     16384 rows/op	  210570 B/op	    4200 allocs/op
+PASS
+
+Round=2 variant=after
+goos: linux
+goarch: amd64
+pkg: github.com/rhawrami/peGosus/pkg/plan
+cpu: AMD Ryzen 7 7700X 8-Core Processor             
+BenchmarkSpilledGroup/global=false-8         	       3	 267549687 ns/op	   1.59 MB/s	    196608 budget_B	      2048 output_rows/op	     36032 scope_peak_B	30224013 B/op	  260696 allocs/op
+BenchmarkSpilledGroup/global=false-8         	       3	 264408687 ns/op	   1.61 MB/s	    196608 budget_B	      2048 output_rows/op	     36032 scope_peak_B	30223938 B/op	  260695 allocs/op
+BenchmarkSpilledGroup/global=true-8          	       3	 170894495 ns/op	   2.49 MB/s	    196608 budget_B	         1.000 output_rows/op	     32192 scope_peak_B	19529077 B/op	  145385 allocs/op
+BenchmarkSpilledGroup/global=true-8          	       3	 172480509 ns/op	   2.47 MB/s	    196608 budget_B	         1.000 output_rows/op	     32192 scope_peak_B	19529130 B/op	  145385 allocs/op
+BenchmarkSpillJoinHotKey/kind=1-8            	       3	  20540111 ns/op	 9128882 B/op	  146102 allocs/op
+BenchmarkSpillJoinHotKey/kind=1-8            	       3	  19343315 ns/op	 9128866 B/op	  146102 allocs/op
+BenchmarkSpillJoinHotKey/kind=3-8            	       3	  21528213 ns/op	 9160640 B/op	  146586 allocs/op
+BenchmarkSpillJoinHotKey/kind=3-8            	       3	  21053227 ns/op	 9160640 B/op	  146586 allocs/op
+BenchmarkSpillJoinHotKey/kind=4-8            	       3	   6075305 ns/op	 2715618 B/op	   40055 allocs/op
+BenchmarkSpillJoinHotKey/kind=4-8            	       3	   5885744 ns/op	 2715576 B/op	   40055 allocs/op
+BenchmarkSpillJoinHotKey/kind=5-8            	       3	   6245263 ns/op	 2711829 B/op	   39981 allocs/op
+BenchmarkSpillJoinHotKey/kind=5-8            	       3	   6113029 ns/op	 2711824 B/op	   39981 allocs/op
+BenchmarkSpilledSort/budget=131072-8         	       3	  34701168 ns/op	     15616 peak-live-bytes	     16384 rows/op	 1429640 B/op	   25107 allocs/op
+BenchmarkSpilledSort/budget=131072-8         	       3	  35486216 ns/op	     15616 peak-live-bytes	     16384 rows/op	 1426720 B/op	   25104 allocs/op
+BenchmarkSpilledSort/budget=1048576-8        	       3	  13263236 ns/op	    289792 peak-live-bytes	     16384 rows/op	  210618 B/op	    4201 allocs/op
+BenchmarkSpilledSort/budget=1048576-8        	       3	  13112829 ns/op	    289792 peak-live-bytes	     16384 rows/op	  207837 B/op	    4199 allocs/op
+PASS
+
+Round=2 variant=before
+goos: linux
+goarch: amd64
+pkg: github.com/rhawrami/peGosus/pkg/plan
+cpu: AMD Ryzen 7 7700X 8-Core Processor             
+BenchmarkSpilledGroup/global=false-8         	       3	 563206395 ns/op	   0.76 MB/s	    196608 budget_B	      2048 output_rows/op	     34046 scope_peak_B	396644437 B/op	 4116730 allocs/op
+BenchmarkSpilledGroup/global=false-8         	       3	 560008061 ns/op	   0.76 MB/s	    196608 budget_B	      2048 output_rows/op	     34046 scope_peak_B	396643213 B/op	 4116732 allocs/op
+BenchmarkSpilledGroup/global=true-8          	       3	 350383684 ns/op	   1.22 MB/s	    196608 budget_B	         1.000 output_rows/op	     31688 scope_peak_B	246052269 B/op	 2601565 allocs/op
+BenchmarkSpilledGroup/global=true-8          	       3	 352569262 ns/op	   1.21 MB/s	    196608 budget_B	         1.000 output_rows/op	     31688 scope_peak_B	246052784 B/op	 2601567 allocs/op
+BenchmarkSpillJoinHotKey/kind=1-8            	       3	  22797696 ns/op	11398778 B/op	  176486 allocs/op
+BenchmarkSpillJoinHotKey/kind=1-8            	       3	  23025371 ns/op	11398810 B/op	  176486 allocs/op
+BenchmarkSpillJoinHotKey/kind=3-8            	       3	  21958958 ns/op	11490864 B/op	  177916 allocs/op
+BenchmarkSpillJoinHotKey/kind=3-8            	       3	  21900728 ns/op	11490810 B/op	  177915 allocs/op
+BenchmarkSpillJoinHotKey/kind=4-8            	       3	   6510154 ns/op	 2700013 B/op	   40142 allocs/op
+BenchmarkSpillJoinHotKey/kind=4-8            	       3	   6025755 ns/op	 2700056 B/op	   40142 allocs/op
+BenchmarkSpillJoinHotKey/kind=5-8            	       3	   6217266 ns/op	 2693536 B/op	   39982 allocs/op
+BenchmarkSpillJoinHotKey/kind=5-8            	       3	   6590604 ns/op	 2693584 B/op	   39982 allocs/op
+BenchmarkSpilledSort/budget=131072-8         	       3	  69700815 ns/op	     15396 peak-live-bytes	     16384 rows/op	39152104 B/op	  680725 allocs/op
+BenchmarkSpilledSort/budget=131072-8         	       3	  69590327 ns/op	     15396 peak-live-bytes	     16384 rows/op	39152061 B/op	  680724 allocs/op
+BenchmarkSpilledSort/budget=1048576-8        	       3	  19391078 ns/op	    288032 peak-live-bytes	     16384 rows/op	 9651160 B/op	  168047 allocs/op
+BenchmarkSpilledSort/budget=1048576-8        	       3	  19184050 ns/op	    288032 peak-live-bytes	     16384 rows/op	 9651037 B/op	  168045 allocs/op
+PASS
+

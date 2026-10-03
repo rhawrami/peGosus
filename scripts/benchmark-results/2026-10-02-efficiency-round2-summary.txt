@@ -1,0 +1,94 @@
+peGosus second efficiency round: native amd64
+Checkpoint48c9640 pushed; new implementation uncommitted.
+Paired: 48 records, 672 observations, 3360 samples.
+Paired failures/mismatches: 0/0; source unchanged: True.
+
+One-million-row pooled medians (10 samples each, milliseconds):
+source  workers  query                         before    after  speedup
+parquet       1 join_int_report               102.915  103.926    0.99x
+parquet       1 join_string_report            134.136  134.029    1.00x
+parquet       1 join_left_report              114.783  114.080    1.01x
+parquet       1 join_semi_count                61.328   62.065    0.99x
+parquet       1 join_anti_count                57.496   57.538    1.00x
+parquet       1 grouped_self_join             139.819  139.390    1.00x
+parquet       1 full_sort_numeric             101.049   99.580    1.01x
+parquet       1 full_sort_string              284.102  271.832    1.05x
+parquet       1 distinct_strings              187.215  188.318    0.99x
+parquet       1 count_distinct                222.508  197.629    1.13x
+parquet       1 multi_group_report            180.290  174.106    1.04x
+parquet       1 group_sum                      16.891   17.105    0.99x
+parquet       1 top50                          33.553   33.688    1.00x
+parquet       1 wide_materialize              158.254  158.400    1.00x
+parquet       4 join_int_report                28.311   28.285    1.00x
+parquet       4 join_string_report             36.123   36.892    0.98x
+parquet       4 join_left_report               31.667   31.597    1.00x
+parquet       4 join_semi_count                16.715   16.909    0.99x
+parquet       4 join_anti_count                15.846   16.084    0.99x
+parquet       4 grouped_self_join              57.445   58.586    0.98x
+parquet       4 full_sort_numeric              84.384   84.843    0.99x
+parquet       4 full_sort_string              180.907  174.030    1.04x
+parquet       4 distinct_strings              105.894  105.142    1.01x
+parquet       4 count_distinct                222.360  150.152    1.48x
+parquet       4 multi_group_report             49.095   46.291    1.06x
+parquet       4 group_sum                       4.682    4.571    1.02x
+parquet       4 top50                           9.027    8.785    1.03x
+parquet       4 wide_materialize               68.558   65.960    1.04x
+table         1 join_int_report                82.388   82.060    1.00x
+table         1 join_string_report            103.050  104.084    0.99x
+table         1 join_left_report               96.526   95.907    1.01x
+table         1 join_semi_count                43.274   43.406    1.00x
+table         1 join_anti_count                38.952   38.662    1.01x
+table         1 grouped_self_join             112.370  112.709    1.00x
+table         1 full_sort_numeric              92.094   93.464    0.99x
+table         1 full_sort_string              251.847  225.229    1.12x
+table         1 distinct_strings              149.749  147.472    1.02x
+table         1 count_distinct                165.477  141.863    1.17x
+table         1 multi_group_report            119.615  113.582    1.05x
+table         1 group_sum                      20.857   20.838    1.00x
+table         1 top50                          25.226   25.349    1.00x
+table         1 wide_materialize                5.181    5.133    1.01x
+table         4 join_int_report                22.680   21.807    1.04x
+table         4 join_string_report             27.461   27.983    0.98x
+table         4 join_left_report               26.787   26.030    1.03x
+table         4 join_semi_count                11.579   11.613    1.00x
+table         4 join_anti_count                10.496   10.170    1.03x
+table         4 grouped_self_join              48.567   48.599    1.00x
+table         4 full_sort_numeric              77.776   77.464    1.00x
+table         4 full_sort_string              144.907  145.509    1.00x
+table         4 distinct_strings               93.459   95.518    0.98x
+table         4 count_distinct                167.744  132.849    1.26x
+table         4 multi_group_report             31.269   29.726    1.05x
+table         4 group_sum                       5.378    5.350    1.01x
+table         4 top50                           6.524    6.529    1.00x
+table         4 wide_materialize                1.629    1.611    1.01x
+
+All regressions above10% (small timings can be noisy):
+balanced:512 parquet workers=4 group_sum: 0.037->0.046ms (+22.8%)
+
+Cross-engine result validation:
+smoke.json: 40 records, 1480 observations, 0 failures, 0 mismatches
+table-smoke.json: 8 records, 296 observations, 0 failures, 0 mismatches
+memory.json: 32 records, 32 observations, 0 failures, 0 mismatches
+memory-before.json: 4 records, 4 observations, 0 failures, 0 mismatches
+
+Checkpoint/candidate cold sampled query RSS growth,4workers,pooled2rounds:
+full_sort_string: 129.7->129.4MiB (1.00x)
+count_distinct: 148.0->311.8MiB (2.11x)
+
+Normal/SIMD/race/checkptr suites passed; ARM64 compile only; AVX2-off fallback passed.
+Detailed experimental lookup, selected-materialization and bounded-spill metrics are in micro.txt.
+Limits:
+Synthetic warm-cache native Result workloads; prepare/loading/hash validation excluded.
+Variants and worker order reverse between rounds; query order is fixed.
+Pure Go, GOAMD64=v1, normal build; 1 GiB query budget; ten-second per-query deadline.
+This suite does not activate disk spilling or experimental hash controls.
+The new round remains uncommitted; checkpoint48c9640 and the baseline runner match the first-round production state.
+Native amd64 only. ARM64 normal/SIMD compilation uses vet disabled for existing assembly debt; no ARM runtime/throughput claim.
+Fingerprint cache remains disabled in production; explicit experiment masks have scalar, AVX2 and NEON implementations.
+Spill benchmarks select external execution explicitly; no adaptive transition, no streaming join-sort/limit/multijoin spilling.
+Allocator budgets cover requested live segment bytes, excluding borrowed source, Go control metadata and idle slab capacity; they are not RSS limits.
+Linux VmRSS is approximate and sampled peaks can miss transients; precise RSS/PSS endpoints and lifetime VmHWM are reported separately.
+DuckDB Python fetchall conversion is timed, DataFusion native Arrow collect excludes Python conversion, and Polars shares columns; large-output comparisons are not pure-engine rankings.
+Four-engine one-sample smoke timings are validation only; DataFusion54.0.0 CSV null-marker handling is unsupported.
+Warm-cache synthetic fixtures with dyadic numeric values; no official TPC/ClickBench score.
+Parallel multi-DISTINCT increases cold sampled RSS growth from148.0 to311.8 MiB (2.11x) at4workers on the million-row fixture; original source states coexist with merged sets.

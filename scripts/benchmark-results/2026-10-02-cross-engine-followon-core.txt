@@ -1,0 +1,285 @@
+Fixture balanced:1048576: 21.52 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 1 workers, DataFusion
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 1, 4 workers, DataFusion
+  round 1, 8 workers, peGosus
+  round 1, 8 workers, DuckDB
+  round 1, 8 workers, Polars
+  round 1, 8 workers, DataFusion
+  round 2, 8 workers, DataFusion
+  round 2, 8 workers, Polars
+  round 2, 8 workers, DuckDB
+  round 2, 8 workers, peGosus
+  round 2, 4 workers, DataFusion
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  round 2, 1 workers, DataFusion
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+Fixture skewed_nulls:1048576: 15.05 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 1 workers, DataFusion
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 1, 4 workers, DataFusion
+  round 1, 8 workers, peGosus
+  round 1, 8 workers, DuckDB
+  round 1, 8 workers, Polars
+  round 1, 8 workers, DataFusion
+  round 2, 8 workers, DataFusion
+  round 2, 8 workers, Polars
+  round 2, 8 workers, DuckDB
+  round 2, 8 workers, peGosus
+  round 2, 4 workers, DataFusion
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  round 2, 1 workers, DataFusion
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+Fixture plain_strings:1048576: 33.09 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 1 workers, DataFusion
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 1, 4 workers, DataFusion
+  round 1, 8 workers, peGosus
+  round 1, 8 workers, DuckDB
+  round 1, 8 workers, Polars
+  round 1, 8 workers, DataFusion
+  round 2, 8 workers, DataFusion
+  round 2, 8 workers, Polars
+  round 2, 8 workers, DuckDB
+  round 2, 8 workers, peGosus
+  round 2, 4 workers, DataFusion
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  round 2, 1 workers, DataFusion
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+Fixture balanced:10000000: 212.31 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 1 workers, DataFusion
+  QUERY FAILURE: count_distinct/peGosus: query execution failed (code 9)
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 1, 4 workers, DataFusion
+  round 1, 8 workers, peGosus
+  round 1, 8 workers, DuckDB
+  round 1, 8 workers, Polars
+  round 1, 8 workers, DataFusion
+  round 2, 8 workers, DataFusion
+  round 2, 8 workers, Polars
+  round 2, 8 workers, DuckDB
+  round 2, 8 workers, peGosus
+  round 2, 4 workers, DataFusion
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  round 2, 1 workers, DataFusion
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+  QUERY FAILURE: count_distinct/peGosus: query execution failed (code 9)
+Fixture skewed_nulls:10000000: 149.43 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 1 workers, DataFusion
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 1, 4 workers, DataFusion
+  round 1, 8 workers, peGosus
+  round 1, 8 workers, DuckDB
+  round 1, 8 workers, Polars
+  round 1, 8 workers, DataFusion
+  round 2, 8 workers, DataFusion
+  round 2, 8 workers, Polars
+  round 2, 8 workers, DuckDB
+  round 2, 8 workers, peGosus
+  round 2, 4 workers, DataFusion
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  round 2, 1 workers, DataFusion
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+Fixture plain_strings:10000000: 321.93 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 1 workers, DataFusion
+  QUERY FAILURE: count_distinct/peGosus: query execution failed (code 9)
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 1, 4 workers, DataFusion
+  QUERY FAILURE: count_distinct/peGosus: query execution failed (code 9)
+  round 1, 8 workers, peGosus
+  round 1, 8 workers, DuckDB
+  round 1, 8 workers, Polars
+  round 1, 8 workers, DataFusion
+  QUERY FAILURE: count_distinct/peGosus: query execution failed (code 9)
+  round 2, 8 workers, DataFusion
+  round 2, 8 workers, Polars
+  round 2, 8 workers, DuckDB
+  round 2, 8 workers, peGosus
+  QUERY FAILURE: count_distinct/peGosus: query execution failed (code 9)
+  round 2, 4 workers, DataFusion
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  QUERY FAILURE: count_distinct/peGosus: query execution failed (code 9)
+  round 2, 1 workers, DataFusion
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+  QUERY FAILURE: count_distinct/peGosus: query execution failed (code 9)
+
+balanced:1048576, 1 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            169.712 / 56.807 / 60.294 / 57.843
+  multi_group_report        172.213 / 22.829 / 33.493 / 23.420
+  group_sum                 17.100 / 4.008 / 11.037 / 6.276
+  join_int_report           103.289 / 10.808 / 24.584 / 12.126
+  join_string_report        133.600 / 27.665 / 29.525 / 15.484
+
+balanced:1048576, 4 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            100.327 / 20.097 / 44.763 / 60.760
+  multi_group_report        45.606 / 9.249 / 19.785 / 9.417
+  group_sum                 4.721 / 1.651 / 5.741 / 3.412
+  join_int_report           28.337 / 3.830 / 13.330 / 5.374
+  join_string_report        35.991 / 10.148 / 17.021 / 6.825
+
+balanced:1048576, 8 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            88.902 / 14.134 / 42.849 / 56.173
+  multi_group_report        27.405 / 5.710 / 18.826 / 6.863
+  group_sum                 3.528 / 1.495 / 5.773 / 2.600
+  join_int_report           15.594 / 3.487 / 13.878 / 4.322
+  join_string_report        22.717 / 7.272 / 15.571 / 5.638
+
+skewed_nulls:1048576, 1 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            124.076 / 35.376 / 39.644 / 39.216
+  multi_group_report        159.026 / 21.284 / 32.920 / 20.164
+  group_sum                 14.702 / 3.836 / 10.046 / 5.801
+  join_int_report           74.849 / 8.209 / 18.195 / 8.790
+  join_string_report        93.558 / 19.269 / 23.730 / 11.264
+
+skewed_nulls:1048576, 4 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            71.786 / 16.539 / 29.725 / 38.874
+  multi_group_report        42.189 / 8.988 / 19.137 / 9.662
+  group_sum                 4.086 / 1.744 / 6.158 / 3.032
+  join_int_report           20.680 / 3.260 / 11.261 / 4.355
+  join_string_report        26.568 / 7.402 / 11.496 / 5.032
+
+skewed_nulls:1048576, 8 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            64.652 / 10.902 / 29.637 / 36.885
+  multi_group_report        23.286 / 6.129 / 18.164 / 5.875
+  group_sum                 3.032 / 1.467 / 7.727 / 2.461
+  join_int_report           11.689 / 2.950 / 9.755 / 3.751
+  join_string_report        17.150 / 4.772 / 11.284 / 4.529
+
+plain_strings:1048576, 1 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            197.295 / 92.157 / 91.504 / 71.397
+  multi_group_report        172.178 / 55.633 / 46.569 / 30.427
+  group_sum                 41.010 / 18.715 / 14.792 / 9.940
+  join_int_report           103.037 / 10.872 / 24.374 / 12.204
+  join_string_report        138.126 / 49.485 / 34.624 / 17.924
+
+plain_strings:1048576, 4 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            100.843 / 32.365 / 64.568 / 66.797
+  multi_group_report        46.789 / 18.016 / 21.843 / 11.445
+  group_sum                 11.420 / 7.438 / 6.869 / 4.708
+  join_int_report           27.384 / 3.853 / 13.196 / 5.263
+  join_string_report        37.486 / 15.254 / 17.817 / 7.780
+
+plain_strings:1048576, 8 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            92.061 / 20.066 / 62.965 / 60.563
+  multi_group_report        30.938 / 9.978 / 18.798 / 8.484
+  group_sum                 6.726 / 5.245 / 7.256 / 3.384
+  join_int_report           16.148 / 3.433 / 12.344 / 4.438
+  join_string_report        26.415 / 9.938 / 16.543 / 5.804
+
+balanced:10000000, 1 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            ERROR / 779.099 / 848.958 / 636.161
+  multi_group_report        1622.664 / 212.088 / 394.363 / 213.518
+  group_sum                 159.837 / 34.173 / 117.687 / 53.336
+  join_int_report           973.765 / 96.533 / 296.387 / 105.533
+  join_string_report        1267.552 / 255.493 / 370.468 / 136.863
+
+balanced:10000000, 4 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            1431.492 / 179.056 / 700.213 / 699.675
+  multi_group_report        427.996 / 68.678 / 195.689 / 59.915
+  group_sum                 42.542 / 11.267 / 57.158 / 20.754
+  join_int_report           257.127 / 27.706 / 131.309 / 31.169
+  join_string_report        332.976 / 79.557 / 177.087 / 39.555
+
+balanced:10000000, 8 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            1315.376 / 117.956 / 682.329 / 635.309
+  multi_group_report        226.739 / 43.140 / 190.169 / 37.891
+  group_sum                 24.109 / 7.657 / 56.847 / 13.840
+  join_int_report           143.127 / 17.253 / 118.352 / 20.761
+  join_string_report        189.061 / 47.587 / 167.246 / 26.806
+
+skewed_nulls:10000000, 1 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            1422.468 / 496.500 / 626.405 / 440.181
+  multi_group_report        1512.121 / 200.158 / 364.535 / 177.724
+  group_sum                 142.973 / 32.463 / 96.055 / 48.090
+  join_int_report           741.917 / 70.577 / 212.327 / 74.012
+  join_string_report        933.421 / 177.456 / 265.641 / 95.990
+
+skewed_nulls:10000000, 4 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            897.223 / 133.826 / 497.085 / 449.136
+  multi_group_report        395.005 / 63.243 / 183.637 / 49.993
+  group_sum                 37.131 / 10.777 / 59.576 / 19.141
+  join_int_report           188.151 / 20.969 / 91.490 / 21.646
+  join_string_report        234.861 / 58.004 / 122.216 / 28.906
+
+skewed_nulls:10000000, 8 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            815.637 / 85.549 / 485.404 / 413.771
+  multi_group_report        207.984 / 39.483 / 188.384 / 32.324
+  group_sum                 20.780 / 7.603 / 59.910 / 12.360
+  join_int_report           104.836 / 12.932 / 80.367 / 15.416
+  join_string_report        131.580 / 32.426 / 113.162 / 19.972
+
+plain_strings:10000000, 1 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            ERROR / 1134.405 / 1241.262 / 1085.306
+  multi_group_report        1646.643 / 531.844 / 529.904 / 294.927
+  group_sum                 389.586 / 171.747 / 172.281 / 91.879
+  join_int_report           972.553 / 95.638 / 389.171 / 108.870
+  join_string_report        1313.409 / 455.967 / 497.521 / 161.051
+
+plain_strings:10000000, 4 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            ERROR / 297.198 / 1005.777 / 877.018
+  multi_group_report        434.195 / 154.831 / 227.386 / 79.913
+  group_sum                 103.105 / 57.466 / 70.693 / 33.242
+  join_int_report           258.756 / 28.097 / 130.030 / 31.817
+  join_string_report        347.415 / 131.112 / 192.196 / 46.253
+
+plain_strings:10000000, 8 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  count_distinct            ERROR / 198.447 / 988.462 / 752.570
+  multi_group_report        235.050 / 87.299 / 202.638 / 50.634
+  group_sum                 57.808 / 36.753 / 62.907 / 21.432
+  join_int_report           144.818 / 17.084 / 122.494 / 21.108
+  join_string_report        194.456 / 74.798 / 180.513 / 30.758
+Validation: 0 mismatches; 8 query failures; 144 worker records

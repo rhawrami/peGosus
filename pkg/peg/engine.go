@@ -18,9 +18,12 @@ const defaultSlabBytes = 1 << 20
 
 // EngineOptions sets defaults for every query executed by an engine. A zero
 // budget selects 256 MiB; zero workers selects the executor's automatic policy.
+// SpillDirectory enables temporary disk storage for supported blocking plans.
+// The directory must exist. Retained results still count against MemoryBudget.
 type EngineOptions struct {
-	MemoryBudget int64
-	Workers      int
+	MemoryBudget   int64
+	Workers        int
+	SpillDirectory string
 }
 
 // ParquetOptions configures Parquet decoding and resource limits.
@@ -60,15 +63,17 @@ func MakeEngine(options ...EngineOptions) *Engine {
 	return &Engine{
 		allocator:    mem.MakeAllocatorWithProfiles([]int{defaultSlabBytes}, []int{defaultSlabBytes}),
 		memoryBudget: config.MemoryBudget, workers: config.Workers,
+		spillDirectory: config.SpillDirectory,
 	}
 }
 
 // Engine owns reusable allocation slabs; individual executions have separate
 // query budgets. Concurrent prepared queries may share an Engine.
 type Engine struct {
-	allocator    *mem.Allocator
-	memoryBudget int64
-	workers      int
+	allocator      *mem.Allocator
+	memoryBudget   int64
+	workers        int
+	spillDirectory string
 }
 
 // ScanTable scans an in-memory table. The caller keeps table alive until the
@@ -206,7 +211,7 @@ func (p *Prepared) RunContext(ctx context.Context, sink func(Batch) bool) (RunSt
 	if p == nil || p.physical == nil || p.engine == nil || ctx == nil || sink == nil {
 		return RunCompleted, &Error{code: ErrorInvalidQuery, cause: errors.New("invalid prepared query, context, or sink")}
 	}
-	outcome := p.physical.ExecuteWithOptions(ctx, p.engine.allocator, plan.ExecutionOptions{MemoryBudget: p.engine.memoryBudget, Workers: p.engine.workers}, func(batch *store.Batch) bool {
+	outcome := p.physical.ExecuteWithOptions(ctx, p.engine.allocator, plan.ExecutionOptions{MemoryBudget: p.engine.memoryBudget, Workers: p.engine.workers, SpillDirectory: p.engine.spillDirectory}, func(batch *store.Batch) bool {
 		return sink(Batch{inner: batch, fields: p.fields})
 	})
 	switch outcome.Code() {
@@ -229,7 +234,7 @@ func (p *Prepared) ExecContext(ctx context.Context) (*Result, error) {
 		return nil, &Error{code: ErrorInvalidQuery, cause: errors.New("invalid prepared query or context")}
 	}
 	result := &Result{fields: p.fields}
-	outcome := p.physical.ExecuteWithOptions(ctx, p.engine.allocator, plan.ExecutionOptions{MemoryBudget: p.engine.memoryBudget, Workers: p.engine.workers}, func(batch *store.Batch) bool {
+	outcome := p.physical.ExecuteWithOptions(ctx, p.engine.allocator, plan.ExecutionOptions{MemoryBudget: p.engine.memoryBudget, Workers: p.engine.workers, SpillDirectory: p.engine.spillDirectory}, func(batch *store.Batch) bool {
 		result.batches = append(result.batches, batch.Retain())
 		result.rows += batch.ActiveLen()
 		return true

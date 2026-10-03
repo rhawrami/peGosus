@@ -40,6 +40,9 @@ func (r ExecutionResult) Err() error { return r.cause }
 // admission reservations may be more conservative.
 type ExecutionOptions struct {
 	MemoryBudget int64
+	// SpillDirectory enables temporary-file execution for eligible blocking
+	// operators. Empty keeps execution in memory. Files are query-local.
+	SpillDirectory string
 	// TryPackedSort opts into exact 64-bit key packing for direct in-memory sorts.
 	// A non-packable key or unsupported plan uses the existing sort path.
 	TryPackedSort bool
@@ -60,11 +63,25 @@ func (p *PhysicalPlan) executeWithScope(ctx context.Context, a *mem.Allocator, o
 	if p == nil || p.source == nil || ctx == nil || a == nil || sink == nil || options.MemoryBudget <= 0 || options.Workers < 0 {
 		return ExecutionResult{code: ExecutionInvalidInvocation}
 	}
-	if options.Workers != 1 {
-		if result, parallel := p.executeParallelDistinct(ctx, a, options, sink); parallel {
+	if options.SpillDirectory != "" {
+		if scope == nil {
+			scope = mem.MakeAllocationScope(a, options.MemoryBudget)
+		}
+		if result, eligible := p.executeSpilled(ctx, a, options, sink, scope); eligible {
+			if result.code == ExecutionFailed && scope.Exhausted() {
+				result.code = ExecutionResourceExhausted
+			}
 			return result
 		}
-		if result, parallel := p.executeParallel(ctx, a, options, sink); parallel {
+	}
+	if result, handled := p.executeGlobalDistinctWithScope(ctx, a, options, sink, scope); handled {
+		return result
+	}
+	if options.Workers != 1 {
+		if result, parallel := p.executeParallelDistinctWithScope(ctx, a, options, sink, scope); parallel {
+			return result
+		}
+		if result, parallel := p.executeParallelWithScope(ctx, a, options, sink, scope); parallel {
 			return result
 		}
 	}

@@ -1,0 +1,179 @@
+Fixture balanced:1048576: 21.52 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 1 workers, DataFusion
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 1, 4 workers, DataFusion
+  round 1, 8 workers, peGosus
+  round 1, 8 workers, DuckDB
+  round 1, 8 workers, Polars
+  round 1, 8 workers, DataFusion
+  round 2, 8 workers, DataFusion
+  round 2, 8 workers, Polars
+  round 2, 8 workers, DuckDB
+  round 2, 8 workers, peGosus
+  round 2, 4 workers, DataFusion
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  round 2, 1 workers, DataFusion
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+Fixture skewed_nulls:1048576: 15.05 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 1 workers, DataFusion
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 1, 4 workers, DataFusion
+  round 1, 8 workers, peGosus
+  round 1, 8 workers, DuckDB
+  round 1, 8 workers, Polars
+  round 1, 8 workers, DataFusion
+  round 2, 8 workers, DataFusion
+  round 2, 8 workers, Polars
+  round 2, 8 workers, DuckDB
+  round 2, 8 workers, peGosus
+  round 2, 4 workers, DataFusion
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  round 2, 1 workers, DataFusion
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+Fixture plain_strings:1048576: 33.09 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 1 workers, DataFusion
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 1, 4 workers, DataFusion
+  round 1, 8 workers, peGosus
+  round 1, 8 workers, DuckDB
+  round 1, 8 workers, Polars
+  round 1, 8 workers, DataFusion
+  round 2, 8 workers, DataFusion
+  round 2, 8 workers, Polars
+  round 2, 8 workers, DuckDB
+  round 2, 8 workers, peGosus
+  round 2, 4 workers, DataFusion
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  round 2, 1 workers, DataFusion
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+Fixture balanced:10000000: 212.31 MiB; source=parquet
+  round 1, 1 workers, peGosus
+  round 1, 1 workers, DuckDB
+  round 1, 1 workers, Polars
+  round 1, 1 workers, DataFusion
+  QUERY FAILURE: full_sort_numeric/peGosus: query execution failed (code 9)
+  QUERY FAILURE: full_sort_string/peGosus: query execution failed (code 9)
+  QUERY FAILURE: distinct_strings/peGosus: query execution failed (code 9)
+  round 1, 4 workers, peGosus
+  round 1, 4 workers, DuckDB
+  round 1, 4 workers, Polars
+  round 1, 4 workers, DataFusion
+  QUERY FAILURE: full_sort_numeric/peGosus: query execution failed (code 9)
+  QUERY FAILURE: full_sort_string/peGosus: query execution failed (code 9)
+  QUERY FAILURE: distinct_strings/peGosus: query execution failed (code 9)
+  round 1, 8 workers, peGosus
+  round 1, 8 workers, DuckDB
+  round 1, 8 workers, Polars
+  round 1, 8 workers, DataFusion
+  QUERY FAILURE: full_sort_numeric/peGosus: query execution failed (code 9)
+  QUERY FAILURE: full_sort_string/peGosus: query execution failed (code 9)
+  QUERY FAILURE: distinct_strings/peGosus: query execution failed (code 9)
+  round 2, 8 workers, DataFusion
+  round 2, 8 workers, Polars
+  round 2, 8 workers, DuckDB
+  round 2, 8 workers, peGosus
+  QUERY FAILURE: full_sort_numeric/peGosus: query execution failed (code 9)
+  QUERY FAILURE: full_sort_string/peGosus: query execution failed (code 9)
+  QUERY FAILURE: distinct_strings/peGosus: query execution failed (code 9)
+  round 2, 4 workers, DataFusion
+  round 2, 4 workers, Polars
+  round 2, 4 workers, DuckDB
+  round 2, 4 workers, peGosus
+  QUERY FAILURE: full_sort_numeric/peGosus: query execution failed (code 9)
+  QUERY FAILURE: full_sort_string/peGosus: query execution failed (code 9)
+  QUERY FAILURE: distinct_strings/peGosus: query execution failed (code 9)
+  round 2, 1 workers, DataFusion
+  round 2, 1 workers, Polars
+  round 2, 1 workers, DuckDB
+  round 2, 1 workers, peGosus
+  QUERY FAILURE: full_sort_numeric/peGosus: query execution failed (code 9)
+  QUERY FAILURE: full_sort_string/peGosus: query execution failed (code 9)
+  QUERY FAILURE: distinct_strings/peGosus: query execution failed (code 9)
+
+balanced:1048576, 1 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  full_sort_numeric         100.244 / 218.222 / 200.384 / 58.858
+  full_sort_string          244.111 / 363.509 / 208.829 / 82.083
+  distinct_strings          169.463 / 55.513 / 60.836 / 56.051
+
+balanced:1048576, 4 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  full_sort_numeric         83.979 / 179.711 / 56.076 / 28.609
+  full_sort_string          173.237 / 270.413 / 71.619 / 62.146
+  distinct_strings          99.694 / 18.516 / 26.833 / 24.196
+
+balanced:1048576, 8 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  full_sort_numeric         79.622 / 168.154 / 35.542 / 31.534
+  full_sort_string          148.527 / 248.363 / 51.154 / 67.514
+  distinct_strings          80.591 / 11.872 / 22.399 / 22.950
+
+skewed_nulls:1048576, 1 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  full_sort_numeric         62.883 / 138.055 / 111.925 / 40.773
+  full_sort_string          200.015 / 282.992 / 170.096 / 69.088
+  distinct_strings          137.161 / 33.577 / 49.542 / 37.588
+
+skewed_nulls:1048576, 4 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  full_sort_numeric         57.606 / 109.931 / 33.814 / 19.468
+  full_sort_string          133.902 / 216.342 / 57.028 / 49.418
+  distinct_strings          90.606 / 15.615 / 22.235 / 26.307
+
+skewed_nulls:1048576, 8 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  full_sort_numeric         55.781 / 108.087 / 21.070 / 20.352
+  full_sort_string          117.725 / 209.221 / 38.052 / 52.381
+  distinct_strings          88.430 / 9.630 / 18.293 / 18.854
+
+plain_strings:1048576, 1 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  full_sort_numeric         105.539 / 218.060 / 191.931 / 59.495
+  full_sort_string          872.753 / 670.499 / 321.182 / 108.919
+  distinct_strings          197.624 / 64.121 / 66.157 / 67.670
+
+plain_strings:1048576, 4 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  full_sort_numeric         81.642 / 173.417 / 57.334 / 27.697
+  full_sort_string          435.259 / 464.429 / 118.980 / 79.145
+  distinct_strings          113.186 / 24.486 / 27.887 / 28.446
+
+plain_strings:1048576, 8 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  full_sort_numeric         76.562 / 169.816 / 34.378 / 30.522
+  full_sort_string          315.510 / 423.087 / 75.064 / 88.568
+  distinct_strings          89.206 / 16.524 / 24.486 / 28.593
+
+balanced:10000000, 1 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  full_sort_numeric         ERROR / 2277.465 / 4088.965 / 831.930
+  full_sort_string          ERROR / 3571.334 / 2382.258 / 1487.193
+  distinct_strings          ERROR / 762.182 / 787.133 / 667.092
+
+balanced:10000000, 4 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  full_sort_numeric         ERROR / 1774.914 / 1219.073 / 253.798
+  full_sort_string          ERROR / 2807.135 / 869.928 / 598.210
+  distinct_strings          ERROR / 172.672 / 293.702 / 720.474
+
+balanced:10000000, 8 workers: milliseconds peGosus / DuckDB / Polars / DataFusion
+  full_sort_numeric         ERROR / 1688.606 / 724.080 / 281.411
+  full_sort_string          ERROR / 2682.514 / 612.489 / 527.428
+  distinct_strings          ERROR / 112.533 / 234.226 / 502.787
+Validation: 0 mismatches; 18 query failures; 96 worker records

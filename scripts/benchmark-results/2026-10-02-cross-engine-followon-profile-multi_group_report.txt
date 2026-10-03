@@ -1,0 +1,39 @@
+File: peg-workloads
+Build ID: 535b740e8263fac7788017c4779358f14cc9ed50
+Type: cpu
+Time: 2026-10-02 23:54:06 CDT
+Duration: 1.15s, Total samples = 9.02s (782.57%)
+Showing nodes accounting for 8.20s, 90.91% of 9.02s total
+Dropped 81 nodes (cum <= 0.05s)
+Showing top 30 nodes out of 58
+      flat  flat%   sum%        cum   cum%
+     1.22s 13.53% 13.53%      5.58s 61.86%  github.com/rhawrami/peGosus/pkg/plan.(*groupState).add
+     0.79s  8.76% 22.28%      1.50s 16.63%  github.com/rhawrami/peGosus/pkg/plan.scalarAt
+     0.77s  8.54% 30.82%      1.10s 12.20%  github.com/rhawrami/peGosus/pkg/io/parquet.decodeParquetRuns
+     0.71s  7.87% 38.69%      1.76s 19.51%  github.com/rhawrami/peGosus/pkg/plan.encodeRowKey
+     0.59s  6.54% 45.23%      1.90s 21.06%  github.com/rhawrami/peGosus/pkg/io/parquet.makeParquetSelectedStringVector
+     0.42s  4.66% 49.89%      0.77s  8.54%  github.com/rhawrami/peGosus/pkg/store.(*BitMap).IsSet (inline)
+     0.41s  4.55% 54.43%      1.52s 16.85%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).startPage
+     0.37s  4.10% 58.54%      0.56s  6.21%  github.com/rhawrami/peGosus/pkg/plan.(*aggregateValue).add
+     0.34s  3.77% 62.31%      0.34s  3.77%  github.com/rhawrami/peGosus/pkg/mem.asBT (inline)
+     0.26s  2.88% 65.19%      0.34s  3.77%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).materializeValues
+     0.24s  2.66% 67.85%      0.24s  2.66%  internal/runtime/maps.memHashAES
+     0.21s  2.33% 70.18%      0.21s  2.33%  github.com/rhawrami/peGosus/pkg/io/parquet.decodeParquetIndices.func1
+     0.19s  2.11% 72.28%      0.92s 10.20%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).next
+     0.17s  1.88% 74.17%      0.17s  1.88%  math.IsNaN (inline)
+     0.16s  1.77% 75.94%      0.37s  4.10%  github.com/rhawrami/peGosus/pkg/store.(*Vector).StringAt
+     0.15s  1.66% 77.61%      0.15s  1.66%  memeqbody
+     0.14s  1.55% 79.16%      0.77s  8.54%  github.com/rhawrami/peGosus/pkg/plan.(*keyIndex).lookup
+     0.12s  1.33% 80.49%      0.12s  1.33%  github.com/rhawrami/peGosus/pkg/io/parquet.decodeParquetRLE.func1
+     0.12s  1.33% 81.82%      0.13s  1.44%  github.com/rhawrami/peGosus/pkg/plan.(*keyArena).key (inline)
+     0.12s  1.33% 83.15%      0.46s  5.10%  github.com/rhawrami/peGosus/pkg/plan.encodedRowKeyLength
+     0.11s  1.22% 84.37%      0.11s  1.22%  runtime.memmove
+     0.09s     1% 85.37%      0.09s     1%  github.com/rhawrami/peGosus/pkg/store.bitMapByteLength (inline)
+     0.08s  0.89% 86.25%      0.08s  0.89%  github.com/golang/snappy.decode
+     0.08s  0.89% 87.14%      0.11s  1.22%  github.com/rhawrami/peGosus/pkg/dtype.MakeString (inline)
+     0.06s  0.67% 87.80%      1.40s 15.52%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).materializeFixed
+     0.06s  0.67% 88.47%      0.09s     1%  github.com/rhawrami/peGosus/pkg/plan.(*PhysicalPlan).batchReservation
+     0.06s  0.67% 89.14%      3.06s 33.92%  github.com/rhawrami/peGosus/pkg/plan.(*distinctState).add
+     0.06s  0.67% 89.80%      0.39s  4.32%  github.com/rhawrami/peGosus/pkg/store.(*BitMap).bytes (inline)
+     0.05s  0.55% 90.35%      0.05s  0.55%  encoding/binary.littleEndian.PutUint64 (inline)
+     0.05s  0.55% 90.91%      1.67s 18.51%  github.com/rhawrami/peGosus/pkg/io/parquet.(*parquetCursor).advancePage

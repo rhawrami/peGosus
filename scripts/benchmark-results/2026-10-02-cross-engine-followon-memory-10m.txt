@@ -1,0 +1,26 @@
+Fixture balanced:10000000: 212.31 MiB; source=parquet
+  round 1, 1 workers, peGosus memory
+  round 1, 1 workers, DuckDB memory
+  round 1, 1 workers, Polars memory
+  round 1, 1 workers, DataFusion memory
+  round 1, 4 workers, peGosus memory
+  round 1, 4 workers, DuckDB memory
+  round 1, 4 workers, Polars memory
+  round 1, 4 workers, DataFusion memory
+  round 1, 8 workers, peGosus memory
+  round 1, 8 workers, DuckDB memory
+  round 1, 8 workers, Polars memory
+  round 1, 8 workers, DataFusion memory
+  round 2, 8 workers, DataFusion memory
+  round 2, 8 workers, Polars memory
+  round 2, 8 workers, DuckDB memory
+  round 2, 8 workers, peGosus memory
+  round 2, 4 workers, DataFusion memory
+  round 2, 4 workers, Polars memory
+  round 2, 4 workers, DuckDB memory
+  round 2, 4 workers, peGosus memory
+  round 2, 1 workers, DataFusion memory
+  round 2, 1 workers, Polars memory
+  round 2, 1 workers, DuckDB memory
+  round 2, 1 workers, peGosus memory
+Validation: 0 mismatches; 0 query failures; 24 worker records

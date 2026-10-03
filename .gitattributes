@@ -1,0 +1,2 @@
+# Preserve byte-exact benchmark tool output, including native CPU-name padding.
+scripts/benchmark-results/*.txt -whitespace
